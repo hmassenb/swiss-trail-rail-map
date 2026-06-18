@@ -38,6 +38,7 @@ The overview page reads the same saved route data as the map page and displays:
 - top contributors and trending tags for the current filter/timeframe
 - estimated canton coverage for the current filter/timeframe
 - clickable contributor profiles with route totals, distance, elevation, likes, and top tags
+- a `My routes` shortcut based on the saved contributor profile
 - feed-card route focusing on the cumulative map
 - selected-route detail cards with metrics, tags, caption, coordinates, like, and contributor actions
 - route-level share links using `overview.html#route=...`

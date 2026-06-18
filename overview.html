@@ -483,7 +483,10 @@
     <header>
       <div class="title-row">
         <h1>Route Overview Log</h1>
-        <a class="button" href="index.html">Back to map</a>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="button" id="myRoutesBtn" type="button">My routes</button>
+          <a class="button" href="index.html">Back to map</a>
+        </div>
       </div>
       <div class="controls">
         <input id="searchInput" type="search" placeholder="Search name, notes, date, coordinates" />
@@ -712,6 +715,7 @@
 
     const el = {
       searchInput: document.getElementById("searchInput"),
+      myRoutesBtn: document.getElementById("myRoutesBtn"),
       typeFilter: document.getElementById("typeFilter"),
       visibilityFilter: document.getElementById("visibilityFilter"),
       tagFilter: document.getElementById("tagFilter"),
@@ -1341,6 +1345,22 @@
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     }
 
+    function showContributor(author) {
+      if (!author) return;
+      state.selectedAuthor = author;
+      applyFilters();
+      el.profilePanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function showMyRoutes() {
+      if (!state.profile.name) {
+        el.focusNote.textContent = "Save a profile name on the map page first, then use My routes here.";
+        return;
+      }
+      showContributor(state.profile.name);
+      el.focusNote.textContent = `Showing routes posted as ${state.profile.name}.`;
+    }
+
     function routesForMap() {
       return state.filtered.filter(route => {
         if (route.type === "hike" && !el.showHikes.checked) return false;
@@ -1740,6 +1760,7 @@
     el.seedDemoBtn.addEventListener("click", seedDemoRoutes);
     el.clearDemoBtn.addEventListener("click", clearDemoRoutes);
     el.exportCommunityBtn.addEventListener("click", exportCommunityPackage);
+    el.myRoutesBtn.addEventListener("click", showMyRoutes);
     el.clearProfileBtn.addEventListener("click", () => {
       state.selectedAuthor = "";
       applyFilters();
@@ -1764,8 +1785,7 @@
     el.detailAuthorBtn.addEventListener("click", () => {
       const route = state.routes.find(item => item.id === state.selectedRouteId);
       if (!route) return;
-      state.selectedAuthor = route.author || "Anonymous hiker";
-      applyFilters();
+      showContributor(route.author || "Anonymous hiker");
     });
     el.addCommentBtn.addEventListener("click", () => {
       const route = state.routes.find(item => item.id === state.selectedRouteId);
@@ -1788,14 +1808,12 @@
     el.contributorSummary.addEventListener("click", event => {
       const row = event.target.closest("[data-author]");
       if (!row) return;
-      state.selectedAuthor = row.dataset.author;
-      applyFilters();
+      showContributor(row.dataset.author);
     });
     el.highlightSummary.addEventListener("click", event => {
       const authorRow = event.target.closest("[data-author]");
       if (authorRow) {
-        state.selectedAuthor = authorRow.dataset.author;
-        applyFilters();
+        showContributor(authorRow.dataset.author);
         return;
       }
       const routeRow = event.target.closest("[data-route-highlight]");
@@ -1807,8 +1825,7 @@
       const authorButton = event.target.closest("button[data-author]");
       if (authorButton) {
         event.stopPropagation();
-        state.selectedAuthor = authorButton.dataset.author;
-        applyFilters();
+        showContributor(authorButton.dataset.author);
         return;
       }
       const button = event.target.closest("button[data-like-id]");
