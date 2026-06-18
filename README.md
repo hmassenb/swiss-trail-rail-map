@@ -32,6 +32,7 @@ The overview page reads the same saved route data as the map page and displays:
 - live map legend with filtered hike, train, private, and currently drawn route counts
 - total entries, hiking distance, train distance, and elevation gain
 - average route distance, best day distance, active days, and current metric window
+- adjustable hiking goals for the current filter/timeframe, with progress for distance, hike count, and elevation gain
 - yearly and monthly distance summaries
 - community feed cards with author, likes, captions, tags, duration, elevation, notes, distance, and clicked waypoint coordinates
 - social activity sorting by recent updates, likes, comments, or route metrics

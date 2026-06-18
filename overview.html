@@ -154,6 +154,86 @@
       font-size: 12px;
     }
 
+    .goal-panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .goal-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      flex-wrap: wrap;
+    }
+
+    .goal-head h2 {
+      margin: 0;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .goal-inputs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(140px, 1fr)) auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .goal-inputs label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
+    }
+
+    .goal-bars {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(180px, 1fr));
+      gap: 10px;
+    }
+
+    .goal-card {
+      border: 1px solid #edf0ee;
+      border-radius: 8px;
+      padding: 10px;
+      display: grid;
+      gap: 7px;
+    }
+
+    .goal-card strong {
+      font-size: 18px;
+      line-height: 1.15;
+    }
+
+    .goal-card span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .goal-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #e2e7e3;
+      overflow: hidden;
+    }
+
+    .goal-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--green);
+      transition: width 180ms ease;
+    }
+
+    .goal-fill.routes { background: var(--blue); }
+    .goal-fill.gain { background: #7c6f50; }
+
     .storage-note {
       color: #405057;
       background: rgba(255, 255, 255, 0.78);
@@ -492,6 +572,9 @@
       .controls { grid-template-columns: 1fr; }
       .date-range { grid-template-columns: 1fr; }
       .stats { grid-template-columns: 1fr 1fr; }
+      .goal-inputs { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
+      .goal-inputs .button { grid-column: 1 / -1; }
+      .goal-bars { grid-template-columns: 1fr; }
       .entry { grid-template-columns: 1fr; }
       .summary-grid { grid-template-columns: 1fr; }
       .detail-grid { grid-template-columns: 1fr 1fr; }
@@ -499,6 +582,9 @@
 
     @media (max-width: 520px) {
       .stats { grid-template-columns: 1fr; }
+      .goal-inputs { grid-template-columns: 1fr; }
+      .goal-inputs .button { grid-column: auto; }
+      .goal-bars { grid-template-columns: 1fr; }
       .detail-grid { grid-template-columns: 1fr; }
       h1 { font-size: 21px; }
     }
@@ -613,6 +699,49 @@
         <div class="stat"><strong id="activeDays">0</strong><span>Active days</span></div>
         <div class="stat"><strong id="periodLabel">All time</strong><span>Metric window</span></div>
       </div>
+      <section class="goal-panel" aria-label="Adjustable hiking goals">
+        <div class="goal-head">
+          <div>
+            <h2>Goals For This Window</h2>
+            <div class="dashboard-note" id="goalScope">Goals compare against the current filters.</div>
+          </div>
+          <div class="goal-inputs">
+            <label>
+              Hiking km
+              <input id="goalDistanceInput" type="number" min="0" step="5" />
+            </label>
+            <label>
+              Hikes
+              <input id="goalRoutesInput" type="number" min="0" step="1" />
+            </label>
+            <label>
+              Elevation m
+              <input id="goalGainInput" type="number" min="0" step="100" />
+            </label>
+            <button class="button" id="saveGoalsBtn" type="button">Save goals</button>
+          </div>
+        </div>
+        <div class="goal-bars">
+          <div class="goal-card">
+            <strong id="goalDistanceValue">0 km / 0 km</strong>
+            <span>Hiking distance</span>
+            <div class="goal-track"><div class="goal-fill" id="goalDistanceFill"></div></div>
+            <span id="goalDistanceMeta">0% complete</span>
+          </div>
+          <div class="goal-card">
+            <strong id="goalRoutesValue">0 / 0</strong>
+            <span>Hikes logged</span>
+            <div class="goal-track"><div class="goal-fill routes" id="goalRoutesFill"></div></div>
+            <span id="goalRoutesMeta">0% complete</span>
+          </div>
+          <div class="goal-card">
+            <strong id="goalGainValue">0 m / 0 m</strong>
+            <span>Elevation gain</span>
+            <div class="goal-track"><div class="goal-fill gain" id="goalGainFill"></div></div>
+            <span id="goalGainMeta">0% complete</span>
+          </div>
+        </div>
+      </section>
       <div class="storage-note" id="storageNote">Loading saved entries...</div>
       <div class="dashboard-note" id="dashboardNote">Metrics reflect the current filters.</div>
       <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -707,6 +836,7 @@
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
     const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
     const PROFILE_KEY = "swiss-trail-rail-profile:v1";
+    const GOALS_KEY = "swiss-trail-rail-goals:v1";
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
     const state = {
       routes: [],
@@ -714,7 +844,8 @@
       selectedAuthor: "",
       selectedRouteId: "",
       sync: { url: "", key: "" },
-      profile: { name: "", bio: "", defaultVisibility: "public" }
+      profile: { name: "", bio: "", defaultVisibility: "public" },
+      goals: { distanceKm: 100, routeCount: 10, elevationM: 5000 }
     };
     const CANTONS = [
       { code: "AG", name: "Aargau", point: [47.39, 8.05] },
@@ -775,6 +906,20 @@
       bestDayDistance: document.getElementById("bestDayDistance"),
       activeDays: document.getElementById("activeDays"),
       periodLabel: document.getElementById("periodLabel"),
+      goalScope: document.getElementById("goalScope"),
+      goalDistanceInput: document.getElementById("goalDistanceInput"),
+      goalRoutesInput: document.getElementById("goalRoutesInput"),
+      goalGainInput: document.getElementById("goalGainInput"),
+      saveGoalsBtn: document.getElementById("saveGoalsBtn"),
+      goalDistanceValue: document.getElementById("goalDistanceValue"),
+      goalDistanceFill: document.getElementById("goalDistanceFill"),
+      goalDistanceMeta: document.getElementById("goalDistanceMeta"),
+      goalRoutesValue: document.getElementById("goalRoutesValue"),
+      goalRoutesFill: document.getElementById("goalRoutesFill"),
+      goalRoutesMeta: document.getElementById("goalRoutesMeta"),
+      goalGainValue: document.getElementById("goalGainValue"),
+      goalGainFill: document.getElementById("goalGainFill"),
+      goalGainMeta: document.getElementById("goalGainMeta"),
       storageNote: document.getElementById("storageNote"),
       dashboardNote: document.getElementById("dashboardNote"),
       feedScope: document.getElementById("feedScope"),
@@ -960,6 +1105,44 @@
         state.profile = normalizeProfile();
       }
       el.commentAuthor.value = state.profile.name;
+    }
+
+    function normalizeGoals(goals = {}) {
+      const numberOrDefault = (value, fallback) => {
+        const number = Number(value);
+        return Number.isFinite(number) && number >= 0 ? number : fallback;
+      };
+      return {
+        distanceKm: numberOrDefault(goals.distanceKm, 100),
+        routeCount: numberOrDefault(goals.routeCount, 10),
+        elevationM: numberOrDefault(goals.elevationM, 5000)
+      };
+    }
+
+    function applyGoalInputs() {
+      el.goalDistanceInput.value = state.goals.distanceKm;
+      el.goalRoutesInput.value = state.goals.routeCount;
+      el.goalGainInput.value = state.goals.elevationM;
+    }
+
+    function loadGoals() {
+      try {
+        state.goals = normalizeGoals(JSON.parse(localStorage.getItem(GOALS_KEY) || "{}"));
+      } catch {
+        state.goals = normalizeGoals();
+      }
+      applyGoalInputs();
+    }
+
+    function saveGoals() {
+      state.goals = normalizeGoals({
+        distanceKm: el.goalDistanceInput.value,
+        routeCount: el.goalRoutesInput.value,
+        elevationM: el.goalGainInput.value
+      });
+      localStorage.setItem(GOALS_KEY, JSON.stringify(state.goals));
+      applyGoalInputs();
+      renderGoals();
     }
 
     function loadSyncConfig() {
@@ -1408,6 +1591,7 @@
 
     function render() {
       renderStats();
+      renderGoals();
       renderSummaries();
       renderProfile();
       renderDetail();
@@ -1417,20 +1601,25 @@
       el.feedScope.textContent = `Showing ${scopeLabel()}.`;
     }
 
-    function renderStats() {
-      const totals = state.filtered.reduce((acc, route) => {
+    function filteredTotals() {
+      return state.filtered.reduce((acc, route) => {
         const km = distanceKm(route.points);
         acc[route.type] += km;
         acc.distance += km;
         acc.gain += Number(route.elevationGainM) || 0;
         acc.duration += Number(route.durationHours) || 0;
         acc.likes += Number(route.likes) || 0;
+        if (route.type === "hike") acc.hikeCount += 1;
         if (route.author) acc.contributors.add(route.author);
         if (route.date) {
           acc.byDay[route.date] = (acc.byDay[route.date] || 0) + km;
         }
         return acc;
-      }, { hike: 0, train: 0, distance: 0, gain: 0, duration: 0, likes: 0, contributors: new Set(), byDay: {} });
+      }, { hike: 0, train: 0, hikeCount: 0, distance: 0, gain: 0, duration: 0, likes: 0, contributors: new Set(), byDay: {} });
+    }
+
+    function renderStats() {
+      const totals = filteredTotals();
       const bestDay = Object.values(totals.byDay).reduce((max, value) => Math.max(max, value), 0);
       el.entryCount.textContent = state.routes.length;
       el.hikeKm.textContent = formatKm(totals.hike);
@@ -1444,6 +1633,48 @@
       el.bestDayDistance.textContent = formatKm(bestDay);
       el.activeDays.textContent = Object.keys(totals.byDay).length;
       el.periodLabel.textContent = timeframeLabel();
+    }
+
+    function goalPercent(current, target) {
+      if (!target) return 0;
+      return Math.min(100, Math.round((current / target) * 100));
+    }
+
+    function renderGoal(metric) {
+      metric.valueEl.textContent = metric.value;
+      metric.fillEl.style.width = `${goalPercent(metric.current, metric.target)}%`;
+      metric.metaEl.textContent = metric.target
+        ? `${goalPercent(metric.current, metric.target)}% complete`
+        : "No target set";
+    }
+
+    function renderGoals() {
+      const totals = filteredTotals();
+      renderGoal({
+        current: totals.hike,
+        target: state.goals.distanceKm,
+        value: `${formatKm(totals.hike)} / ${formatKm(state.goals.distanceKm)}`,
+        valueEl: el.goalDistanceValue,
+        fillEl: el.goalDistanceFill,
+        metaEl: el.goalDistanceMeta
+      });
+      renderGoal({
+        current: totals.hikeCount,
+        target: state.goals.routeCount,
+        value: `${totals.hikeCount} / ${state.goals.routeCount}`,
+        valueEl: el.goalRoutesValue,
+        fillEl: el.goalRoutesFill,
+        metaEl: el.goalRoutesMeta
+      });
+      renderGoal({
+        current: totals.gain,
+        target: state.goals.elevationM,
+        value: `${Math.round(totals.gain)} m / ${Math.round(state.goals.elevationM)} m`,
+        valueEl: el.goalGainValue,
+        fillEl: el.goalGainFill,
+        metaEl: el.goalGainMeta
+      });
+      el.goalScope.textContent = `Goals compare against ${scopeLabel()}.`;
     }
 
     function renderSummaries() {
@@ -1792,6 +2023,7 @@
     el.saveSyncBtn.addEventListener("click", saveSyncConfig);
     el.pushCloudBtn.addEventListener("click", pushPublicRoutes);
     el.pullCloudBtn.addEventListener("click", pullCommunityRoutes);
+    el.saveGoalsBtn.addEventListener("click", saveGoals);
     el.timePresets.addEventListener("click", event => {
       const button = event.target.closest("button[data-time-preset]");
       if (!button) return;
@@ -1887,6 +2119,7 @@
 
     loadRoutes();
     loadProfile();
+    loadGoals();
     loadSyncConfig();
     syncDateInputsToPreset();
     renderTagOptions();
