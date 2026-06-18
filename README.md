@@ -66,6 +66,8 @@ Routes are entered directly in the browser:
 
 The `My name` profile panel can store a default contributor name, short bio, and default visibility in the browser. New routes use that name automatically, and overview comments use the same saved identity.
 
+The map page also includes `Cloud sync` controls. When Supabase sync is configured, newly saved public routes are pushed to the shared community table automatically; private routes are not pushed.
+
 The app stores:
 
 - `name`: route title
@@ -111,9 +113,9 @@ To make the community feed shared across browsers/users:
 2. Run `supabase-schema.sql` in the Supabase SQL editor.
 3. Copy the project URL and anon public key.
 4. Open the app's `Overview` page.
-5. Expand `Cloud sync`.
+5. Expand `Cloud sync` on either the map page or the overview page.
 6. Paste the URL and anon key.
-7. Use `Push public routes` and `Pull community`.
+7. Use `Push public routes` and `Pull community`, or save new public routes from the map page to auto-push them.
 
 The sync table stores each public route as JSON in `community_routes.payload`. Private routes are rejected by the table policies and are not pushed by the app.
 

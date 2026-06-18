@@ -413,6 +413,25 @@
           </div>
         </section>
 
+        <details class="profile-settings">
+          <summary style="cursor: pointer; font-weight: 760;">Cloud sync</summary>
+          <p class="hint" style="margin: 0;">Optional Supabase sync shares public routes with the community overview. Private routes stay local.</p>
+          <label>
+            Supabase project URL
+            <input id="supabaseUrl" placeholder="https://your-project.supabase.co" />
+          </label>
+          <label>
+            Supabase anon key
+            <input id="supabaseKey" placeholder="Public anon key" />
+          </label>
+          <div class="button-row">
+            <button id="saveSyncBtn" type="button">Save sync</button>
+            <button id="pushCloudBtn" type="button">Push public</button>
+            <button id="pullCloudBtn" type="button">Pull community</button>
+          </div>
+          <div class="storage-note" id="syncStatus" style="margin-bottom: 0;">Cloud sync is not configured.</div>
+        </details>
+
         <form id="routeForm">
           <p class="hint" style="margin: 0;">Post a completed route. Public routes appear in the community feed and cumulative map; private routes stay in your own saved log.</p>
           <label>
@@ -507,12 +526,14 @@
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
     const PROFILE_KEY = "swiss-trail-rail-profile:v1";
+    const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
     const state = {
       activeType: "hike",
       draft: [],
       draftRoute: [],
       routes: [],
       profile: { name: "", bio: "", defaultVisibility: "public" },
+      sync: { url: "", key: "" },
       layers: new Map(),
       selectedId: null,
       routingRequestId: 0
@@ -529,6 +550,12 @@
       profileBioInput: document.getElementById("profileBioInput"),
       saveProfileBtn: document.getElementById("saveProfileBtn"),
       profileNote: document.getElementById("profileNote"),
+      supabaseUrl: document.getElementById("supabaseUrl"),
+      supabaseKey: document.getElementById("supabaseKey"),
+      saveSyncBtn: document.getElementById("saveSyncBtn"),
+      pushCloudBtn: document.getElementById("pushCloudBtn"),
+      pullCloudBtn: document.getElementById("pullCloudBtn"),
+      syncStatus: document.getElementById("syncStatus"),
       routeForm: document.getElementById("routeForm"),
       routeName: document.getElementById("routeName"),
       routeAuthor: document.getElementById("routeAuthor"),
@@ -694,6 +721,106 @@
         updateStorageNote(false);
         if (!silent) setStatus("Could not save in browser storage; export JSON");
         return false;
+      }
+    }
+
+    function loadSyncConfig() {
+      try {
+        state.sync = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || '{"url":"","key":""}');
+      } catch {
+        state.sync = { url: "", key: "" };
+      }
+      el.supabaseUrl.value = state.sync.url || "";
+      el.supabaseKey.value = state.sync.key || "";
+      updateSyncStatus(state.sync.url && state.sync.key ? "Cloud sync configured. Public routes auto-push after save." : "Cloud sync is not configured.");
+    }
+
+    function saveSyncConfig() {
+      state.sync = {
+        url: el.supabaseUrl.value.trim().replace(/\/$/, ""),
+        key: el.supabaseKey.value.trim()
+      };
+      localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(state.sync));
+      updateSyncStatus(state.sync.url && state.sync.key ? "Cloud sync settings saved. Public routes will auto-push." : "Cloud sync is not configured.");
+      return Boolean(state.sync.url && state.sync.key);
+    }
+
+    function updateSyncStatus(text, warning = false) {
+      el.syncStatus.textContent = text;
+      el.syncStatus.classList.toggle("warning", warning);
+    }
+
+    function syncHeaders() {
+      if (!state.sync.url || !state.sync.key) throw new Error("Missing Supabase URL or anon key");
+      return {
+        "apikey": state.sync.key,
+        "Authorization": `Bearer ${state.sync.key}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+      };
+    }
+
+    function syncConfigured() {
+      return Boolean(state.sync.url && state.sync.key);
+    }
+
+    async function pushRoutesToCloud(routes, quiet = false) {
+      try {
+        if (!syncConfigured()) {
+          if (!quiet) updateSyncStatus("Cloud sync is not configured.", true);
+          return false;
+        }
+        const publicRoutes = routes.filter(route => route.visibility !== "private");
+        if (!publicRoutes.length) {
+          if (!quiet) updateSyncStatus("No public routes to push.", true);
+          return false;
+        }
+        const rows = publicRoutes.map(route => ({
+          id: route.id,
+          payload: route,
+          updated_at: route.updatedAt || new Date().toISOString()
+        }));
+        const response = await fetch(`${state.sync.url}/rest/v1/community_routes?on_conflict=id`, {
+          method: "POST",
+          headers: syncHeaders(),
+          body: JSON.stringify(rows)
+        });
+        if (!response.ok) throw new Error(await response.text());
+        updateSyncStatus(`Pushed ${rows.length} public route${rows.length === 1 ? "" : "s"} to cloud.`);
+        return true;
+      } catch (error) {
+        updateSyncStatus(`Push failed: ${error.message}`, true);
+        return false;
+      }
+    }
+
+    async function pushPublicRoutes() {
+      if (!saveSyncConfig()) return;
+      await pushRoutesToCloud(state.routes);
+    }
+
+    async function pushRouteToCloud(route) {
+      if (!syncConfigured() || route.visibility === "private") return;
+      await pushRoutesToCloud([route], true);
+    }
+
+    async function pullCommunityRoutes() {
+      try {
+        if (!saveSyncConfig()) return;
+        const response = await fetch(`${state.sync.url}/rest/v1/community_routes?select=payload`, {
+          headers: syncHeaders()
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const rows = await response.json();
+        const incoming = rows.map(row => normalizeSavedRoute(row.payload)).filter(Boolean);
+        const byId = new Map(state.routes.map(route => [route.id, route]));
+        incoming.forEach(route => byId.set(route.id, route));
+        state.routes = [...byId.values()];
+        saveRoutes();
+        renderRoutes();
+        updateSyncStatus(`Pulled ${incoming.length} community route${incoming.length === 1 ? "" : "s"} from cloud.`);
+      } catch (error) {
+        updateSyncStatus(`Pull failed: ${error.message}`, true);
       }
     }
 
@@ -1027,6 +1154,7 @@
       activateType(route.type);
       selectRoute(route.id, true);
       setStatus("Route saved");
+      pushRouteToCloud(route);
     }
 
     async function searchPlace() {
@@ -1234,6 +1362,9 @@ ${segments}
 
     el.routeForm.addEventListener("submit", saveRoute);
     el.saveProfileBtn.addEventListener("click", saveProfile);
+    el.saveSyncBtn.addEventListener("click", saveSyncConfig);
+    el.pushCloudBtn.addEventListener("click", pushPublicRoutes);
+    el.pullCloudBtn.addEventListener("click", pullCommunityRoutes);
     el.undoPointBtn.addEventListener("click", () => {
       state.draft.pop();
       updateDraftRoute();
@@ -1272,6 +1403,7 @@ ${segments}
     window.addEventListener("beforeunload", () => saveRoutes(true));
 
     loadProfile();
+    loadSyncConfig();
     loadRoutes();
     renderDraft();
     renderRoutes();
