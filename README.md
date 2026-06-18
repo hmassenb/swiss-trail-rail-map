@@ -64,6 +64,7 @@ Routes are entered directly in the browser:
 
 - Choose `Hike` or `Train`.
 - Click the map to add waypoints.
+- Or load a GPX track as a draft, then review its geometry and add metadata before saving.
 - Add a route name, hiker name, visibility, optional date, and optional notes.
 - Add optional tags, duration, elevation gain, and elevation loss.
 - Add an optional public feed caption.

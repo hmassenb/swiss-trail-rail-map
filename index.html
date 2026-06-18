@@ -541,6 +541,10 @@
             Feed caption
             <textarea id="routeCaption" placeholder="Short public caption for the community feed"></textarea>
           </label>
+          <label>
+            Load GPX track as draft
+            <input class="file-input" id="draftGpxFile" type="file" accept=".gpx,application/gpx+xml" />
+          </label>
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
             <p class="hint">Click the map to add waypoints. The preview will fit them to mapped paths or rail lines when routing is available.</p>
@@ -585,6 +589,7 @@
       routes: [],
       profile: { name: "", bio: "", defaultVisibility: "public" },
       sync: { url: "", key: "" },
+      draftSource: "",
       layers: new Map(),
       selectedId: null,
       routingRequestId: 0
@@ -625,6 +630,7 @@
       routeNotes: document.getElementById("routeNotes"),
       routeCaption: document.getElementById("routeCaption"),
       coordPreview: document.getElementById("coordPreview"),
+      draftGpxFile: document.getElementById("draftGpxFile"),
       saveRouteBtn: document.getElementById("saveRouteBtn"),
       undoPointBtn: document.getElementById("undoPointBtn"),
       clearDraftBtn: document.getElementById("clearDraftBtn"),
@@ -979,6 +985,11 @@
 
     async function updateDraftRoute() {
       const requestId = ++state.routingRequestId;
+      if (state.draftSource === "gpx") {
+        renderDraft();
+        setStatus("Using GPX track geometry");
+        return;
+      }
       state.draftRoute = state.draft.map(point => [...point]);
       renderDraft();
       if (state.draft.length < 2) return;
@@ -1023,7 +1034,7 @@
         }).addTo(draftGroup);
       }
       el.coordPreview.textContent = state.draft.length
-        ? state.draft.map(p => `${p[0].toFixed(5)}, ${p[1].toFixed(5)}`).join("  |  ")
+        ? `${state.draftSource === "gpx" ? "GPX draft" : "Draft"}: ${state.draft.map(p => `${p[0].toFixed(5)}, ${p[1].toFixed(5)}`).join("  |  ")}`
         : "No route points selected";
       el.saveRouteBtn.disabled = state.draft.length < 2;
       el.undoPointBtn.disabled = state.draft.length === 0;
@@ -1146,6 +1157,7 @@
       el.routeVisibility.value = state.profile.defaultVisibility;
       state.draft = [];
       state.draftRoute = [];
+      state.draftSource = "";
       state.selectedId = null;
       state.routingRequestId++;
       window.clearTimeout(setStatus.timer);
@@ -1195,12 +1207,16 @@
       if (!routeName) return;
       let routedPoints = state.draftRoute.length > 1 ? state.draftRoute : state.draft;
       el.saveRouteBtn.disabled = true;
-      setStatus("Preparing routed geometry");
-      try {
-        routedPoints = await routedGeometry(state.draft, el.routeType.value);
-      } catch {
-        routedPoints = state.draftRoute.length > 1 ? state.draftRoute : state.draft;
-        setStatus("Saved with direct fallback");
+      if (state.draftSource === "gpx") {
+        setStatus("Saving GPX track geometry");
+      } else {
+        setStatus("Preparing routed geometry");
+        try {
+          routedPoints = await routedGeometry(state.draft, el.routeType.value);
+        } catch {
+          routedPoints = state.draftRoute.length > 1 ? state.draftRoute : state.draft;
+          setStatus("Saved with direct fallback");
+        }
       }
       const waypoints = state.draft.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]);
       const points = routedPoints.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]);
@@ -1396,10 +1412,23 @@ ${segments}
     }
 
     function parseGpx(text) {
+      return parseGpxTracks(text).map((track, index) => ({
+        id: crypto.randomUUID(),
+        name: track.name || `Imported GPX ${index + 1}`,
+        type: track.type,
+        date: track.date,
+        notes: track.notes,
+        waypoints: track.points,
+        points: track.points,
+        updatedAt: new Date().toISOString()
+      }));
+    }
+
+    function parseGpxTracks(text) {
       const doc = new DOMParser().parseFromString(text, "application/xml");
       if (doc.querySelector("parsererror")) throw new Error("Invalid GPX");
       const tracks = [...doc.getElementsByTagName("trk")];
-      const routes = [];
+      const parsedTracks = [];
       tracks.forEach((track, index) => {
         const points = [...track.getElementsByTagName("trkpt")].map(point => [
           Number(point.getAttribute("lat")),
@@ -1407,18 +1436,44 @@ ${segments}
         ]).filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
         if (points.length < 2) return;
         const typeText = (track.getElementsByTagName("type")[0]?.textContent || "").toLowerCase();
-        routes.push({
-          id: crypto.randomUUID(),
+        parsedTracks.push({
           name: track.getElementsByTagName("name")[0]?.textContent || `Imported GPX ${index + 1}`,
           type: typeText.includes("train") || typeText.includes("rail") ? "train" : "hike",
           date: (track.getElementsByTagName("time")[0]?.textContent || "").slice(0, 10),
           notes: track.getElementsByTagName("desc")[0]?.textContent || "",
-          waypoints: points,
-          points,
-          updatedAt: new Date().toISOString()
+          points
         });
       });
-      return routes;
+      return parsedTracks;
+    }
+
+    function sampleWaypoints(points, target = 24) {
+      if (points.length <= target) return points.map(point => [...point]);
+      const step = Math.ceil(points.length / target);
+      const sampled = points.filter((_, index) => index % step === 0).map(point => [...point]);
+      const last = points[points.length - 1];
+      if (sampled[sampled.length - 1][0] !== last[0] || sampled[sampled.length - 1][1] !== last[1]) {
+        sampled.push([...last]);
+      }
+      return sampled;
+    }
+
+    async function loadDraftGpx(file) {
+      const tracks = parseGpxTracks(await file.text());
+      if (!tracks.length) throw new Error("No GPX track points found");
+      const track = tracks[0];
+      state.draft = sampleWaypoints(track.points);
+      state.draftRoute = track.points.map(point => [...point]);
+      state.draftSource = "gpx";
+      state.activeType = track.type;
+      el.routeType.value = track.type;
+      if (!el.routeName.value.trim()) el.routeName.value = track.name;
+      if (!el.routeDate.value && track.date) el.routeDate.value = track.date;
+      if (!el.routeNotes.value.trim() && track.notes) el.routeNotes.value = track.notes;
+      renderDraft();
+      activateType(track.type);
+      map.fitBounds(boundsFor(track.points).pad(0.18));
+      setStatus(`Loaded GPX draft with ${track.points.length} track points`);
     }
 
     function escapeHtml(value) {
@@ -1440,6 +1495,7 @@ ${segments}
         setStatus("Point is outside Switzerland");
         return;
       }
+      state.draftSource = "";
       state.draft.push([event.latlng.lat, event.latlng.lng]);
       updateDraftRoute();
     });
@@ -1454,6 +1510,7 @@ ${segments}
     el.pushCloudBtn.addEventListener("click", pushPublicRoutes);
     el.pullCloudBtn.addEventListener("click", pullCommunityRoutes);
     el.undoPointBtn.addEventListener("click", () => {
+      state.draftSource = "";
       state.draft.pop();
       updateDraftRoute();
     });
@@ -1476,6 +1533,17 @@ ${segments}
         await importFile(file);
       } catch (error) {
         setStatus(error.message || "Import failed");
+      } finally {
+        event.target.value = "";
+      }
+    });
+    el.draftGpxFile.addEventListener("change", async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        await loadDraftGpx(file);
+      } catch (error) {
+        setStatus(error.message || "Could not load GPX draft");
       } finally {
         event.target.value = "";
       }
