@@ -67,6 +67,8 @@ Routes are entered directly in the browser:
 - Add an optional public feed caption.
 - Save the route.
 
+The map page includes a `Quick post` checklist that updates while a contributor fills in the route name, date, visibility, and clicked map points.
+
 The `My name` profile panel can store a default contributor name, short bio, and default visibility in the browser. New routes use that name automatically, and overview comments use the same saved identity.
 
 The map page also includes `Cloud sync` controls. When Supabase sync is configured, newly saved public routes are pushed to the shared community table automatically; private routes are not pushed.

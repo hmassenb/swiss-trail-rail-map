@@ -243,6 +243,46 @@
       margin-bottom: 14px;
     }
 
+    .quick-post {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--blue);
+      border-radius: 8px;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .quick-post h2 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    .quick-list {
+      display: grid;
+      gap: 5px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .quick-list li {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: 6px;
+      align-items: start;
+    }
+
+    .quick-list li.done {
+      color: #2f6f54;
+      font-weight: 680;
+    }
+
     .route-list {
       display: grid;
       gap: 8px;
@@ -432,6 +472,17 @@
           <div class="storage-note" id="syncStatus" style="margin-bottom: 0;">Cloud sync is not configured.</div>
         </details>
 
+        <section class="quick-post" aria-label="Route posting checklist">
+          <h2>Quick post</h2>
+          <ul class="quick-list">
+            <li id="checkName"><span>○</span><span>Add a route name.</span></li>
+            <li id="checkPoints"><span>○</span><span>Click at least two points on the map.</span></li>
+            <li id="checkDate"><span>○</span><span>Add a completion date for timeframe metrics.</span></li>
+            <li id="checkShare"><span>○</span><span>Choose public for the community map or private for your own log.</span></li>
+          </ul>
+          <div class="hint" id="quickPostNote">Ready to start: name the route, then click the map.</div>
+        </section>
+
         <form id="routeForm">
           <p class="hint" style="margin: 0;">Post a completed route. Public routes appear in the community feed and cumulative map; private routes stay in your own saved log.</p>
           <label>
@@ -556,6 +607,11 @@
       pushCloudBtn: document.getElementById("pushCloudBtn"),
       pullCloudBtn: document.getElementById("pullCloudBtn"),
       syncStatus: document.getElementById("syncStatus"),
+      checkName: document.getElementById("checkName"),
+      checkPoints: document.getElementById("checkPoints"),
+      checkDate: document.getElementById("checkDate"),
+      checkShare: document.getElementById("checkShare"),
+      quickPostNote: document.getElementById("quickPostNote"),
       routeForm: document.getElementById("routeForm"),
       routeName: document.getElementById("routeName"),
       routeAuthor: document.getElementById("routeAuthor"),
@@ -748,6 +804,33 @@
     function updateSyncStatus(text, warning = false) {
       el.syncStatus.textContent = text;
       el.syncStatus.classList.toggle("warning", warning);
+    }
+
+    function setCheck(item, done) {
+      item.classList.toggle("done", done);
+      item.querySelector("span").textContent = done ? "✓" : "○";
+    }
+
+    function updateQuickPost() {
+      const hasName = Boolean(el.routeName.value.trim());
+      const hasPoints = state.draft.length >= 2;
+      const hasDate = Boolean(el.routeDate.value);
+      const isPublic = el.routeVisibility.value === "public";
+      setCheck(el.checkName, hasName);
+      setCheck(el.checkPoints, hasPoints);
+      setCheck(el.checkDate, hasDate);
+      setCheck(el.checkShare, true);
+      if (!hasName) {
+        el.quickPostNote.textContent = "Add a route name first.";
+      } else if (!hasPoints) {
+        el.quickPostNote.textContent = `${state.draft.length} point${state.draft.length === 1 ? "" : "s"} selected. Add ${Math.max(0, 2 - state.draft.length)} more.`;
+      } else if (!hasDate) {
+        el.quickPostNote.textContent = "You can save now, but adding a date improves timeframe metrics.";
+      } else {
+        el.quickPostNote.textContent = isPublic
+          ? "Ready to save to the community feed."
+          : "Ready to save privately in this browser.";
+      }
     }
 
     function syncHeaders() {
@@ -945,6 +1028,7 @@
       el.saveRouteBtn.disabled = state.draft.length < 2;
       el.undoPointBtn.disabled = state.draft.length === 0;
       el.clearDraftBtn.disabled = state.draft.length === 0;
+      updateQuickPost();
     }
 
     function popupHtml(route) {
@@ -1361,6 +1445,10 @@ ${segments}
     });
 
     el.routeForm.addEventListener("submit", saveRoute);
+    [el.routeName, el.routeDate, el.routeVisibility].forEach(input => {
+      input.addEventListener("input", updateQuickPost);
+      input.addEventListener("change", updateQuickPost);
+    });
     el.saveProfileBtn.addEventListener("click", saveProfile);
     el.saveSyncBtn.addEventListener("click", saveSyncConfig);
     el.pushCloudBtn.addEventListener("click", pushPublicRoutes);
