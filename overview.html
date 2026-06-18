@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Swiss Trail & Rail Overview</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --ink: #192126;
+      --muted: #5a666d;
+      --line: #d4dadd;
+      --panel: #eef2ee;
+      --paper: #ffffff;
+      --green: #2f7654;
+      --blue: #2f6f91;
+      --red: #b54839;
+      --shadow: 0 18px 48px rgba(15, 24, 31, 0.14);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #d7ded8;
+    }
+
+    a { color: inherit; }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto minmax(360px, 46vh) 1fr;
+    }
+
+    header {
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+      padding: 18px clamp(16px, 4vw, 38px);
+      display: grid;
+      gap: 14px;
+    }
+
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .button {
+      min-height: 38px;
+      padding: 8px 12px;
+      border: 1px solid #bbc5c8;
+      background: #fff;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 680;
+      white-space: nowrap;
+    }
+
+    .button:hover { background: #e3e9e5; }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) 150px 150px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #c6ced1;
+      background: #fff;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 9px 10px;
+      font: inherit;
+      outline: none;
+    }
+
+    input:focus, select:focus {
+      border-color: #6b9280;
+      box-shadow: 0 0 0 3px rgba(47, 118, 84, 0.14);
+    }
+
+    #overviewMap {
+      width: 100%;
+      min-height: 360px;
+      background: #c2cec4;
+      border-bottom: 1px solid var(--line);
+    }
+
+    main {
+      padding: 18px clamp(16px, 4vw, 38px) 34px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 23px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .storage-note {
+      color: #405057;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 9px 10px;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .storage-note.warning {
+      color: #7a3b2f;
+      border-color: #d2aaa2;
+      background: #fff7f5;
+    }
+
+    .log {
+      display: grid;
+      gap: 10px;
+    }
+
+    .entry {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--green);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(220px, 1.2fr) minmax(360px, 2fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .entry.train { border-left-color: var(--blue); }
+
+    .entry h2 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .pill {
+      background: #eef2ee;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 8px;
+    }
+
+    .notes {
+      color: #344249;
+      font-size: 13px;
+      line-height: 1.4;
+      margin-top: 8px;
+      white-space: pre-wrap;
+    }
+
+    .points {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: #4c5b61;
+      font-size: 12px;
+      line-height: 1.45;
+      word-break: break-word;
+      background: #f7f8f6;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 9px;
+    }
+
+    .empty {
+      color: var(--muted);
+      border: 1px dashed #b9c3c6;
+      border-radius: 8px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.74);
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .controls { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .entry { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 520px) {
+      .stats { grid-template-columns: 1fr; }
+      h1 { font-size: 21px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="title-row">
+        <h1>Route Overview Log</h1>
+        <a class="button" href="index.html">Back to map</a>
+      </div>
+      <div class="controls">
+        <input id="searchInput" type="search" placeholder="Search name, notes, date, coordinates" />
+        <select id="typeFilter">
+          <option value="all">All entries</option>
+          <option value="hike">Hikes</option>
+          <option value="train">Trains</option>
+        </select>
+        <select id="sortBy">
+          <option value="date-desc">Newest first</option>
+          <option value="date-asc">Oldest first</option>
+          <option value="name-asc">Name A-Z</option>
+          <option value="distance-desc">Longest first</option>
+        </select>
+      </div>
+    </header>
+
+    <section id="overviewMap" aria-label="Overview map of logged routes"></section>
+
+    <main>
+      <div class="stats">
+        <div class="stat"><strong id="entryCount">0</strong><span>Logged entries</span></div>
+        <div class="stat"><strong id="hikeKm">0 km</strong><span>Hiked</span></div>
+        <div class="stat"><strong id="trainKm">0 km</strong><span>By train</span></div>
+        <div class="stat"><strong id="waypointCount">0</strong><span>Clicked waypoints</span></div>
+      </div>
+      <div class="storage-note" id="storageNote">Loading saved entries...</div>
+      <section class="log" id="entryLog"></section>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const STORAGE_KEY = "swiss-trail-rail-log:v1";
+    const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
+    const state = {
+      routes: [],
+      filtered: []
+    };
+
+    const el = {
+      searchInput: document.getElementById("searchInput"),
+      typeFilter: document.getElementById("typeFilter"),
+      sortBy: document.getElementById("sortBy"),
+      entryCount: document.getElementById("entryCount"),
+      hikeKm: document.getElementById("hikeKm"),
+      trainKm: document.getElementById("trainKm"),
+      waypointCount: document.getElementById("waypointCount"),
+      storageNote: document.getElementById("storageNote"),
+      entryLog: document.getElementById("entryLog")
+    };
+
+    const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+      maxZoom: 17,
+      attribution: "Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap"
+    });
+    const overviewMap = L.map("overviewMap", {
+      layers: [topo],
+      maxBounds: SWISS_BOUNDS.pad(0.75)
+    }).fitBounds(SWISS_BOUNDS);
+    const routeGroup = L.featureGroup().addTo(overviewMap);
+
+    function routeColor(type) {
+      return type === "train" ? "#2f6f91" : "#2f7654";
+    }
+
+    function routeWeight(type) {
+      return type === "train" ? 6 : 5;
+    }
+
+    function formatKm(value) {
+      if (!Number.isFinite(value)) return "0 km";
+      return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} km`;
+    }
+
+    function distanceKm(points) {
+      let total = 0;
+      for (let i = 1; i < points.length; i++) {
+        total += L.latLng(points[i - 1][0], points[i - 1][1]).distanceTo(L.latLng(points[i][0], points[i][1])) / 1000;
+      }
+      return total;
+    }
+
+    function loadRoutes() {
+      try {
+        const rawRoutes = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        state.routes = Array.isArray(rawRoutes) ? rawRoutes.map(normalizeRoute).filter(Boolean) : [];
+        updateStorageNote(true);
+      } catch {
+        state.routes = [];
+        updateStorageNote(false);
+      }
+    }
+
+    function normalizeRoute(route) {
+      if (!route?.points || route.points.length < 2) return null;
+      const points = route.points
+        .map(point => [Number(point[0]), Number(point[1])])
+        .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+      const waypoints = (route.waypoints || route.points)
+        .map(point => [Number(point[0]), Number(point[1])])
+        .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+      if (points.length < 2 || waypoints.length < 2) return null;
+      return {
+        id: route.id || crypto.randomUUID(),
+        name: String(route.name || "Untitled route"),
+        type: route.type === "train" ? "train" : "hike",
+        date: route.date || "",
+        notes: route.notes || "",
+        waypoints,
+        points,
+        updatedAt: route.updatedAt || ""
+      };
+    }
+
+    function updateStorageNote(ok) {
+      el.storageNote.classList.toggle("warning", !ok);
+      el.storageNote.textContent = ok
+        ? `${state.routes.length} saved entr${state.routes.length === 1 ? "y" : "ies"} loaded from this browser.`
+        : "Browser storage could not be read. Open the map page and export JSON if your entries are stored elsewhere.";
+    }
+
+    function applyFilters() {
+      const query = el.searchInput.value.trim().toLowerCase();
+      const type = el.typeFilter.value;
+      state.filtered = state.routes.filter(route => {
+        if (type !== "all" && route.type !== type) return false;
+        if (!query) return true;
+        const haystack = [
+          route.name,
+          route.type,
+          route.date,
+          route.notes,
+          route.points.map(point => point.join(",")).join(" ")
+        ].join(" ").toLowerCase();
+        return haystack.includes(query);
+      });
+      sortRoutes();
+      render();
+    }
+
+    function sortRoutes() {
+      const mode = el.sortBy.value;
+      state.filtered.sort((a, b) => {
+        if (mode === "date-asc") return (a.date || "9999").localeCompare(b.date || "9999");
+        if (mode === "name-asc") return a.name.localeCompare(b.name);
+        if (mode === "distance-desc") return distanceKm(b.points) - distanceKm(a.points);
+        return (b.date || "0000").localeCompare(a.date || "0000");
+      });
+    }
+
+    function render() {
+      renderStats();
+      renderMap();
+      renderLog();
+    }
+
+    function renderStats() {
+      const totals = state.routes.reduce((acc, route) => {
+        acc[route.type] += distanceKm(route.points);
+        acc.waypoints += route.waypoints.length;
+        return acc;
+      }, { hike: 0, train: 0, waypoints: 0 });
+      el.entryCount.textContent = state.routes.length;
+      el.hikeKm.textContent = formatKm(totals.hike);
+      el.trainKm.textContent = formatKm(totals.train);
+      el.waypointCount.textContent = totals.waypoints;
+    }
+
+    function renderMap() {
+      routeGroup.clearLayers();
+      state.filtered.forEach(route => {
+        const casing = L.polyline(route.points, {
+          color: "#fffdf7",
+          weight: routeWeight(route.type) + 5,
+          opacity: 0.78,
+          interactive: false
+        });
+        const line = L.polyline(route.points, {
+          color: routeColor(route.type),
+          weight: routeWeight(route.type),
+          opacity: 0.92
+        }).bindPopup(popupHtml(route));
+        routeGroup.addLayer(casing);
+        routeGroup.addLayer(line);
+      });
+      if (state.filtered.length) {
+        overviewMap.fitBounds(routeGroup.getBounds().pad(0.18));
+      } else {
+        overviewMap.fitBounds(SWISS_BOUNDS);
+      }
+    }
+
+    function renderLog() {
+      if (!state.filtered.length) {
+        el.entryLog.innerHTML = `<div class="empty">No entries match the current filters.</div>`;
+        return;
+      }
+      el.entryLog.innerHTML = "";
+      state.filtered.forEach((route, index) => {
+        const entry = document.createElement("article");
+        entry.className = `entry ${route.type}`;
+        entry.innerHTML = `
+          <div>
+            <h2>${index + 1}. ${escapeHtml(route.name)}</h2>
+            <div class="meta">
+              <span class="pill">${route.type === "train" ? "Train" : "Hike"}</span>
+              <span class="pill">${formatKm(distanceKm(route.points))}</span>
+              <span class="pill">${route.waypoints.length} waypoints</span>
+              ${route.date ? `<span class="pill">${escapeHtml(route.date)}</span>` : ""}
+            </div>
+            ${route.notes ? `<div class="notes">${escapeHtml(route.notes)}</div>` : ""}
+          </div>
+          <div class="points">${route.waypoints.map(point => `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`).join(" | ")}</div>
+        `;
+        entry.addEventListener("click", () => {
+          overviewMap.fitBounds(L.latLngBounds(route.points.map(point => L.latLng(point[0], point[1]))).pad(0.18));
+        });
+        el.entryLog.appendChild(entry);
+      });
+    }
+
+    function popupHtml(route) {
+      return `<strong>${escapeHtml(route.name)}</strong><br><strong>Type:</strong> ${route.type === "train" ? "Train" : "Hike"}<br><strong>Distance:</strong> ${formatKm(distanceKm(route.points))}${route.date ? `<br><strong>Date:</strong> ${escapeHtml(route.date)}` : ""}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    el.searchInput.addEventListener("input", applyFilters);
+    el.typeFilter.addEventListener("change", applyFilters);
+    el.sortBy.addEventListener("change", applyFilters);
+
+    loadRoutes();
+    applyFilters();
+  </script>
+</body>
+</html>
