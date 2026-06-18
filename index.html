@@ -233,6 +233,16 @@
       background: #fff7f5;
     }
 
+    .profile-settings {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      display: grid;
+      gap: 9px;
+      margin-bottom: 14px;
+    }
+
     .route-list {
       display: grid;
       gap: 8px;
@@ -379,6 +389,30 @@
         </div>
         <div class="storage-note" id="storageNote">Checking browser storage...</div>
 
+        <section class="profile-settings" aria-label="Contributor profile">
+          <div class="field-row">
+            <label>
+              My name
+              <input id="profileNameInput" placeholder="Hannah" />
+            </label>
+            <label>
+              Default visibility
+              <select id="profileVisibilityInput">
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            Home base or short bio
+            <input id="profileBioInput" placeholder="Zurich, weekend hiker, lake routes" />
+          </label>
+          <div class="button-row">
+            <button id="saveProfileBtn" type="button">Save profile</button>
+            <span class="hint" id="profileNote">Used as the default author for routes and comments.</span>
+          </div>
+        </section>
+
         <form id="routeForm">
           <p class="hint" style="margin: 0;">Post a completed route. Public routes appear in the community feed and cumulative map; private routes stay in your own saved log.</p>
           <label>
@@ -472,11 +506,13 @@
   <script>
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
+    const PROFILE_KEY = "swiss-trail-rail-profile:v1";
     const state = {
       activeType: "hike",
       draft: [],
       draftRoute: [],
       routes: [],
+      profile: { name: "", bio: "", defaultVisibility: "public" },
       layers: new Map(),
       selectedId: null,
       routingRequestId: 0
@@ -488,6 +524,11 @@
       fitSwissBtn: document.getElementById("fitSwissBtn"),
       tabHike: document.getElementById("tabHike"),
       tabTrain: document.getElementById("tabTrain"),
+      profileNameInput: document.getElementById("profileNameInput"),
+      profileVisibilityInput: document.getElementById("profileVisibilityInput"),
+      profileBioInput: document.getElementById("profileBioInput"),
+      saveProfileBtn: document.getElementById("saveProfileBtn"),
+      profileNote: document.getElementById("profileNote"),
       routeForm: document.getElementById("routeForm"),
       routeName: document.getElementById("routeName"),
       routeAuthor: document.getElementById("routeAuthor"),
@@ -575,6 +616,56 @@
       el.storageNote.textContent = ok
         ? `${count} saved route${count === 1 ? "" : "s"} stored in this browser. This prototype uses browser-local community data; export JSON for backup or sharing.`
         : "Browser storage is blocked. Routes stay visible for now, but export JSON to avoid losing them.";
+    }
+
+    function normalizeProfile(profile = {}) {
+      return {
+        name: String(profile.name || "").trim(),
+        bio: String(profile.bio || "").trim(),
+        defaultVisibility: profile.defaultVisibility === "private" ? "private" : "public"
+      };
+    }
+
+    function applyProfileDefaults() {
+      el.profileNameInput.value = state.profile.name;
+      el.profileVisibilityInput.value = state.profile.defaultVisibility;
+      el.profileBioInput.value = state.profile.bio;
+      if (!el.routeForm.dataset.editId) {
+        if (!el.routeAuthor.value.trim()) el.routeAuthor.value = state.profile.name;
+        el.routeVisibility.value = state.profile.defaultVisibility;
+      }
+      el.profileNote.textContent = state.profile.name
+        ? `Posting as ${state.profile.name}.`
+        : "Used as the default author for routes and comments.";
+    }
+
+    function loadProfile() {
+      try {
+        state.profile = normalizeProfile(JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"));
+      } catch {
+        state.profile = normalizeProfile();
+      }
+      applyProfileDefaults();
+    }
+
+    function saveProfile() {
+      state.profile = normalizeProfile({
+        name: el.profileNameInput.value,
+        bio: el.profileBioInput.value,
+        defaultVisibility: el.profileVisibilityInput.value
+      });
+      try {
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile));
+        if (!el.routeForm.dataset.editId) {
+          el.routeAuthor.value = state.profile.name;
+          el.routeVisibility.value = state.profile.defaultVisibility;
+        }
+        el.profileNote.textContent = state.profile.name
+          ? `Profile saved. New routes will post as ${state.profile.name}.`
+          : "Profile saved. New routes can still be anonymous.";
+      } catch {
+        el.profileNote.textContent = "Could not save profile in this browser.";
+      }
     }
 
     function loadRoutes() {
@@ -840,6 +931,8 @@
     function resetForm() {
       el.routeForm.reset();
       el.routeType.value = state.activeType;
+      el.routeAuthor.value = state.profile.name;
+      el.routeVisibility.value = state.profile.defaultVisibility;
       state.draft = [];
       state.draftRoute = [];
       state.selectedId = null;
@@ -901,10 +994,12 @@
       const waypoints = state.draft.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]);
       const points = routedPoints.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]);
       const editId = el.routeForm.dataset.editId;
+      const previousRoute = editId ? state.routes.find(item => item.id === editId) : null;
       const route = {
         id: editId || crypto.randomUUID(),
         name: routeName,
-        author: el.routeAuthor.value.trim(),
+        author: el.routeAuthor.value.trim() || state.profile.name,
+        authorBio: state.profile.bio,
         visibility: el.routeVisibility.value,
         type: el.routeType.value,
         date: el.routeDate.value,
@@ -914,7 +1009,8 @@
         elevationLossM: numericValue(el.routeLoss.value),
         notes: el.routeNotes.value.trim(),
         caption: el.routeCaption.value.trim(),
-        likes: editId ? (state.routes.find(item => item.id === editId)?.likes || 0) : 0,
+        likes: previousRoute?.likes || 0,
+        comments: Array.isArray(previousRoute?.comments) ? previousRoute.comments : [],
         waypoints,
         points,
         metrics: routeMetrics(points, waypoints),
@@ -1058,6 +1154,7 @@ ${segments}
         id: crypto.randomUUID(),
         name: String(route.name || "Imported route"),
         author: route.author || "",
+        authorBio: route.authorBio || "",
         visibility: route.visibility === "private" ? "private" : "public",
         type: route.type === "train" ? "train" : "hike",
         date: route.date || "",
@@ -1068,10 +1165,21 @@ ${segments}
         notes: route.notes || "",
         caption: route.caption || "",
         likes: Number.isFinite(Number(route.likes)) ? Number(route.likes) : 0,
+        comments: Array.isArray(route.comments) ? route.comments.map(normalizeComment).filter(Boolean) : [],
         waypoints,
         points,
         metrics: routeMetrics(points, waypoints),
         updatedAt: new Date().toISOString()
+      };
+    }
+
+    function normalizeComment(comment) {
+      if (!comment?.text) return null;
+      return {
+        id: comment.id || crypto.randomUUID(),
+        author: comment.author || "Anonymous",
+        text: String(comment.text),
+        createdAt: comment.createdAt || new Date().toISOString()
       };
     }
 
@@ -1125,6 +1233,7 @@ ${segments}
     });
 
     el.routeForm.addEventListener("submit", saveRoute);
+    el.saveProfileBtn.addEventListener("click", saveProfile);
     el.undoPointBtn.addEventListener("click", () => {
       state.draft.pop();
       updateDraftRoute();
@@ -1162,6 +1271,7 @@ ${segments}
     });
     window.addEventListener("beforeunload", () => saveRoutes(true));
 
+    loadProfile();
     loadRoutes();
     renderDraft();
     renderRoutes();

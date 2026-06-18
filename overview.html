@@ -627,13 +627,15 @@
   <script>
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
     const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
+    const PROFILE_KEY = "swiss-trail-rail-profile:v1";
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
     const state = {
       routes: [],
       filtered: [],
       selectedAuthor: "",
       selectedRouteId: "",
-      sync: { url: "", key: "" }
+      sync: { url: "", key: "" },
+      profile: { name: "", bio: "", defaultVisibility: "public" }
     };
 
     const el = {
@@ -775,6 +777,23 @@
       updateStorageNote(true);
     }
 
+    function normalizeProfile(profile = {}) {
+      return {
+        name: String(profile.name || "").trim(),
+        bio: String(profile.bio || "").trim(),
+        defaultVisibility: profile.defaultVisibility === "private" ? "private" : "public"
+      };
+    }
+
+    function loadProfile() {
+      try {
+        state.profile = normalizeProfile(JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"));
+      } catch {
+        state.profile = normalizeProfile();
+      }
+      el.commentAuthor.value = state.profile.name;
+    }
+
     function loadSyncConfig() {
       try {
         state.sync = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || '{"url":"","key":""}');
@@ -872,6 +891,7 @@
         id: route.id || crypto.randomUUID(),
         name: String(route.name || "Untitled route"),
         author: route.author || "",
+        authorBio: route.authorBio || "",
         visibility: route.visibility === "private" ? "private" : "public",
         type: route.type === "train" ? "train" : "hike",
         date: route.date || "",
@@ -1260,6 +1280,7 @@
         : `<span class="pill">No tags</span>`;
       el.detailCaption.textContent = route.caption || route.notes || "No caption yet.";
       el.detailCoords.textContent = route.waypoints.map(point => `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`).join(" | ");
+      if (!el.commentAuthor.value.trim()) el.commentAuthor.value = state.profile.name;
       el.detailComments.innerHTML = route.comments?.length
         ? route.comments
           .slice()
@@ -1409,7 +1430,7 @@
       route.comments = Array.isArray(route.comments) ? route.comments : [];
       route.comments.push({
         id: crypto.randomUUID(),
-        author: el.commentAuthor.value.trim() || "Anonymous",
+        author: el.commentAuthor.value.trim() || state.profile.name || "Anonymous",
         text,
         createdAt: new Date().toISOString()
       });
@@ -1442,6 +1463,7 @@
     });
 
     loadRoutes();
+    loadProfile();
     loadSyncConfig();
     renderTagOptions();
     applyFilters();

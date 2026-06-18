@@ -36,6 +36,7 @@ The overview page reads the same saved route data as the map page and displays:
 - feed-card route focusing on the cumulative map
 - selected-route detail cards with metrics, tags, caption, coordinates, like, and contributor actions
 - route comments in the selected-route detail card
+- saved contributor profile defaults for route authorship and comments
 - quick timeframe presets for 30 days, 90 days, this year, and all time
 - optional demo community routes to preview the cumulative social map before adding real entries
 
@@ -60,10 +61,13 @@ Routes are entered directly in the browser:
 - Add an optional public feed caption.
 - Save the route.
 
+The `My name` profile panel can store a default contributor name, short bio, and default visibility in the browser. New routes use that name automatically, and overview comments use the same saved identity.
+
 The app stores:
 
 - `name`: route title
 - `author`: hiker or contributor name
+- `authorBio`: optional contributor bio copied from the saved profile
 - `visibility`: `public` or `private`
 - `type`: `hike` or `train`
 - `date`: optional completion date
@@ -74,6 +78,7 @@ The app stores:
 - `notes`: optional free text
 - `caption`: optional public feed caption
 - `likes`: local community likes
+- `comments`: local route comments
 - `waypoints`: the points clicked by the user
 - `points`: the routed geometry displayed on the map
 - `metrics`: computed routed distance, direct distance, waypoint count, and geometry point count
