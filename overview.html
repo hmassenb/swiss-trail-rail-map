@@ -201,6 +201,32 @@
       font-weight: 680;
     }
 
+    .map-legend {
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .legend-row {
+      display: grid;
+      grid-template-columns: 22px 1fr auto;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .legend-line {
+      height: 4px;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .legend-line.train { background: var(--blue); }
+    .legend-line.private { background: #9a8d74; }
+
     .map-wrap {
       position: relative;
       min-height: 360px;
@@ -559,6 +585,12 @@
         <label><input id="showHikes" type="checkbox" checked /> Hikes</label>
         <label><input id="showTrains" type="checkbox" checked /> Trains</label>
         <label><input id="showPrivate" type="checkbox" /> Private routes</label>
+        <div class="map-legend">
+          <div class="legend-row"><span class="legend-line"></span><span>Hikes</span><strong id="legendHikes">0</strong></div>
+          <div class="legend-row"><span class="legend-line train"></span><span>Trains</span><strong id="legendTrains">0</strong></div>
+          <div class="legend-row"><span class="legend-line private"></span><span>Private</span><strong id="legendPrivate">0</strong></div>
+          <div class="legend-row"><span></span><span>Drawn now</span><strong id="legendVisible">0</strong></div>
+        </div>
       </div>
     </section>
 
@@ -752,6 +784,10 @@
       showHikes: document.getElementById("showHikes"),
       showTrains: document.getElementById("showTrains"),
       showPrivate: document.getElementById("showPrivate"),
+      legendHikes: document.getElementById("legendHikes"),
+      legendTrains: document.getElementById("legendTrains"),
+      legendPrivate: document.getElementById("legendPrivate"),
+      legendVisible: document.getElementById("legendVisible"),
       yearSummary: document.getElementById("yearSummary"),
       monthSummary: document.getElementById("monthSummary"),
       contributorSummary: document.getElementById("contributorSummary"),
@@ -1641,6 +1677,15 @@
     function renderMap() {
       routeGroup.clearLayers();
       const mapRoutes = routesForMap();
+      const filteredCounts = state.filtered.reduce((acc, route) => {
+        acc[route.type] += 1;
+        if (route.visibility === "private") acc.private += 1;
+        return acc;
+      }, { hike: 0, train: 0, private: 0 });
+      el.legendHikes.textContent = filteredCounts.hike;
+      el.legendTrains.textContent = filteredCounts.train;
+      el.legendPrivate.textContent = filteredCounts.private;
+      el.legendVisible.textContent = mapRoutes.length;
       mapRoutes.forEach(route => {
         const casing = L.polyline(route.points, {
           color: "#fffdf7",

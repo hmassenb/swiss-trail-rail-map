@@ -29,6 +29,7 @@ The overview page reads the same saved route data as the map page and displays:
 - filters for hikes, trains, visibility, tags, and timeframes
 - exact custom date ranges with `From` and `To` controls
 - cumulative map controls for hikes, trains, and private routes
+- live map legend with filtered hike, train, private, and currently drawn route counts
 - total entries, hiking distance, train distance, and elevation gain
 - average route distance, best day distance, active days, and current metric window
 - yearly and monthly distance summaries
