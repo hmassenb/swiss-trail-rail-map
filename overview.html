@@ -505,6 +505,20 @@
         <button class="button" type="button" data-time-preset="year">This year</button>
         <button class="button" type="button" data-time-preset="all">All time</button>
       </div>
+      <details class="summary-panel">
+        <summary style="cursor: pointer; font-weight: 760;">Cloud sync</summary>
+        <div class="dashboard-note" style="margin-top: 8px;">Optional Supabase sync turns this browser-local prototype into a shared community feed.</div>
+        <div class="controls" style="margin-top: 10px; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr);">
+          <input id="supabaseUrl" placeholder="Supabase project URL" />
+          <input id="supabaseKey" placeholder="Supabase anon key" />
+        </div>
+        <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
+          <button class="button" id="saveSyncBtn" type="button">Save sync settings</button>
+          <button class="button" id="pushCloudBtn" type="button">Push public routes</button>
+          <button class="button" id="pullCloudBtn" type="button">Pull community</button>
+        </div>
+        <div class="storage-note" id="syncStatus" style="margin-top: 10px;">Cloud sync is not configured.</div>
+      </details>
     </header>
 
     <section class="map-wrap">
@@ -612,12 +626,14 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
+    const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
     const state = {
       routes: [],
       filtered: [],
       selectedAuthor: "",
-      selectedRouteId: ""
+      selectedRouteId: "",
+      sync: { url: "", key: "" }
     };
 
     const el = {
@@ -628,6 +644,12 @@
       timeFilter: document.getElementById("timeFilter"),
       sortBy: document.getElementById("sortBy"),
       timePresets: document.getElementById("timePresets"),
+      supabaseUrl: document.getElementById("supabaseUrl"),
+      supabaseKey: document.getElementById("supabaseKey"),
+      saveSyncBtn: document.getElementById("saveSyncBtn"),
+      pushCloudBtn: document.getElementById("pushCloudBtn"),
+      pullCloudBtn: document.getElementById("pullCloudBtn"),
+      syncStatus: document.getElementById("syncStatus"),
       entryCount: document.getElementById("entryCount"),
       hikeKm: document.getElementById("hikeKm"),
       trainKm: document.getElementById("trainKm"),
@@ -751,6 +773,87 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.routes));
       localStorage.setItem(`${STORAGE_KEY}:savedAt`, new Date().toISOString());
       updateStorageNote(true);
+    }
+
+    function loadSyncConfig() {
+      try {
+        state.sync = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || '{"url":"","key":""}');
+      } catch {
+        state.sync = { url: "", key: "" };
+      }
+      el.supabaseUrl.value = state.sync.url || "";
+      el.supabaseKey.value = state.sync.key || "";
+      updateSyncStatus(state.sync.url && state.sync.key ? "Cloud sync configured." : "Cloud sync is not configured.");
+    }
+
+    function saveSyncConfig() {
+      state.sync = {
+        url: el.supabaseUrl.value.trim().replace(/\/$/, ""),
+        key: el.supabaseKey.value.trim()
+      };
+      localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(state.sync));
+      updateSyncStatus(state.sync.url && state.sync.key ? "Cloud sync settings saved." : "Cloud sync is not configured.");
+    }
+
+    function updateSyncStatus(text, warning = false) {
+      el.syncStatus.textContent = text;
+      el.syncStatus.classList.toggle("warning", warning);
+    }
+
+    function syncHeaders() {
+      if (!state.sync.url || !state.sync.key) throw new Error("Missing Supabase URL or anon key");
+      return {
+        "apikey": state.sync.key,
+        "Authorization": `Bearer ${state.sync.key}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+      };
+    }
+
+    async function pushPublicRoutes() {
+      try {
+        saveSyncConfig();
+        const publicRoutes = state.routes.filter(route => route.visibility !== "private");
+        const rows = publicRoutes.map(route => ({
+          id: route.id,
+          payload: route,
+          updated_at: new Date().toISOString()
+        }));
+        if (!rows.length) {
+          updateSyncStatus("No public routes to push.", true);
+          return;
+        }
+        const response = await fetch(`${state.sync.url}/rest/v1/community_routes?on_conflict=id`, {
+          method: "POST",
+          headers: syncHeaders(),
+          body: JSON.stringify(rows)
+        });
+        if (!response.ok) throw new Error(await response.text());
+        updateSyncStatus(`Pushed ${rows.length} public route${rows.length === 1 ? "" : "s"} to cloud.`);
+      } catch (error) {
+        updateSyncStatus(`Push failed: ${error.message}`, true);
+      }
+    }
+
+    async function pullCommunityRoutes() {
+      try {
+        saveSyncConfig();
+        const response = await fetch(`${state.sync.url}/rest/v1/community_routes?select=payload`, {
+          headers: syncHeaders()
+        });
+        if (!response.ok) throw new Error(await response.text());
+        const rows = await response.json();
+        const incoming = rows.map(row => normalizeRoute(row.payload)).filter(Boolean);
+        const byId = new Map(state.routes.map(route => [route.id, route]));
+        incoming.forEach(route => byId.set(route.id, route));
+        state.routes = [...byId.values()];
+        saveRoutes();
+        renderTagOptions();
+        applyFilters();
+        updateSyncStatus(`Pulled ${incoming.length} community route${incoming.length === 1 ? "" : "s"} from cloud.`);
+      } catch (error) {
+        updateSyncStatus(`Pull failed: ${error.message}`, true);
+      }
     }
 
     function normalizeRoute(route) {
@@ -1261,6 +1364,9 @@
     el.tagFilter.addEventListener("change", applyFilters);
     el.timeFilter.addEventListener("change", applyFilters);
     el.sortBy.addEventListener("change", applyFilters);
+    el.saveSyncBtn.addEventListener("click", saveSyncConfig);
+    el.pushCloudBtn.addEventListener("click", pushPublicRoutes);
+    el.pullCloudBtn.addEventListener("click", pullCommunityRoutes);
     el.timePresets.addEventListener("click", event => {
       const button = event.target.closest("button[data-time-preset]");
       if (!button) return;
@@ -1336,6 +1442,7 @@
     });
 
     loadRoutes();
+    loadSyncConfig();
     renderTagOptions();
     applyFilters();
   </script>

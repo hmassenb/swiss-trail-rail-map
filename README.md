@@ -4,7 +4,7 @@ A lightweight social route map for tracking and sharing completed hikes and trai
 
 The app lets people add route waypoints on a topographic map, fit them to mapped paths or rail lines when routing is available, and save completed routes in the browser. Public entries are accumulated into a community overview map and feed.
 
-This is currently a browser-local social prototype: public/community entries are shared within the same browser storage. A real multi-user deployment would need an authentication and database backend.
+This works as a browser-local social prototype by default. Optional Supabase cloud sync can be configured to turn it into a shared multi-user community feed.
 
 ## Live Map
 
@@ -86,7 +86,7 @@ Use `Export JSON` for backups or to move routes to another browser/device. Use `
 
 ## Community Sharing
 
-Because this version has no backend, the community map can be shared by exchanging JSON packages:
+Without cloud sync, the community map can be shared by exchanging JSON packages:
 
 - Contributors add public routes in their own browser.
 - They use `Export community` or `Export public community`.
@@ -94,6 +94,20 @@ Because this version has no backend, the community map can be shared by exchangi
 - Public routes from all imported packages are accumulated into the overview map and feed.
 
 Private routes are excluded from the community export.
+
+## Optional Cloud Sync
+
+To make the community feed shared across browsers/users:
+
+1. Create a Supabase project.
+2. Run `supabase-schema.sql` in the Supabase SQL editor.
+3. Copy the project URL and anon public key.
+4. Open the app's `Overview` page.
+5. Expand `Cloud sync`.
+6. Paste the URL and anon key.
+7. Use `Push public routes` and `Pull community`.
+
+The sync table stores each public route as JSON in `community_routes.payload`. Private routes are rejected by the table policies and are not pushed by the app.
 
 ## Map Services
 
