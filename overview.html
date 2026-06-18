@@ -153,6 +153,42 @@
       background: #fff7f5;
     }
 
+    .dashboard-note {
+      color: #344249;
+      font-size: 13px;
+      line-height: 1.4;
+      max-width: 860px;
+    }
+
+    .map-tools {
+      position: absolute;
+      right: 18px;
+      top: 18px;
+      z-index: 500;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+      min-width: 190px;
+    }
+
+    .map-tools label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #344249;
+      font-size: 13px;
+      font-weight: 680;
+    }
+
+    .map-wrap {
+      position: relative;
+      min-height: 360px;
+    }
+
     .log {
       display: grid;
       gap: 10px;
@@ -292,6 +328,20 @@
       font-size: 14px;
     }
 
+    .feed-title {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .feed-title h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
     @media (max-width: 900px) {
       .controls { grid-template-columns: 1fr; }
       .stats { grid-template-columns: 1fr 1fr; }
@@ -344,7 +394,14 @@
       </div>
     </header>
 
-    <section id="overviewMap" aria-label="Overview map of logged routes"></section>
+    <section class="map-wrap">
+      <div id="overviewMap" aria-label="Overview map of logged routes"></div>
+      <div class="map-tools">
+        <label><input id="showHikes" type="checkbox" checked /> Hikes</label>
+        <label><input id="showTrains" type="checkbox" checked /> Trains</label>
+        <label><input id="showPrivate" type="checkbox" /> Private routes</label>
+      </div>
+    </section>
 
     <main>
       <div class="stats">
@@ -360,6 +417,7 @@
         <div class="stat"><strong id="visibleCount">0</strong><span>Visible in feed</span></div>
       </div>
       <div class="storage-note" id="storageNote">Loading saved entries...</div>
+      <div class="dashboard-note" id="dashboardNote">Metrics reflect the current filters.</div>
       <section class="summary-grid">
         <div class="summary-panel">
           <h2>Yearly Distance</h2>
@@ -370,6 +428,10 @@
           <div class="summary-list" id="monthSummary"></div>
         </div>
       </section>
+      <div class="feed-title">
+        <h2>Community Feed</h2>
+        <span class="dashboard-note" id="feedScope">Showing public routes for all time.</span>
+      </div>
       <section class="log" id="entryLog"></section>
     </main>
   </div>
@@ -399,6 +461,11 @@
       likesTotal: document.getElementById("likesTotal"),
       visibleCount: document.getElementById("visibleCount"),
       storageNote: document.getElementById("storageNote"),
+      dashboardNote: document.getElementById("dashboardNote"),
+      feedScope: document.getElementById("feedScope"),
+      showHikes: document.getElementById("showHikes"),
+      showTrains: document.getElementById("showTrains"),
+      showPrivate: document.getElementById("showPrivate"),
       yearSummary: document.getElementById("yearSummary"),
       monthSummary: document.getElementById("monthSummary"),
       entryLog: document.getElementById("entryLog")
@@ -514,7 +581,7 @@
     function updateStorageNote(ok) {
       el.storageNote.classList.toggle("warning", !ok);
       el.storageNote.textContent = ok
-        ? `${state.routes.length} saved entr${state.routes.length === 1 ? "y" : "ies"} loaded from this browser.`
+        ? `${state.routes.length} saved entr${state.routes.length === 1 ? "y" : "ies"} loaded from this browser-local community dataset.`
         : "Browser storage could not be read. Open the map page and export JSON if your entries are stored elsewhere.";
     }
 
@@ -578,11 +645,32 @@
       return routeDate >= cutoff;
     }
 
+    function scopeLabel() {
+      const visibility = el.visibilityFilter.options[el.visibilityFilter.selectedIndex].textContent.toLowerCase();
+      const time = el.timeFilter.options[el.timeFilter.selectedIndex].textContent.toLowerCase();
+      const type = el.typeFilter.options[el.typeFilter.selectedIndex].textContent.toLowerCase();
+      const tag = el.tagFilter.value === "all" ? "" : ` tagged ${el.tagFilter.value}`;
+      return `${visibility} ${type}${tag} for ${time}`;
+    }
+
+    function routesForMap() {
+      return state.routes.filter(route => {
+        if (route.type === "hike" && !el.showHikes.checked) return false;
+        if (route.type === "train" && !el.showTrains.checked) return false;
+        if (route.visibility === "private" && !el.showPrivate.checked) return false;
+        if (!dateInTimeframe(route.date, el.timeFilter.value)) return false;
+        if (el.tagFilter.value !== "all" && !(route.tags || []).includes(el.tagFilter.value)) return false;
+        return true;
+      });
+    }
+
     function render() {
       renderStats();
       renderSummaries();
       renderMap();
       renderLog();
+      el.dashboardNote.textContent = `Metrics currently summarize ${state.filtered.length} ${scopeLabel()}.`;
+      el.feedScope.textContent = `Showing ${scopeLabel()}.`;
     }
 
     function renderStats() {
@@ -637,7 +725,8 @@
 
     function renderMap() {
       routeGroup.clearLayers();
-      state.filtered.forEach(route => {
+      const mapRoutes = routesForMap();
+      mapRoutes.forEach(route => {
         const casing = L.polyline(route.points, {
           color: "#fffdf7",
           weight: routeWeight(route.type) + 5,
@@ -652,7 +741,7 @@
         routeGroup.addLayer(casing);
         routeGroup.addLayer(line);
       });
-      if (state.filtered.length) {
+      if (mapRoutes.length) {
         overviewMap.fitBounds(routeGroup.getBounds().pad(0.18));
       } else {
         overviewMap.fitBounds(SWISS_BOUNDS);
@@ -661,7 +750,7 @@
 
     function renderLog() {
       if (!state.filtered.length) {
-        el.entryLog.innerHTML = `<div class="empty">No entries match the current filters.</div>`;
+        el.entryLog.innerHTML = `<div class="empty">No entries match the current filters. Add a public hike on the map page or loosen the timeframe, tag, and visibility filters.</div>`;
         return;
       }
       el.entryLog.innerHTML = "";
@@ -720,6 +809,9 @@
     el.tagFilter.addEventListener("change", applyFilters);
     el.timeFilter.addEventListener("change", applyFilters);
     el.sortBy.addEventListener("change", applyFilters);
+    el.showHikes.addEventListener("change", renderMap);
+    el.showTrains.addEventListener("change", renderMap);
+    el.showPrivate.addEventListener("change", renderMap);
     el.entryLog.addEventListener("click", event => {
       const button = event.target.closest("button[data-like-id]");
       if (!button) return;

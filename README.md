@@ -4,6 +4,8 @@ A lightweight social route map for tracking and sharing completed hikes and trai
 
 The app lets people add route waypoints on a topographic map, fit them to mapped paths or rail lines when routing is available, and save completed routes in the browser. Public entries are accumulated into a community overview map and feed.
 
+This is currently a browser-local social prototype: public/community entries are shared within the same browser storage. A real multi-user deployment would need an authentication and database backend.
+
 ## Live Map
 
 [Open the map](https://hmassenb.github.io/swiss-trail-rail-map/)
@@ -25,6 +27,7 @@ The overview page reads the same saved route data as the map page and displays:
 - all logged hikes and train rides on one overview map
 - a searchable route log
 - filters for hikes, trains, visibility, tags, and timeframes
+- cumulative map controls for hikes, trains, and private routes
 - total entries, hiking distance, train distance, and elevation gain
 - yearly and monthly distance summaries
 - community feed cards with author, likes, captions, tags, duration, elevation, notes, distance, and clicked waypoint coordinates
