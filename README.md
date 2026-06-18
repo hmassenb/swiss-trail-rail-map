@@ -16,7 +16,27 @@ The app lets you add route waypoints on a topographic map, fit them to mapped pa
 </iframe>
 ```
 
-GitHub does not render live iframes inside README files, but the snippet above can be embedded in a website page.
+## Overview Log
+
+[Open the overview](https://hmassenb.github.io/swiss-trail-rail-map/overview.html)
+
+The overview page reads the same saved route data as the map page and displays:
+
+- all logged hikes and train rides on one overview map
+- a searchable route log
+- filters for hikes and trains
+- total entries, hiking distance, train distance, and waypoint count
+- each entry's name, date, notes, distance, and clicked waypoint coordinates
+
+```html
+<iframe
+  src="https://hmassenb.github.io/swiss-trail-rail-map/overview.html"
+  title="Swiss Trail and Rail Overview"
+  style="width: 100%; height: 900px; border: 0;">
+</iframe>
+```
+
+GitHub does not render live iframes inside README files, but the snippets above can be embedded in a website page.
 
 ## Inputs
 
@@ -54,3 +74,45 @@ The app uses public web services for:
 - OpenStreetMap Nominatim place search
 
 An internet connection is required for maps, routing, and search.
+
+## Suggested Next Steps
+
+To turn this into a more useful distance-tracking tool, the strongest improvements would be:
+
+1. Add explicit route metrics
+   - Store routed distance, direct distance, elevation gain, elevation loss, and duration.
+   - Show lifetime totals and yearly/monthly totals.
+
+2. Add route categories and tags
+   - Tags such as `with friends`, `solo`, `summer`, `winter`, `SBB`, `mountain`, `lake`, or canton names.
+   - Filter the overview by tags.
+
+3. Add GPX-first workflows
+   - Import GPX files from Komoot, Strava, Garmin, SchweizMobil, or phone GPS recordings.
+   - Prefer GPX geometry over clicked waypoints when available.
+
+4. Improve persistence
+   - Keep local browser storage for privacy.
+   - Add a visible backup reminder.
+   - Consider optional GitHub Gist, JSON file, or small backend sync later if cross-device use becomes important.
+
+5. Add progress views
+   - Calendar heatmap by date completed.
+   - Distance by month/year.
+   - Hikes versus trains comparison.
+   - Longest routes and most visited regions.
+
+6. Improve route editing
+   - Drag waypoints after placing them.
+   - Split or merge routes.
+   - Duplicate a route and edit the copy.
+
+7. Add geography summaries
+   - Cantons visited.
+   - Lakes, peaks, towns, and stations passed near a route.
+   - Approximate bounding region and altitude range.
+
+8. Add privacy modes
+   - Private personal tracker using browser storage.
+   - Public read-only export for embedding on a website.
+   - Optional hidden notes that are not included in public export.
