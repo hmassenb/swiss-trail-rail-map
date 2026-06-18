@@ -126,7 +126,7 @@ To make the community feed shared across browsers/users:
 6. Paste the URL and anon key.
 7. Use `Push public routes` and `Pull community`, or save new public routes from the map page to auto-push them.
 
-The sync table stores each public route as JSON in `community_routes.payload`. Private routes are rejected by the table policies and are not pushed by the app. When cloud sync is configured, new public routes, likes, and comments are pushed back to the shared table automatically.
+The sync table stores each public route as JSON in `community_routes.payload`. Private routes are rejected by the table policies and are not pushed by the app. When cloud sync is configured, new public routes, likes, and comments are pushed back to the shared table automatically. Deleting a public/community route from the map page hides it on that browser so it does not reappear on the next cloud pull. True shared deletion should be added later with authenticated users.
 
 ## Map Services
 

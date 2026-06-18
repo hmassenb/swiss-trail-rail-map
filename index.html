@@ -582,6 +582,7 @@
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
     const PROFILE_KEY = "swiss-trail-rail-profile:v1";
     const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
+    const HIDDEN_CLOUD_KEY = "swiss-trail-rail-hidden-cloud:v1";
     const state = {
       activeType: "hike",
       draft: [],
@@ -589,6 +590,7 @@
       routes: [],
       profile: { name: "", bio: "", defaultVisibility: "public" },
       sync: { url: "", key: "" },
+      hiddenCloudRouteIds: new Set(),
       draftSource: "",
       layers: new Map(),
       selectedId: null,
@@ -786,6 +788,23 @@
       }
     }
 
+    function loadHiddenCloudRoutes() {
+      try {
+        const ids = JSON.parse(localStorage.getItem(HIDDEN_CLOUD_KEY) || "[]");
+        state.hiddenCloudRouteIds = new Set(Array.isArray(ids) ? ids.filter(Boolean) : []);
+      } catch {
+        state.hiddenCloudRouteIds = new Set();
+      }
+    }
+
+    function saveHiddenCloudRoutes() {
+      try {
+        localStorage.setItem(HIDDEN_CLOUD_KEY, JSON.stringify([...state.hiddenCloudRouteIds]));
+      } catch {
+        setStatus("Could not remember hidden community routes");
+      }
+    }
+
     function loadSyncConfig() {
       try {
         state.sync = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || '{"url":"","key":""}');
@@ -901,7 +920,9 @@
         });
         if (!response.ok) throw new Error(await response.text());
         const rows = await response.json();
-        const incoming = rows.map(row => normalizeSavedRoute(row.payload)).filter(Boolean);
+        const incoming = rows
+          .map(row => normalizeSavedRoute(row.payload))
+          .filter(route => route && !state.hiddenCloudRouteIds.has(route.id));
         const byId = new Map(state.routes.map(route => [route.id, route]));
         incoming.forEach(route => byId.set(route.id, route));
         state.routes = [...byId.values()];
@@ -1193,11 +1214,15 @@
       const route = state.routes.find(item => item.id === id);
       if (!route) return;
       if (!confirm(`Delete "${route.name}"?`)) return;
+      if (route.visibility !== "private") {
+        state.hiddenCloudRouteIds.add(route.id);
+        saveHiddenCloudRoutes();
+      }
       state.routes = state.routes.filter(item => item.id !== id);
       if (state.selectedId === id) state.selectedId = null;
       saveRoutes();
       renderRoutes();
-      setStatus("Route deleted");
+      setStatus(route.visibility === "private" ? "Route deleted" : "Community route hidden on this browser");
     }
 
     async function saveRoute(event) {
@@ -1560,6 +1585,7 @@ ${segments}
 
     loadProfile();
     loadSyncConfig();
+    loadHiddenCloudRoutes();
     loadRoutes();
     renderDraft();
     renderRoutes();
