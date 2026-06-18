@@ -1,8 +1,8 @@
 # Swiss Trail & Rail Map
 
-A personal web map for tracking completed hikes and train rides across Switzerland.
+A lightweight social route map for tracking and sharing completed hikes and train rides across Switzerland.
 
-The app lets you add route waypoints on a topographic map, fit them to mapped paths or rail lines when routing is available, and save completed routes in your browser.
+The app lets people add route waypoints on a topographic map, fit them to mapped paths or rail lines when routing is available, and save completed routes in the browser. Public entries are accumulated into a community overview map and feed.
 
 ## Live Map
 
@@ -24,10 +24,10 @@ The overview page reads the same saved route data as the map page and displays:
 
 - all logged hikes and train rides on one overview map
 - a searchable route log
-- filters for hikes, trains, and tags
+- filters for hikes, trains, visibility, tags, and timeframes
 - total entries, hiking distance, train distance, and elevation gain
 - yearly and monthly distance summaries
-- each entry's name, date, tags, duration, elevation, notes, distance, and clicked waypoint coordinates
+- community feed cards with author, likes, captions, tags, duration, elevation, notes, distance, and clicked waypoint coordinates
 
 ```html
 <iframe
@@ -45,13 +45,16 @@ Routes are entered directly in the browser:
 
 - Choose `Hike` or `Train`.
 - Click the map to add waypoints.
-- Add a route name, optional date, and optional notes.
+- Add a route name, hiker name, visibility, optional date, and optional notes.
 - Add optional tags, duration, elevation gain, and elevation loss.
+- Add an optional public feed caption.
 - Save the route.
 
 The app stores:
 
 - `name`: route title
+- `author`: hiker or contributor name
+- `visibility`: `public` or `private`
 - `type`: `hike` or `train`
 - `date`: optional completion date
 - `tags`: optional route categories
@@ -59,6 +62,8 @@ The app stores:
 - `elevationGainM`: optional elevation gain in meters
 - `elevationLossM`: optional elevation loss in meters
 - `notes`: optional free text
+- `caption`: optional public feed caption
+- `likes`: local community likes
 - `waypoints`: the points clicked by the user
 - `points`: the routed geometry displayed on the map
 - `metrics`: computed routed distance, direct distance, waypoint count, and geometry point count

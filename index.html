@@ -386,6 +386,19 @@
           </label>
           <div class="field-row">
             <label>
+              Hiker name
+              <input id="routeAuthor" placeholder="Hannah" />
+            </label>
+            <label>
+              Visibility
+              <select id="routeVisibility">
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+              </select>
+            </label>
+          </div>
+          <div class="field-row">
+            <label>
               Date
               <input id="routeDate" type="date" />
             </label>
@@ -418,6 +431,10 @@
           <label>
             Notes
             <textarea id="routeNotes" placeholder="Weather, companions, line number, favorite section"></textarea>
+          </label>
+          <label>
+            Feed caption
+            <textarea id="routeCaption" placeholder="Short public caption for the community feed"></textarea>
           </label>
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
@@ -471,6 +488,8 @@
       tabTrain: document.getElementById("tabTrain"),
       routeForm: document.getElementById("routeForm"),
       routeName: document.getElementById("routeName"),
+      routeAuthor: document.getElementById("routeAuthor"),
+      routeVisibility: document.getElementById("routeVisibility"),
       routeDate: document.getElementById("routeDate"),
       routeType: document.getElementById("routeType"),
       routeTags: document.getElementById("routeTags"),
@@ -478,6 +497,7 @@
       routeGain: document.getElementById("routeGain"),
       routeLoss: document.getElementById("routeLoss"),
       routeNotes: document.getElementById("routeNotes"),
+      routeCaption: document.getElementById("routeCaption"),
       coordPreview: document.getElementById("coordPreview"),
       saveRouteBtn: document.getElementById("saveRouteBtn"),
       undoPointBtn: document.getElementById("undoPointBtn"),
@@ -708,12 +728,13 @@
 
     function popupHtml(route) {
       const km = formatKm(distanceKm(route.points));
+      const author = route.author ? `<br><strong>By:</strong> ${escapeHtml(route.author)}` : "";
       const date = route.date ? `<br><strong>Date:</strong> ${escapeHtml(route.date)}` : "";
       const duration = route.durationHours ? `<br><strong>Duration:</strong> ${escapeHtml(route.durationHours)} h` : "";
       const gain = route.elevationGainM ? `<br><strong>Gain:</strong> ${escapeHtml(route.elevationGainM)} m` : "";
       const tags = route.tags?.length ? `<br><strong>Tags:</strong> ${escapeHtml(formatTags(route.tags))}` : "";
       const notes = route.notes ? `<br><strong>Notes:</strong> ${escapeHtml(route.notes)}` : "";
-      return `<strong>${escapeHtml(route.name)}</strong><br><strong>Type:</strong> ${route.type === "train" ? "Train" : "Hike"}<br><strong>Distance:</strong> ${km}${date}${duration}${gain}${tags}${notes}`;
+      return `<strong>${escapeHtml(route.name)}</strong><br><strong>Type:</strong> ${route.type === "train" ? "Train" : "Hike"}<br><strong>Distance:</strong> ${km}${author}${date}${duration}${gain}${tags}${notes}`;
     }
 
     function renderRoutes() {
@@ -760,6 +781,9 @@
               <div class="route-meta">
                 <span>${route.type === "train" ? "Train" : "Hike"}</span>
                 <span>${formatKm(distanceKm(route.points))}</span>
+                ${route.author ? `<span>${escapeHtml(route.author)}</span>` : ""}
+                <span>${route.visibility === "private" ? "Private" : "Public"}</span>
+                ${route.likes ? `<span>${escapeHtml(route.likes)} likes</span>` : ""}
                 ${route.date ? `<span>${escapeHtml(route.date)}</span>` : ""}
                 ${route.durationHours ? `<span>${escapeHtml(route.durationHours)} h</span>` : ""}
                 ${route.elevationGainM ? `<span>+${escapeHtml(route.elevationGainM)} m</span>` : ""}
@@ -772,6 +796,7 @@
             </div>
           </div>
           ${route.tags?.length ? `<div class="route-meta">${route.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
+          ${route.caption ? `<div class="route-meta">${escapeHtml(route.caption)}</div>` : ""}
           ${route.notes ? `<div class="route-meta">${escapeHtml(route.notes)}</div>` : ""}
         `;
         el.routeList.appendChild(card);
@@ -828,12 +853,15 @@
       if (!route) return;
       activateType(route.type);
       el.routeName.value = route.name;
+      el.routeAuthor.value = route.author || "";
+      el.routeVisibility.value = route.visibility || "public";
       el.routeDate.value = route.date || "";
       el.routeTags.value = formatTags(route.tags);
       el.routeDuration.value = route.durationHours || "";
       el.routeGain.value = route.elevationGainM || "";
       el.routeLoss.value = route.elevationLossM || "";
       el.routeNotes.value = route.notes || "";
+      el.routeCaption.value = route.caption || "";
       el.routeForm.dataset.editId = route.id;
       state.draft = (route.waypoints || route.points).map(p => [p[0], p[1]]);
       state.draftRoute = route.points.map(p => [p[0], p[1]]);
@@ -873,6 +901,8 @@
       const route = {
         id: editId || crypto.randomUUID(),
         name: routeName,
+        author: el.routeAuthor.value.trim(),
+        visibility: el.routeVisibility.value,
         type: el.routeType.value,
         date: el.routeDate.value,
         tags: parseTags(el.routeTags.value),
@@ -880,6 +910,8 @@
         elevationGainM: numericValue(el.routeGain.value),
         elevationLossM: numericValue(el.routeLoss.value),
         notes: el.routeNotes.value.trim(),
+        caption: el.routeCaption.value.trim(),
+        likes: editId ? (state.routes.find(item => item.id === editId)?.likes || 0) : 0,
         waypoints,
         points,
         metrics: routeMetrics(points, waypoints),
@@ -1007,6 +1039,8 @@ ${segments}
       return {
         id: crypto.randomUUID(),
         name: String(route.name || "Imported route"),
+        author: route.author || "",
+        visibility: route.visibility === "private" ? "private" : "public",
         type: route.type === "train" ? "train" : "hike",
         date: route.date || "",
         tags: Array.isArray(route.tags) ? parseTags(route.tags.join(",")) : parseTags(route.tags),
@@ -1014,6 +1048,8 @@ ${segments}
         elevationGainM,
         elevationLossM,
         notes: route.notes || "",
+        caption: route.caption || "",
+        likes: Number.isFinite(Number(route.likes)) ? Number(route.likes) : 0,
         waypoints,
         points,
         metrics: routeMetrics(points, waypoints),
