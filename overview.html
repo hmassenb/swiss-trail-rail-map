@@ -77,7 +77,7 @@
 
     .controls {
       display: grid;
-      grid-template-columns: minmax(180px, 1fr) 150px 150px;
+      grid-template-columns: minmax(180px, 1fr) 150px 170px 150px;
       gap: 10px;
       align-items: center;
     }
@@ -158,6 +158,45 @@
       gap: 10px;
     }
 
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
+      gap: 10px;
+    }
+
+    .summary-panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .summary-panel h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 6px;
+      color: #344249;
+      font-size: 13px;
+    }
+
+    .summary-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      border-top: 1px solid #edf0ee;
+      padding-top: 6px;
+    }
+
+    .summary-row:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
     .entry {
       background: var(--paper);
       border: 1px solid var(--line);
@@ -227,6 +266,7 @@
       .controls { grid-template-columns: 1fr; }
       .stats { grid-template-columns: 1fr 1fr; }
       .entry { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 520px) {
@@ -249,11 +289,15 @@
           <option value="hike">Hikes</option>
           <option value="train">Trains</option>
         </select>
+        <select id="tagFilter">
+          <option value="all">All tags</option>
+        </select>
         <select id="sortBy">
           <option value="date-desc">Newest first</option>
           <option value="date-asc">Oldest first</option>
           <option value="name-asc">Name A-Z</option>
           <option value="distance-desc">Longest first</option>
+          <option value="gain-desc">Most elevation</option>
         </select>
       </div>
     </header>
@@ -265,9 +309,19 @@
         <div class="stat"><strong id="entryCount">0</strong><span>Logged entries</span></div>
         <div class="stat"><strong id="hikeKm">0 km</strong><span>Hiked</span></div>
         <div class="stat"><strong id="trainKm">0 km</strong><span>By train</span></div>
-        <div class="stat"><strong id="waypointCount">0</strong><span>Clicked waypoints</span></div>
+        <div class="stat"><strong id="gainM">0 m</strong><span>Elevation gain</span></div>
       </div>
       <div class="storage-note" id="storageNote">Loading saved entries...</div>
+      <section class="summary-grid">
+        <div class="summary-panel">
+          <h2>Yearly Distance</h2>
+          <div class="summary-list" id="yearSummary"></div>
+        </div>
+        <div class="summary-panel">
+          <h2>Monthly Distance</h2>
+          <div class="summary-list" id="monthSummary"></div>
+        </div>
+      </section>
       <section class="log" id="entryLog"></section>
     </main>
   </div>
@@ -284,12 +338,15 @@
     const el = {
       searchInput: document.getElementById("searchInput"),
       typeFilter: document.getElementById("typeFilter"),
+      tagFilter: document.getElementById("tagFilter"),
       sortBy: document.getElementById("sortBy"),
       entryCount: document.getElementById("entryCount"),
       hikeKm: document.getElementById("hikeKm"),
       trainKm: document.getElementById("trainKm"),
-      waypointCount: document.getElementById("waypointCount"),
+      gainM: document.getElementById("gainM"),
       storageNote: document.getElementById("storageNote"),
+      yearSummary: document.getElementById("yearSummary"),
+      monthSummary: document.getElementById("monthSummary"),
       entryLog: document.getElementById("entryLog")
     };
 
@@ -324,6 +381,32 @@
       return total;
     }
 
+    function parseTags(value) {
+      return String(value || "")
+        .split(",")
+        .map(tag => tag.trim())
+        .filter(Boolean)
+        .filter((tag, index, tags) => tags.findIndex(item => item.toLowerCase() === tag.toLowerCase()) === index);
+    }
+
+    function formatTags(tags) {
+      return (Array.isArray(tags) ? tags : []).join(", ");
+    }
+
+    function numericValue(value) {
+      const number = Number(value);
+      return Number.isFinite(number) && number > 0 ? number : "";
+    }
+
+    function routeMetrics(points, waypoints) {
+      return {
+        routedKm: Number(distanceKm(points).toFixed(3)),
+        directKm: Number(distanceKm(waypoints).toFixed(3)),
+        waypointCount: waypoints.length,
+        pointCount: points.length
+      };
+    }
+
     function loadRoutes() {
       try {
         const rawRoutes = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
@@ -344,14 +427,22 @@
         .map(point => [Number(point[0]), Number(point[1])])
         .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
       if (points.length < 2 || waypoints.length < 2) return null;
+      const durationHours = numericValue(route.durationHours);
+      const elevationGainM = numericValue(route.elevationGainM);
+      const elevationLossM = numericValue(route.elevationLossM);
       return {
         id: route.id || crypto.randomUUID(),
         name: String(route.name || "Untitled route"),
         type: route.type === "train" ? "train" : "hike",
         date: route.date || "",
+        tags: Array.isArray(route.tags) ? parseTags(route.tags.join(",")) : parseTags(route.tags),
+        durationHours,
+        elevationGainM,
+        elevationLossM,
         notes: route.notes || "",
         waypoints,
         points,
+        metrics: route.metrics || routeMetrics(points, waypoints),
         updatedAt: route.updatedAt || ""
       };
     }
@@ -363,16 +454,27 @@
         : "Browser storage could not be read. Open the map page and export JSON if your entries are stored elsewhere.";
     }
 
+    function renderTagOptions() {
+      const current = el.tagFilter.value;
+      const tags = [...new Set(state.routes.flatMap(route => route.tags || []))]
+        .sort((a, b) => a.localeCompare(b));
+      el.tagFilter.innerHTML = `<option value="all">All tags</option>${tags.map(tag => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`).join("")}`;
+      if (tags.includes(current)) el.tagFilter.value = current;
+    }
+
     function applyFilters() {
       const query = el.searchInput.value.trim().toLowerCase();
       const type = el.typeFilter.value;
+      const tag = el.tagFilter.value;
       state.filtered = state.routes.filter(route => {
         if (type !== "all" && route.type !== type) return false;
+        if (tag !== "all" && !(route.tags || []).includes(tag)) return false;
         if (!query) return true;
         const haystack = [
           route.name,
           route.type,
           route.date,
+          formatTags(route.tags),
           route.notes,
           route.points.map(point => point.join(",")).join(" ")
         ].join(" ").toLowerCase();
@@ -388,12 +490,14 @@
         if (mode === "date-asc") return (a.date || "9999").localeCompare(b.date || "9999");
         if (mode === "name-asc") return a.name.localeCompare(b.name);
         if (mode === "distance-desc") return distanceKm(b.points) - distanceKm(a.points);
+        if (mode === "gain-desc") return (Number(b.elevationGainM) || 0) - (Number(a.elevationGainM) || 0);
         return (b.date || "0000").localeCompare(a.date || "0000");
       });
     }
 
     function render() {
       renderStats();
+      renderSummaries();
       renderMap();
       renderLog();
     }
@@ -401,13 +505,44 @@
     function renderStats() {
       const totals = state.routes.reduce((acc, route) => {
         acc[route.type] += distanceKm(route.points);
-        acc.waypoints += route.waypoints.length;
+        acc.gain += Number(route.elevationGainM) || 0;
         return acc;
-      }, { hike: 0, train: 0, waypoints: 0 });
+      }, { hike: 0, train: 0, gain: 0 });
       el.entryCount.textContent = state.routes.length;
       el.hikeKm.textContent = formatKm(totals.hike);
       el.trainKm.textContent = formatKm(totals.train);
-      el.waypointCount.textContent = totals.waypoints;
+      el.gainM.textContent = `${Math.round(totals.gain)} m`;
+    }
+
+    function renderSummaries() {
+      const datedRoutes = state.routes.filter(route => route.date);
+      const byYear = groupDistance(datedRoutes, route => route.date.slice(0, 4));
+      const byMonth = groupDistance(datedRoutes, route => route.date.slice(0, 7));
+      el.yearSummary.innerHTML = summaryRows(byYear, 8, "No dated entries yet.");
+      el.monthSummary.innerHTML = summaryRows(byMonth, 12, "No dated entries yet.");
+    }
+
+    function groupDistance(routes, keyFn) {
+      return routes.reduce((acc, route) => {
+        const key = keyFn(route);
+        if (!acc[key]) acc[key] = { hike: 0, train: 0, count: 0 };
+        acc[key][route.type] += distanceKm(route.points);
+        acc[key].count += 1;
+        return acc;
+      }, {});
+    }
+
+    function summaryRows(grouped, limit, emptyText) {
+      const rows = Object.entries(grouped)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .slice(0, limit);
+      if (!rows.length) return `<div class="summary-row"><span>${emptyText}</span><strong></strong></div>`;
+      return rows.map(([label, totals]) => `
+        <div class="summary-row">
+          <span>${escapeHtml(label)} · ${totals.count} entr${totals.count === 1 ? "y" : "ies"}</span>
+          <strong>${formatKm(totals.hike + totals.train)}</strong>
+        </div>
+      `).join("");
     }
 
     function renderMap() {
@@ -451,7 +586,11 @@
               <span class="pill">${formatKm(distanceKm(route.points))}</span>
               <span class="pill">${route.waypoints.length} waypoints</span>
               ${route.date ? `<span class="pill">${escapeHtml(route.date)}</span>` : ""}
+              ${route.durationHours ? `<span class="pill">${escapeHtml(route.durationHours)} h</span>` : ""}
+              ${route.elevationGainM ? `<span class="pill">+${escapeHtml(route.elevationGainM)} m</span>` : ""}
+              ${route.elevationLossM ? `<span class="pill">-${escapeHtml(route.elevationLossM)} m</span>` : ""}
             </div>
+            ${route.tags?.length ? `<div class="meta" style="margin-top: 8px;">${route.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
             ${route.notes ? `<div class="notes">${escapeHtml(route.notes)}</div>` : ""}
           </div>
           <div class="points">${route.waypoints.map(point => `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`).join(" | ")}</div>
@@ -464,7 +603,7 @@
     }
 
     function popupHtml(route) {
-      return `<strong>${escapeHtml(route.name)}</strong><br><strong>Type:</strong> ${route.type === "train" ? "Train" : "Hike"}<br><strong>Distance:</strong> ${formatKm(distanceKm(route.points))}${route.date ? `<br><strong>Date:</strong> ${escapeHtml(route.date)}` : ""}`;
+      return `<strong>${escapeHtml(route.name)}</strong><br><strong>Type:</strong> ${route.type === "train" ? "Train" : "Hike"}<br><strong>Distance:</strong> ${formatKm(distanceKm(route.points))}${route.date ? `<br><strong>Date:</strong> ${escapeHtml(route.date)}` : ""}${route.tags?.length ? `<br><strong>Tags:</strong> ${escapeHtml(formatTags(route.tags))}` : ""}`;
     }
 
     function escapeHtml(value) {
@@ -479,9 +618,11 @@
 
     el.searchInput.addEventListener("input", applyFilters);
     el.typeFilter.addEventListener("change", applyFilters);
+    el.tagFilter.addEventListener("change", applyFilters);
     el.sortBy.addEventListener("change", applyFilters);
 
     loadRoutes();
+    renderTagOptions();
     applyFilters();
   </script>
 </body>

@@ -398,6 +398,24 @@
             </label>
           </div>
           <label>
+            Tags
+            <input id="routeTags" placeholder="summer, lake, friends, Valais" />
+          </label>
+          <div class="field-row">
+            <label>
+              Duration
+              <input id="routeDuration" type="number" min="0" step="0.25" placeholder="hours" />
+            </label>
+            <label>
+              Elevation gain
+              <input id="routeGain" type="number" min="0" step="10" placeholder="meters" />
+            </label>
+          </div>
+          <label>
+            Elevation loss
+            <input id="routeLoss" type="number" min="0" step="10" placeholder="meters" />
+          </label>
+          <label>
             Notes
             <textarea id="routeNotes" placeholder="Weather, companions, line number, favorite section"></textarea>
           </label>
@@ -455,6 +473,10 @@
       routeName: document.getElementById("routeName"),
       routeDate: document.getElementById("routeDate"),
       routeType: document.getElementById("routeType"),
+      routeTags: document.getElementById("routeTags"),
+      routeDuration: document.getElementById("routeDuration"),
+      routeGain: document.getElementById("routeGain"),
+      routeLoss: document.getElementById("routeLoss"),
       routeNotes: document.getElementById("routeNotes"),
       coordPreview: document.getElementById("coordPreview"),
       saveRouteBtn: document.getElementById("saveRouteBtn"),
@@ -582,6 +604,32 @@
       return total;
     }
 
+    function parseTags(value) {
+      return String(value || "")
+        .split(",")
+        .map(tag => tag.trim())
+        .filter(Boolean)
+        .filter((tag, index, tags) => tags.findIndex(item => item.toLowerCase() === tag.toLowerCase()) === index);
+    }
+
+    function formatTags(tags) {
+      return (Array.isArray(tags) ? tags : []).join(", ");
+    }
+
+    function numericValue(value) {
+      const number = Number(value);
+      return Number.isFinite(number) && number > 0 ? number : "";
+    }
+
+    function routeMetrics(points, waypoints) {
+      return {
+        routedKm: Number(distanceKm(points).toFixed(3)),
+        directKm: Number(distanceKm(waypoints).toFixed(3)),
+        waypointCount: waypoints.length,
+        pointCount: points.length
+      };
+    }
+
     function boundsFor(points) {
       return L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
     }
@@ -661,8 +709,11 @@
     function popupHtml(route) {
       const km = formatKm(distanceKm(route.points));
       const date = route.date ? `<br><strong>Date:</strong> ${escapeHtml(route.date)}` : "";
+      const duration = route.durationHours ? `<br><strong>Duration:</strong> ${escapeHtml(route.durationHours)} h` : "";
+      const gain = route.elevationGainM ? `<br><strong>Gain:</strong> ${escapeHtml(route.elevationGainM)} m` : "";
+      const tags = route.tags?.length ? `<br><strong>Tags:</strong> ${escapeHtml(formatTags(route.tags))}` : "";
       const notes = route.notes ? `<br><strong>Notes:</strong> ${escapeHtml(route.notes)}` : "";
-      return `<strong>${escapeHtml(route.name)}</strong><br><strong>Type:</strong> ${route.type === "train" ? "Train" : "Hike"}<br><strong>Distance:</strong> ${km}${date}${notes}`;
+      return `<strong>${escapeHtml(route.name)}</strong><br><strong>Type:</strong> ${route.type === "train" ? "Train" : "Hike"}<br><strong>Distance:</strong> ${km}${date}${duration}${gain}${tags}${notes}`;
     }
 
     function renderRoutes() {
@@ -710,6 +761,8 @@
                 <span>${route.type === "train" ? "Train" : "Hike"}</span>
                 <span>${formatKm(distanceKm(route.points))}</span>
                 ${route.date ? `<span>${escapeHtml(route.date)}</span>` : ""}
+                ${route.durationHours ? `<span>${escapeHtml(route.durationHours)} h</span>` : ""}
+                ${route.elevationGainM ? `<span>+${escapeHtml(route.elevationGainM)} m</span>` : ""}
               </div>
             </div>
             <div class="route-actions">
@@ -718,6 +771,7 @@
               <button type="button" title="Delete" data-action="delete" data-id="${route.id}">×</button>
             </div>
           </div>
+          ${route.tags?.length ? `<div class="route-meta">${route.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
           ${route.notes ? `<div class="route-meta">${escapeHtml(route.notes)}</div>` : ""}
         `;
         el.routeList.appendChild(card);
@@ -775,6 +829,10 @@
       activateType(route.type);
       el.routeName.value = route.name;
       el.routeDate.value = route.date || "";
+      el.routeTags.value = formatTags(route.tags);
+      el.routeDuration.value = route.durationHours || "";
+      el.routeGain.value = route.elevationGainM || "";
+      el.routeLoss.value = route.elevationLossM || "";
       el.routeNotes.value = route.notes || "";
       el.routeForm.dataset.editId = route.id;
       state.draft = (route.waypoints || route.points).map(p => [p[0], p[1]]);
@@ -809,15 +867,22 @@
         routedPoints = state.draftRoute.length > 1 ? state.draftRoute : state.draft;
         setStatus("Saved with direct fallback");
       }
+      const waypoints = state.draft.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]);
+      const points = routedPoints.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]);
       const editId = el.routeForm.dataset.editId;
       const route = {
         id: editId || crypto.randomUUID(),
         name: routeName,
         type: el.routeType.value,
         date: el.routeDate.value,
+        tags: parseTags(el.routeTags.value),
+        durationHours: numericValue(el.routeDuration.value),
+        elevationGainM: numericValue(el.routeGain.value),
+        elevationLossM: numericValue(el.routeLoss.value),
         notes: el.routeNotes.value.trim(),
-        waypoints: state.draft.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]),
-        points: routedPoints.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]),
+        waypoints,
+        points,
+        metrics: routeMetrics(points, waypoints),
         updatedAt: new Date().toISOString()
       };
       if (editId) {
@@ -868,11 +933,18 @@
       const segments = state.routes.map(route => {
         const points = route.points.map(point => `      <trkpt lat="${point[0]}" lon="${point[1]}"></trkpt>`).join("\n");
         const type = route.type === "train" ? "train" : "hike";
+        const descParts = [
+          route.notes,
+          route.tags?.length ? `Tags: ${formatTags(route.tags)}` : "",
+          route.durationHours ? `Duration: ${route.durationHours} h` : "",
+          route.elevationGainM ? `Elevation gain: ${route.elevationGainM} m` : "",
+          route.elevationLossM ? `Elevation loss: ${route.elevationLossM} m` : ""
+        ].filter(Boolean);
         return `  <trk>
     <name>${xmlEscape(route.name)}</name>
     <type>${type}</type>
     ${route.date ? `<time>${xmlEscape(route.date)}</time>` : ""}
-    ${route.notes ? `<desc>${xmlEscape(route.notes)}</desc>` : ""}
+    ${descParts.length ? `<desc>${xmlEscape(descParts.join(" | "))}</desc>` : ""}
     <trkseg>
 ${points}
     </trkseg>
@@ -929,14 +1001,22 @@ ${segments}
         .map(point => [Number(point[0]), Number(point[1])])
         .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
       if (points.length < 2 || waypoints.length < 2) return null;
+      const durationHours = numericValue(route.durationHours);
+      const elevationGainM = numericValue(route.elevationGainM);
+      const elevationLossM = numericValue(route.elevationLossM);
       return {
         id: crypto.randomUUID(),
         name: String(route.name || "Imported route"),
         type: route.type === "train" ? "train" : "hike",
         date: route.date || "",
+        tags: Array.isArray(route.tags) ? parseTags(route.tags.join(",")) : parseTags(route.tags),
+        durationHours,
+        elevationGainM,
+        elevationLossM,
         notes: route.notes || "",
         waypoints,
         points,
+        metrics: routeMetrics(points, waypoints),
         updatedAt: new Date().toISOString()
       };
     }

@@ -24,9 +24,10 @@ The overview page reads the same saved route data as the map page and displays:
 
 - all logged hikes and train rides on one overview map
 - a searchable route log
-- filters for hikes and trains
-- total entries, hiking distance, train distance, and waypoint count
-- each entry's name, date, notes, distance, and clicked waypoint coordinates
+- filters for hikes, trains, and tags
+- total entries, hiking distance, train distance, and elevation gain
+- yearly and monthly distance summaries
+- each entry's name, date, tags, duration, elevation, notes, distance, and clicked waypoint coordinates
 
 ```html
 <iframe
@@ -45,6 +46,7 @@ Routes are entered directly in the browser:
 - Choose `Hike` or `Train`.
 - Click the map to add waypoints.
 - Add a route name, optional date, and optional notes.
+- Add optional tags, duration, elevation gain, and elevation loss.
 - Save the route.
 
 The app stores:
@@ -52,9 +54,14 @@ The app stores:
 - `name`: route title
 - `type`: `hike` or `train`
 - `date`: optional completion date
+- `tags`: optional route categories
+- `durationHours`: optional duration in hours
+- `elevationGainM`: optional elevation gain in meters
+- `elevationLossM`: optional elevation loss in meters
 - `notes`: optional free text
 - `waypoints`: the points clicked by the user
 - `points`: the routed geometry displayed on the map
+- `metrics`: computed routed distance, direct distance, waypoint count, and geometry point count
 
 ## Data Storage
 
@@ -77,42 +84,34 @@ An internet connection is required for maps, routing, and search.
 
 ## Suggested Next Steps
 
-To turn this into a more useful distance-tracking tool, the strongest improvements would be:
+To turn this into a more useful distance-tracking tool, the strongest remaining improvements would be:
 
-1. Add explicit route metrics
-   - Store routed distance, direct distance, elevation gain, elevation loss, and duration.
-   - Show lifetime totals and yearly/monthly totals.
-
-2. Add route categories and tags
-   - Tags such as `with friends`, `solo`, `summer`, `winter`, `SBB`, `mountain`, `lake`, or canton names.
-   - Filter the overview by tags.
-
-3. Add GPX-first workflows
+1. Add GPX-first workflows
    - Import GPX files from Komoot, Strava, Garmin, SchweizMobil, or phone GPS recordings.
    - Prefer GPX geometry over clicked waypoints when available.
 
-4. Improve persistence
+2. Improve persistence
    - Keep local browser storage for privacy.
    - Add a visible backup reminder.
    - Consider optional GitHub Gist, JSON file, or small backend sync later if cross-device use becomes important.
 
-5. Add progress views
+3. Add richer progress views
    - Calendar heatmap by date completed.
-   - Distance by month/year.
    - Hikes versus trains comparison.
    - Longest routes and most visited regions.
+   - Distance and elevation by tag.
 
-6. Improve route editing
+4. Improve route editing
    - Drag waypoints after placing them.
    - Split or merge routes.
    - Duplicate a route and edit the copy.
 
-7. Add geography summaries
+5. Add geography summaries
    - Cantons visited.
    - Lakes, peaks, towns, and stations passed near a route.
    - Approximate bounding region and altitude range.
 
-8. Add privacy modes
+6. Add privacy modes
    - Private personal tracker using browser storage.
    - Public read-only export for embedding on a website.
    - Optional hidden notes that are not included in public export.
