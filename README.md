@@ -27,8 +27,10 @@ The overview page reads the same saved route data as the map page and displays:
 - all logged hikes and train rides on one overview map
 - a searchable route log
 - filters for hikes, trains, visibility, tags, and timeframes
+- exact custom date ranges with `From` and `To` controls
 - cumulative map controls for hikes, trains, and private routes
 - total entries, hiking distance, train distance, and elevation gain
+- average route distance, best day distance, active days, and current metric window
 - yearly and monthly distance summaries
 - community feed cards with author, likes, captions, tags, duration, elevation, notes, distance, and clicked waypoint coordinates
 - top contributors and trending tags for the current filter/timeframe
@@ -38,6 +40,7 @@ The overview page reads the same saved route data as the map page and displays:
 - route comments in the selected-route detail card
 - saved contributor profile defaults for route authorship and comments
 - quick timeframe presets for 30 days, 90 days, this year, and all time
+- custom timeframe metrics that update the feed, map, contributor summaries, tags, and dashboard cards together
 - optional demo community routes to preview the cumulative social map before adding real entries
 
 ```html
