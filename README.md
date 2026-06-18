@@ -32,6 +32,8 @@ The overview page reads the same saved route data as the map page and displays:
 - yearly and monthly distance summaries
 - community feed cards with author, likes, captions, tags, duration, elevation, notes, distance, and clicked waypoint coordinates
 - top contributors and trending tags for the current filter/timeframe
+- clickable contributor profiles with route totals, distance, elevation, likes, and top tags
+- feed-card route focusing on the cumulative map
 - optional demo community routes to preview the cumulative social map before adding real entries
 
 ```html

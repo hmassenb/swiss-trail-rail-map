@@ -230,6 +230,17 @@
       padding-top: 6px;
     }
 
+    .summary-row.action {
+      cursor: pointer;
+      border-radius: 6px;
+      padding: 7px;
+      margin: -1px -7px 0;
+    }
+
+    .summary-row.action:hover {
+      background: #eef2ee;
+    }
+
     .summary-row:first-child {
       border-top: 0;
       padding-top: 0;
@@ -286,6 +297,19 @@
       background: #eef2ee;
     }
 
+    button.author {
+      border: 0;
+      background: transparent;
+      padding: 0;
+      color: #2f6f91;
+      cursor: pointer;
+    }
+
+    button.author:hover {
+      text-decoration: underline;
+      background: transparent;
+    }
+
     .meta {
       display: flex;
       flex-wrap: wrap;
@@ -340,6 +364,34 @@
 
     .feed-title h2 {
       margin: 0;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+
+    .profile-panel {
+      display: none;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--green);
+      border-radius: 8px;
+      padding: 14px;
+      gap: 10px;
+    }
+
+    .profile-panel.active {
+      display: grid;
+    }
+
+    .profile-head {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .profile-head h2 {
+      margin: 0 0 4px;
       font-size: 18px;
       letter-spacing: 0;
     }
@@ -443,10 +495,27 @@
           <div class="summary-list" id="tagSummary"></div>
         </div>
       </section>
+      <section class="profile-panel" id="profilePanel">
+        <div class="profile-head">
+          <div>
+            <h2 id="profileName">Contributor</h2>
+            <div class="dashboard-note" id="profileSubtitle">Contributor profile</div>
+          </div>
+          <button class="button" id="clearProfileBtn" type="button">Show everyone</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><strong id="profileRoutes">0</strong><span>Routes</span></div>
+          <div class="stat"><strong id="profileKm">0 km</strong><span>Total distance</span></div>
+          <div class="stat"><strong id="profileGain">0 m</strong><span>Elevation gain</span></div>
+          <div class="stat"><strong id="profileLikes">0</strong><span>Likes</span></div>
+        </div>
+        <div class="summary-list" id="profileTags"></div>
+      </section>
       <div class="feed-title">
         <h2>Community Feed</h2>
         <span class="dashboard-note" id="feedScope">Showing public routes for all time.</span>
       </div>
+      <div class="storage-note" id="focusNote">Click a feed card to focus its route on the map.</div>
       <section class="log" id="entryLog"></section>
     </main>
   </div>
@@ -457,7 +526,8 @@
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
     const state = {
       routes: [],
-      filtered: []
+      filtered: [],
+      selectedAuthor: ""
     };
 
     const el = {
@@ -488,6 +558,16 @@
       monthSummary: document.getElementById("monthSummary"),
       contributorSummary: document.getElementById("contributorSummary"),
       tagSummary: document.getElementById("tagSummary"),
+      profilePanel: document.getElementById("profilePanel"),
+      profileName: document.getElementById("profileName"),
+      profileSubtitle: document.getElementById("profileSubtitle"),
+      profileRoutes: document.getElementById("profileRoutes"),
+      profileKm: document.getElementById("profileKm"),
+      profileGain: document.getElementById("profileGain"),
+      profileLikes: document.getElementById("profileLikes"),
+      profileTags: document.getElementById("profileTags"),
+      clearProfileBtn: document.getElementById("clearProfileBtn"),
+      focusNote: document.getElementById("focusNote"),
       entryLog: document.getElementById("entryLog")
     };
 
@@ -737,6 +817,7 @@
       state.filtered = state.routes.filter(route => {
         if (type !== "all" && route.type !== type) return false;
         if (visibility !== "all" && route.visibility !== visibility) return false;
+        if (state.selectedAuthor && (route.author || "Anonymous hiker") !== state.selectedAuthor) return false;
         if (tag !== "all" && !(route.tags || []).includes(tag)) return false;
         if (!dateInTimeframe(route.date, time)) return false;
         if (!query) return true;
@@ -785,7 +866,8 @@
       const time = el.timeFilter.options[el.timeFilter.selectedIndex].textContent.toLowerCase();
       const type = el.typeFilter.options[el.typeFilter.selectedIndex].textContent.toLowerCase();
       const tag = el.tagFilter.value === "all" ? "" : ` tagged ${el.tagFilter.value}`;
-      return `${visibility} ${type}${tag} for ${time}`;
+      const author = state.selectedAuthor ? ` by ${state.selectedAuthor}` : "";
+      return `${visibility} ${type}${tag}${author} for ${time}`;
     }
 
     function routesForMap() {
@@ -802,6 +884,7 @@
     function render() {
       renderStats();
       renderSummaries();
+      renderProfile();
       renderMap();
       renderLog();
       el.dashboardNote.textContent = `Metrics currently summarize ${state.filtered.length} ${scopeLabel()}.`;
@@ -874,7 +957,7 @@
         .slice(0, 6);
       if (!rows.length) return `<div class="summary-row"><span>No contributors yet.</span><strong></strong></div>`;
       return rows.map(([author, data]) => `
-        <div class="summary-row">
+        <div class="summary-row action" data-author="${escapeHtml(author)}">
           <span>${escapeHtml(author)} · ${data.count} post${data.count === 1 ? "" : "s"} · ${data.likes} likes</span>
           <strong>${formatKm(data.km)}</strong>
         </div>
@@ -900,6 +983,34 @@
           <strong>${formatKm(data.km)}</strong>
         </div>
       `).join("");
+    }
+
+    function renderProfile() {
+      if (!state.selectedAuthor) {
+        el.profilePanel.classList.remove("active");
+        return;
+      }
+      const routes = state.routes.filter(route => (route.author || "Anonymous hiker") === state.selectedAuthor);
+      const totals = routes.reduce((acc, route) => {
+        acc.km += distanceKm(route.points);
+        acc.gain += Number(route.elevationGainM) || 0;
+        acc.likes += Number(route.likes) || 0;
+        (route.tags || []).forEach(tag => {
+          acc.tags[tag] = (acc.tags[tag] || 0) + 1;
+        });
+        return acc;
+      }, { km: 0, gain: 0, likes: 0, tags: {} });
+      el.profilePanel.classList.add("active");
+      el.profileName.textContent = state.selectedAuthor;
+      el.profileSubtitle.textContent = `${routes.length} saved route${routes.length === 1 ? "" : "s"} across all time`;
+      el.profileRoutes.textContent = routes.length;
+      el.profileKm.textContent = formatKm(totals.km);
+      el.profileGain.textContent = `${Math.round(totals.gain)} m`;
+      el.profileLikes.textContent = totals.likes;
+      const tags = Object.entries(totals.tags).sort(([, a], [, b]) => b - a).slice(0, 8);
+      el.profileTags.innerHTML = tags.length
+        ? tags.map(([tag, count]) => `<div class="summary-row"><span>${escapeHtml(tag)}</span><strong>${count}</strong></div>`).join("")
+        : `<div class="summary-row"><span>No tags for this contributor yet.</span><strong></strong></div>`;
     }
 
     function renderMap() {
@@ -942,7 +1053,8 @@
             <div class="feed-head">
               <div>
                 <h2>${index + 1}. ${escapeHtml(route.name)}</h2>
-                <div class="author">${escapeHtml(route.author || "Anonymous hiker")} · ${route.visibility === "private" ? "Private" : "Community"}</div>
+                <button class="author like-button" type="button" data-author="${escapeHtml(route.author || "Anonymous hiker")}">${escapeHtml(route.author || "Anonymous hiker")}</button>
+                <div class="author">${route.visibility === "private" ? "Private" : "Community"}</div>
               </div>
               <button class="like-button" type="button" data-like-id="${route.id}">${Number(route.likes) || 0} likes</button>
             </div>
@@ -963,6 +1075,7 @@
         `;
         entry.addEventListener("click", () => {
           overviewMap.fitBounds(L.latLngBounds(route.points.map(point => L.latLng(point[0], point[1]))).pad(0.18));
+          el.focusNote.textContent = `Focused ${route.name} by ${route.author || "Anonymous hiker"} on the map.`;
         });
         el.entryLog.appendChild(entry);
       });
@@ -994,7 +1107,24 @@
     el.seedDemoBtn.addEventListener("click", seedDemoRoutes);
     el.clearDemoBtn.addEventListener("click", clearDemoRoutes);
     el.exportCommunityBtn.addEventListener("click", exportCommunityPackage);
+    el.clearProfileBtn.addEventListener("click", () => {
+      state.selectedAuthor = "";
+      applyFilters();
+    });
+    el.contributorSummary.addEventListener("click", event => {
+      const row = event.target.closest("[data-author]");
+      if (!row) return;
+      state.selectedAuthor = row.dataset.author;
+      applyFilters();
+    });
     el.entryLog.addEventListener("click", event => {
+      const authorButton = event.target.closest("button[data-author]");
+      if (authorButton) {
+        event.stopPropagation();
+        state.selectedAuthor = authorButton.dataset.author;
+        applyFilters();
+        return;
+      }
       const button = event.target.closest("button[data-like-id]");
       if (!button) return;
       event.stopPropagation();
