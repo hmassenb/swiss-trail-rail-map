@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Swiss Trail & Rail Log</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --ink: #192126;
+      --muted: #5a666d;
+      --line: #d4dadd;
+      --panel: #eef2ee;
+      --paper: #ffffff;
+      --green: #4f7964;
+      --blue: #537c98;
+      --red: #b54839;
+      --gold: #b36b17;
+      --shadow: 0 18px 48px rgba(15, 24, 31, 0.18);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #d7ded8;
+      overflow: hidden;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+      height: 100vh;
+      width: 100vw;
+    }
+
+    aside {
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      z-index: 5;
+    }
+
+    header {
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    h1 {
+      font-size: 20px;
+      line-height: 1.15;
+      margin: 0 0 14px;
+      letter-spacing: 0;
+      font-weight: 760;
+    }
+
+    .search-row, .button-row, .field-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    input, select, textarea, button {
+      font: inherit;
+      border-radius: 6px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid #c6ced1;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 10px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 58px;
+      resize: vertical;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: #6b9280;
+      box-shadow: 0 0 0 3px rgba(39, 116, 81, 0.14);
+    }
+
+    button {
+      border: 1px solid #bbc5c8;
+      background: #fff;
+      color: var(--ink);
+      min-height: 38px;
+      padding: 8px 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+
+    button:hover { background: #eef2f1; }
+    button:disabled { opacity: 0.48; cursor: not-allowed; }
+
+    .primary {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+    }
+
+    .primary:hover { background: #426a56; }
+
+    .danger {
+      color: #fff;
+      background: var(--red);
+      border-color: var(--red);
+    }
+
+    .danger:hover { background: #9f3d31; }
+
+    .icon-button {
+      width: 38px;
+      min-width: 38px;
+      padding: 0;
+      font-size: 18px;
+      line-height: 1;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 12px 18px 0;
+      background: var(--panel);
+    }
+
+    .tab {
+      border: 1px solid var(--line);
+      background: #fff;
+      font-weight: 680;
+    }
+
+    .tab.active {
+      background: #1f2b2f;
+      color: #fff;
+      border-color: #1f2b2f;
+    }
+
+    .panel-scroll {
+      padding: 14px 18px 18px;
+      overflow: auto;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .stat {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 21px;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    form {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
+    }
+
+    .coords {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: #38464d;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 9px;
+      min-height: 54px;
+      word-break: break-word;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      margin: -3px 0 0;
+    }
+
+    .storage-note {
+      color: #405057;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      margin-bottom: 14px;
+    }
+
+    .storage-note.warning {
+      color: #7a3b2f;
+      border-color: #d2aaa2;
+      background: #fff7f5;
+    }
+
+    .route-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .route-card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--green);
+      border-radius: 8px;
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .route-card.train { border-left-color: var(--blue); }
+
+    .route-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .route-title {
+      font-weight: 740;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .route-meta {
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .route-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .route-actions button {
+      min-height: 30px;
+      width: 30px;
+      min-width: 30px;
+      padding: 0;
+      font-size: 14px;
+    }
+
+    #map {
+      min-width: 0;
+      height: 100vh;
+      background: #c2cec4;
+    }
+
+    .leaflet-control-layers,
+    .leaflet-control-zoom,
+    .leaflet-bar {
+      border: 0 !important;
+      box-shadow: var(--shadow) !important;
+    }
+
+    .map-status {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 500;
+      background: rgba(248, 249, 246, 0.94);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      box-shadow: var(--shadow);
+      pointer-events: none;
+      max-width: min(430px, calc(100vw - 32px));
+    }
+
+    .empty {
+      color: var(--muted);
+      border: 1px dashed #b9c3c6;
+      border-radius: 8px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.72);
+      font-size: 13px;
+    }
+
+    .file-input {
+      min-height: 38px;
+      padding: 7px;
+      font-size: 12px;
+    }
+
+    @media (max-width: 780px) {
+      body { overflow: auto; }
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(390px, 48vh) minmax(420px, auto);
+        height: auto;
+        min-height: 100vh;
+      }
+      #map {
+        grid-row: 1;
+        height: 48vh;
+        min-height: 390px;
+      }
+      aside {
+        grid-row: 2;
+        min-height: 52vh;
+        border-right: 0;
+        border-top: 1px solid var(--line);
+      }
+      .panel-scroll { max-height: none; }
+      .map-status { bottom: auto; top: 12px; right: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <header>
+        <h1>Swiss Trail & Rail Log</h1>
+        <div class="search-row">
+          <input id="searchInput" type="search" placeholder="Search village, lake, pass, peak" />
+          <button class="icon-button" id="searchBtn" type="button" title="Search">⌕</button>
+          <button class="icon-button" id="fitSwissBtn" type="button" title="Switzerland">⌂</button>
+        </div>
+      </header>
+
+      <div class="tabs">
+        <button class="tab active" id="tabHike" type="button">Hikes</button>
+        <button class="tab" id="tabTrain" type="button">Trains</button>
+      </div>
+
+      <div class="panel-scroll">
+        <div class="stats">
+          <div class="stat"><strong id="hikeKm">0 km</strong><span>Hiked</span></div>
+          <div class="stat"><strong id="trainKm">0 km</strong><span>By train</span></div>
+        </div>
+        <div class="storage-note" id="storageNote">Checking browser storage...</div>
+
+        <form id="routeForm">
+          <label>
+            Name
+            <input id="routeName" required placeholder="Zurich to Uetliberg" />
+          </label>
+          <div class="field-row">
+            <label>
+              Date
+              <input id="routeDate" type="date" />
+            </label>
+            <label>
+              Type
+              <select id="routeType">
+                <option value="hike">Hike</option>
+                <option value="train">Train</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            Notes
+            <textarea id="routeNotes" placeholder="Weather, companions, line number, favorite section"></textarea>
+          </label>
+          <div>
+            <div class="coords" id="coordPreview">No route points selected</div>
+            <p class="hint">Click the map to add waypoints. The preview will fit them to mapped paths or rail lines when routing is available.</p>
+          </div>
+          <div class="button-row">
+            <button id="saveRouteBtn" class="primary" type="submit">Save route</button>
+            <button id="undoPointBtn" type="button">Undo</button>
+            <button id="clearDraftBtn" type="button">Clear</button>
+          </div>
+        </form>
+
+        <form id="importForm">
+          <label>
+            GPX / JSON import
+            <input class="file-input" id="importFile" type="file" accept=".gpx,.json,application/gpx+xml,application/json" />
+          </label>
+          <div class="button-row">
+            <button id="exportJsonBtn" type="button">Export JSON</button>
+            <button id="exportGpxBtn" type="button">Export GPX</button>
+          </div>
+        </form>
+
+        <div class="route-list" id="routeList"></div>
+      </div>
+    </aside>
+    <main id="map" aria-label="Topographic map of Switzerland"></main>
+  </div>
+
+  <div class="map-status" id="mapStatus">Ready</div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
+    const STORAGE_KEY = "swiss-trail-rail-log:v1";
+    const state = {
+      activeType: "hike",
+      draft: [],
+      draftRoute: [],
+      routes: [],
+      layers: new Map(),
+      selectedId: null,
+      routingRequestId: 0
+    };
+
+    const el = {
+      searchInput: document.getElementById("searchInput"),
+      searchBtn: document.getElementById("searchBtn"),
+      fitSwissBtn: document.getElementById("fitSwissBtn"),
+      tabHike: document.getElementById("tabHike"),
+      tabTrain: document.getElementById("tabTrain"),
+      routeForm: document.getElementById("routeForm"),
+      routeName: document.getElementById("routeName"),
+      routeDate: document.getElementById("routeDate"),
+      routeType: document.getElementById("routeType"),
+      routeNotes: document.getElementById("routeNotes"),
+      coordPreview: document.getElementById("coordPreview"),
+      saveRouteBtn: document.getElementById("saveRouteBtn"),
+      undoPointBtn: document.getElementById("undoPointBtn"),
+      clearDraftBtn: document.getElementById("clearDraftBtn"),
+      importFile: document.getElementById("importFile"),
+      exportJsonBtn: document.getElementById("exportJsonBtn"),
+      exportGpxBtn: document.getElementById("exportGpxBtn"),
+      routeList: document.getElementById("routeList"),
+      hikeKm: document.getElementById("hikeKm"),
+      trainKm: document.getElementById("trainKm"),
+      storageNote: document.getElementById("storageNote"),
+      mapStatus: document.getElementById("mapStatus")
+    };
+
+    const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+      maxZoom: 17,
+      attribution: "Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap"
+    });
+    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "© OpenStreetMap contributors"
+    });
+    const hikingOverlay = L.tileLayer("https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      opacity: 0.72,
+      attribution: "Hiking routes: Waymarked Trails"
+    });
+    const railOverlay = L.tileLayer("https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      opacity: 0.72,
+      attribution: "Railway overlay: OpenRailwayMap"
+    });
+
+    const map = L.map("map", {
+      layers: [topo, hikingOverlay, railOverlay],
+      maxBounds: SWISS_BOUNDS.pad(0.75),
+      doubleClickZoom: false
+    }).fitBounds(SWISS_BOUNDS);
+
+    L.control.layers(
+      { "Topographic": topo, "OpenStreetMap": osm },
+      { "Hiking network": hikingOverlay, "Rail network": railOverlay },
+      { collapsed: false }
+    ).addTo(map);
+
+    const routeGroup = L.featureGroup().addTo(map);
+    const draftGroup = L.featureGroup().addTo(map);
+    let draftLine = null;
+
+    function setStatus(text) {
+      el.mapStatus.textContent = text;
+      window.clearTimeout(setStatus.timer);
+      setStatus.timer = window.setTimeout(() => {
+        el.mapStatus.textContent = state.draft.length ? `${state.draft.length} draft points` : "Ready";
+      }, 2800);
+    }
+
+    function canUseLocalStorage() {
+      try {
+        const testKey = `${STORAGE_KEY}:test`;
+        localStorage.setItem(testKey, "1");
+        localStorage.removeItem(testKey);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function updateStorageNote(ok = canUseLocalStorage()) {
+      const count = state.routes.length;
+      el.storageNote.classList.toggle("warning", !ok);
+      el.storageNote.textContent = ok
+        ? `${count} saved route${count === 1 ? "" : "s"} stored in this browser. Export JSON for a backup or to move browsers.`
+        : "Browser storage is blocked. Routes stay visible for now, but export JSON to avoid losing them.";
+    }
+
+    function loadRoutes() {
+      try {
+        if (!canUseLocalStorage()) {
+          state.routes = [];
+          updateStorageNote(false);
+          return;
+        }
+        const rawRoutes = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        state.routes = Array.isArray(rawRoutes) ? rawRoutes.map(normalizeSavedRoute).filter(Boolean) : [];
+        saveRoutes(true);
+      } catch {
+        state.routes = [];
+        updateStorageNote(false);
+      }
+    }
+
+    function saveRoutes(silent = false) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.routes));
+        localStorage.setItem(`${STORAGE_KEY}:savedAt`, new Date().toISOString());
+        updateStorageNote(true);
+        return true;
+      } catch {
+        updateStorageNote(false);
+        if (!silent) setStatus("Could not save in browser storage; export JSON");
+        return false;
+      }
+    }
+
+    function routeColor(type) {
+      return type === "train" ? "#2f6f91" : "#2f7654";
+    }
+
+    function routeWeight(type) {
+      return type === "train" ? 6 : 5;
+    }
+
+    function formatKm(value) {
+      if (!Number.isFinite(value)) return "0 km";
+      return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} km`;
+    }
+
+    function distanceKm(points) {
+      let total = 0;
+      for (let i = 1; i < points.length; i++) {
+        total += L.latLng(points[i - 1][0], points[i - 1][1]).distanceTo(L.latLng(points[i][0], points[i][1])) / 1000;
+      }
+      return total;
+    }
+
+    function boundsFor(points) {
+      return L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
+    }
+
+    function routingProfile(type) {
+      return type === "train" ? "rail" : "trekking";
+    }
+
+    async function routedGeometry(waypoints, type) {
+      if (waypoints.length < 2) return waypoints.map(point => [...point]);
+      const lonLats = waypoints.map(point => `${point[1]},${point[0]}`).join("|");
+      const url = `https://brouter.de/brouter?lonlats=${encodeURIComponent(lonLats)}&profile=${routingProfile(type)}&alternativeidx=0&format=geojson`;
+      const response = await fetch(url, { headers: { "Accept": "application/geo+json, application/json" } });
+      if (!response.ok) throw new Error("Routing service unavailable");
+      const data = await response.json();
+      const coordinates = data?.features?.[0]?.geometry?.coordinates || [];
+      const routed = coordinates
+        .map(point => [Number(point[1]), Number(point[0])])
+        .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+      if (routed.length < 2) throw new Error("No routed path found");
+      return routed;
+    }
+
+    async function updateDraftRoute() {
+      const requestId = ++state.routingRequestId;
+      state.draftRoute = state.draft.map(point => [...point]);
+      renderDraft();
+      if (state.draft.length < 2) return;
+      setStatus(state.activeType === "train" ? "Routing along rail lines" : "Routing along mapped paths");
+      try {
+        const routed = await routedGeometry(state.draft, state.activeType);
+        if (requestId !== state.routingRequestId) return;
+        state.draftRoute = routed;
+        renderDraft();
+        setStatus("Route fitted to mapped network");
+      } catch {
+        if (requestId !== state.routingRequestId) return;
+        state.draftRoute = state.draft.map(point => [...point]);
+        renderDraft();
+        setStatus("Routing failed; using direct preview");
+      }
+    }
+
+    function renderDraft() {
+      draftGroup.clearLayers();
+      if (draftLine) draftLine.remove();
+      state.draft.forEach((point, index) => {
+        const marker = L.circleMarker(point, {
+          radius: 5,
+          color: "#fff",
+          weight: 2,
+          fillColor: routeColor(state.activeType),
+          fillOpacity: 1
+        }).bindTooltip(String(index + 1), { permanent: false });
+        marker.on("dblclick", () => {
+          state.draft.splice(index, 1);
+          updateDraftRoute();
+        });
+        draftGroup.addLayer(marker);
+      });
+      if (state.draftRoute.length > 1) {
+        draftLine = L.polyline(state.draftRoute, {
+          color: routeColor(state.activeType),
+          weight: Math.max(4, routeWeight(state.activeType) - 1),
+          opacity: 0.72,
+          dashArray: "7 7"
+        }).addTo(draftGroup);
+      }
+      el.coordPreview.textContent = state.draft.length
+        ? state.draft.map(p => `${p[0].toFixed(5)}, ${p[1].toFixed(5)}`).join("  |  ")
+        : "No route points selected";
+      el.saveRouteBtn.disabled = state.draft.length < 2;
+      el.undoPointBtn.disabled = state.draft.length === 0;
+      el.clearDraftBtn.disabled = state.draft.length === 0;
+    }
+
+    function popupHtml(route) {
+      const km = formatKm(distanceKm(route.points));
+      const date = route.date ? `<br><strong>Date:</strong> ${escapeHtml(route.date)}` : "";
+      const notes = route.notes ? `<br><strong>Notes:</strong> ${escapeHtml(route.notes)}` : "";
+      return `<strong>${escapeHtml(route.name)}</strong><br><strong>Type:</strong> ${route.type === "train" ? "Train" : "Hike"}<br><strong>Distance:</strong> ${km}${date}${notes}`;
+    }
+
+    function renderRoutes() {
+      routeGroup.clearLayers();
+      state.layers.clear();
+      state.routes.forEach(route => {
+        if (!route.points || route.points.length < 2) return;
+        const casing = L.polyline(route.points, {
+          color: "#fffdf7",
+          weight: routeWeight(route.type) + 5,
+          opacity: 0.78,
+          interactive: false
+        });
+        const line = L.polyline(route.points, {
+          color: routeColor(route.type),
+          weight: state.selectedId === route.id ? routeWeight(route.type) + 3 : routeWeight(route.type),
+          opacity: state.selectedId === route.id ? 1 : 0.92
+        }).bindPopup(popupHtml(route));
+        line.on("click", () => selectRoute(route.id));
+        routeGroup.addLayer(casing);
+        routeGroup.addLayer(line);
+        state.layers.set(route.id, line);
+      });
+      renderList();
+      renderStats();
+    }
+
+    function renderList() {
+      const filtered = state.routes
+        .filter(route => route.type === state.activeType)
+        .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      if (!filtered.length) {
+        el.routeList.innerHTML = `<div class="empty">No ${state.activeType === "train" ? "train rides" : "hikes"} saved yet.</div>`;
+        return;
+      }
+      el.routeList.innerHTML = "";
+      filtered.forEach(route => {
+        const card = document.createElement("article");
+        card.className = `route-card ${route.type}`;
+        card.innerHTML = `
+          <div class="route-head">
+            <div>
+              <div class="route-title">${escapeHtml(route.name)}</div>
+              <div class="route-meta">
+                <span>${route.type === "train" ? "Train" : "Hike"}</span>
+                <span>${formatKm(distanceKm(route.points))}</span>
+                ${route.date ? `<span>${escapeHtml(route.date)}</span>` : ""}
+              </div>
+            </div>
+            <div class="route-actions">
+              <button type="button" title="Zoom" data-action="zoom" data-id="${route.id}">⌖</button>
+              <button type="button" title="Edit" data-action="edit" data-id="${route.id}">✎</button>
+              <button type="button" title="Delete" data-action="delete" data-id="${route.id}">×</button>
+            </div>
+          </div>
+          ${route.notes ? `<div class="route-meta">${escapeHtml(route.notes)}</div>` : ""}
+        `;
+        el.routeList.appendChild(card);
+      });
+    }
+
+    function renderStats() {
+      const totals = state.routes.reduce((acc, route) => {
+        acc[route.type] += distanceKm(route.points || []);
+        return acc;
+      }, { hike: 0, train: 0 });
+      el.hikeKm.textContent = formatKm(totals.hike);
+      el.trainKm.textContent = formatKm(totals.train);
+    }
+
+    function selectRoute(id, zoom = false) {
+      state.selectedId = id;
+      const route = state.routes.find(item => item.id === id);
+      renderRoutes();
+      const layer = state.layers.get(id);
+      if (layer) layer.openPopup();
+      if (zoom && route?.points?.length > 1) map.fitBounds(boundsFor(route.points).pad(0.18));
+    }
+
+    function activateType(type) {
+      state.activeType = type;
+      el.routeType.value = type;
+      el.tabHike.classList.toggle("active", type === "hike");
+      el.tabTrain.classList.toggle("active", type === "train");
+      if (state.draft.length > 1) {
+        updateDraftRoute();
+      } else {
+        renderDraft();
+      }
+      renderRoutes();
+    }
+
+    function resetForm() {
+      el.routeForm.reset();
+      el.routeType.value = state.activeType;
+      state.draft = [];
+      state.draftRoute = [];
+      state.selectedId = null;
+      state.routingRequestId++;
+      window.clearTimeout(setStatus.timer);
+      el.mapStatus.textContent = "Ready";
+      delete el.routeForm.dataset.editId;
+      renderDraft();
+      renderRoutes();
+    }
+
+    function editRoute(id) {
+      const route = state.routes.find(item => item.id === id);
+      if (!route) return;
+      activateType(route.type);
+      el.routeName.value = route.name;
+      el.routeDate.value = route.date || "";
+      el.routeNotes.value = route.notes || "";
+      el.routeForm.dataset.editId = route.id;
+      state.draft = (route.waypoints || route.points).map(p => [p[0], p[1]]);
+      state.draftRoute = route.points.map(p => [p[0], p[1]]);
+      renderDraft();
+      map.fitBounds(boundsFor(route.points).pad(0.18));
+      setStatus("Editing saved route");
+    }
+
+    function deleteRoute(id) {
+      const route = state.routes.find(item => item.id === id);
+      if (!route) return;
+      if (!confirm(`Delete "${route.name}"?`)) return;
+      state.routes = state.routes.filter(item => item.id !== id);
+      if (state.selectedId === id) state.selectedId = null;
+      saveRoutes();
+      renderRoutes();
+      setStatus("Route deleted");
+    }
+
+    async function saveRoute(event) {
+      event.preventDefault();
+      if (state.draft.length < 2) return;
+      const routeName = el.routeName.value.trim();
+      if (!routeName) return;
+      let routedPoints = state.draftRoute.length > 1 ? state.draftRoute : state.draft;
+      el.saveRouteBtn.disabled = true;
+      setStatus("Preparing routed geometry");
+      try {
+        routedPoints = await routedGeometry(state.draft, el.routeType.value);
+      } catch {
+        routedPoints = state.draftRoute.length > 1 ? state.draftRoute : state.draft;
+        setStatus("Saved with direct fallback");
+      }
+      const editId = el.routeForm.dataset.editId;
+      const route = {
+        id: editId || crypto.randomUUID(),
+        name: routeName,
+        type: el.routeType.value,
+        date: el.routeDate.value,
+        notes: el.routeNotes.value.trim(),
+        waypoints: state.draft.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]),
+        points: routedPoints.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]),
+        updatedAt: new Date().toISOString()
+      };
+      if (editId) {
+        state.routes = state.routes.map(item => item.id === editId ? route : item);
+      } else {
+        state.routes.push(route);
+      }
+      state.activeType = route.type;
+      saveRoutes();
+      resetForm();
+      activateType(route.type);
+      selectRoute(route.id, true);
+      setStatus("Route saved");
+    }
+
+    async function searchPlace() {
+      const query = el.searchInput.value.trim();
+      if (!query) return;
+      setStatus("Searching");
+      const url = new URL("https://nominatim.openstreetmap.org/search");
+      url.searchParams.set("format", "jsonv2");
+      url.searchParams.set("limit", "1");
+      url.searchParams.set("countrycodes", "ch");
+      url.searchParams.set("q", query);
+      try {
+        const response = await fetch(url, { headers: { "Accept": "application/json" } });
+        const places = await response.json();
+        if (!places.length) {
+          setStatus("No Swiss result found");
+          return;
+        }
+        const place = places[0];
+        const lat = Number(place.lat);
+        const lon = Number(place.lon);
+        map.setView([lat, lon], Math.max(map.getZoom(), 13));
+        L.marker([lat, lon]).addTo(map).bindPopup(escapeHtml(place.display_name)).openPopup();
+        setStatus(place.display_name);
+      } catch {
+        setStatus("Search failed");
+      }
+    }
+
+    function exportJson() {
+      download("swiss-trail-rail-log.json", JSON.stringify(state.routes, null, 2), "application/json");
+    }
+
+    function exportGpx() {
+      const segments = state.routes.map(route => {
+        const points = route.points.map(point => `      <trkpt lat="${point[0]}" lon="${point[1]}"></trkpt>`).join("\n");
+        const type = route.type === "train" ? "train" : "hike";
+        return `  <trk>
+    <name>${xmlEscape(route.name)}</name>
+    <type>${type}</type>
+    ${route.date ? `<time>${xmlEscape(route.date)}</time>` : ""}
+    ${route.notes ? `<desc>${xmlEscape(route.notes)}</desc>` : ""}
+    <trkseg>
+${points}
+    </trkseg>
+  </trk>`;
+      }).join("\n");
+      const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Swiss Trail & Rail Log" xmlns="http://www.topografix.com/GPX/1/1">
+${segments}
+</gpx>`;
+      download("swiss-trail-rail-log.gpx", gpx, "application/gpx+xml");
+    }
+
+    function download(filename, content, mime) {
+      const blob = new Blob([content], { type: mime });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+    }
+
+    async function importFile(file) {
+      const text = await file.text();
+      if (file.name.toLowerCase().endsWith(".json")) {
+        const imported = JSON.parse(text);
+        if (!Array.isArray(imported)) throw new Error("JSON must contain a route array");
+        state.routes = [...state.routes, ...imported.map(normalizeRoute).filter(Boolean)];
+      } else {
+        state.routes = [...state.routes, ...parseGpx(text)];
+      }
+      saveRoutes();
+      renderRoutes();
+      setStatus("Import complete");
+    }
+
+    function normalizeSavedRoute(route) {
+      const normalized = normalizeRoute(route);
+      if (!normalized) return null;
+      return {
+        ...normalized,
+        id: route.id || normalized.id,
+        updatedAt: route.updatedAt || normalized.updatedAt
+      };
+    }
+
+    function normalizeRoute(route) {
+      if (!route?.points || route.points.length < 2) return null;
+      const points = route.points
+        .map(point => [Number(point[0]), Number(point[1])])
+        .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+      const waypoints = (route.waypoints || route.points)
+        .map(point => [Number(point[0]), Number(point[1])])
+        .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+      if (points.length < 2 || waypoints.length < 2) return null;
+      return {
+        id: crypto.randomUUID(),
+        name: String(route.name || "Imported route"),
+        type: route.type === "train" ? "train" : "hike",
+        date: route.date || "",
+        notes: route.notes || "",
+        waypoints,
+        points,
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    function parseGpx(text) {
+      const doc = new DOMParser().parseFromString(text, "application/xml");
+      if (doc.querySelector("parsererror")) throw new Error("Invalid GPX");
+      const tracks = [...doc.getElementsByTagName("trk")];
+      const routes = [];
+      tracks.forEach((track, index) => {
+        const points = [...track.getElementsByTagName("trkpt")].map(point => [
+          Number(point.getAttribute("lat")),
+          Number(point.getAttribute("lon"))
+        ]).filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+        if (points.length < 2) return;
+        const typeText = (track.getElementsByTagName("type")[0]?.textContent || "").toLowerCase();
+        routes.push({
+          id: crypto.randomUUID(),
+          name: track.getElementsByTagName("name")[0]?.textContent || `Imported GPX ${index + 1}`,
+          type: typeText.includes("train") || typeText.includes("rail") ? "train" : "hike",
+          date: (track.getElementsByTagName("time")[0]?.textContent || "").slice(0, 10),
+          notes: track.getElementsByTagName("desc")[0]?.textContent || "",
+          waypoints: points,
+          points,
+          updatedAt: new Date().toISOString()
+        });
+      });
+      return routes;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    function xmlEscape(value) {
+      return escapeHtml(value);
+    }
+
+    map.on("click", event => {
+      if (!SWISS_BOUNDS.pad(0.1).contains(event.latlng)) {
+        setStatus("Point is outside Switzerland");
+        return;
+      }
+      state.draft.push([event.latlng.lat, event.latlng.lng]);
+      updateDraftRoute();
+    });
+
+    el.routeForm.addEventListener("submit", saveRoute);
+    el.undoPointBtn.addEventListener("click", () => {
+      state.draft.pop();
+      updateDraftRoute();
+    });
+    el.clearDraftBtn.addEventListener("click", resetForm);
+    el.routeType.addEventListener("change", event => activateType(event.target.value));
+    el.tabHike.addEventListener("click", () => activateType("hike"));
+    el.tabTrain.addEventListener("click", () => activateType("train"));
+    el.fitSwissBtn.addEventListener("click", () => map.fitBounds(SWISS_BOUNDS));
+    el.searchBtn.addEventListener("click", searchPlace);
+    el.searchInput.addEventListener("keydown", event => {
+      if (event.key === "Enter") searchPlace();
+    });
+    el.exportJsonBtn.addEventListener("click", exportJson);
+    el.exportGpxBtn.addEventListener("click", exportGpx);
+    el.importFile.addEventListener("change", async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      try {
+        await importFile(file);
+      } catch (error) {
+        setStatus(error.message || "Import failed");
+      } finally {
+        event.target.value = "";
+      }
+    });
+    el.routeList.addEventListener("click", event => {
+      const button = event.target.closest("button[data-action]");
+      if (!button) return;
+      const { action, id } = button.dataset;
+      if (action === "zoom") selectRoute(id, true);
+      if (action === "edit") editRoute(id);
+      if (action === "delete") deleteRoute(id);
+    });
+    window.addEventListener("beforeunload", () => saveRoutes(true));
+
+    loadRoutes();
+    renderDraft();
+    renderRoutes();
+  </script>
+</body>
+</html>
