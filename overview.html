@@ -260,6 +260,11 @@
 
     .entry.train { border-left-color: var(--blue); }
 
+    .entry.selected {
+      box-shadow: 0 0 0 3px rgba(47, 118, 84, 0.18), var(--shadow);
+      border-color: #8eb39d;
+    }
+
     .entry h2 {
       margin: 0 0 8px;
       font-size: 16px;
@@ -382,6 +387,26 @@
       display: grid;
     }
 
+    .detail-panel {
+      display: none;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--blue);
+      border-radius: 8px;
+      padding: 14px;
+      gap: 12px;
+    }
+
+    .detail-panel.active {
+      display: grid;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      gap: 10px;
+    }
+
     .profile-head {
       display: flex;
       align-items: start;
@@ -401,10 +426,12 @@
       .stats { grid-template-columns: 1fr 1fr; }
       .entry { grid-template-columns: 1fr; }
       .summary-grid { grid-template-columns: 1fr; }
+      .detail-grid { grid-template-columns: 1fr 1fr; }
     }
 
     @media (max-width: 520px) {
       .stats { grid-template-columns: 1fr; }
+      .detail-grid { grid-template-columns: 1fr; }
       h1 { font-size: 21px; }
     }
   </style>
@@ -516,6 +543,28 @@
         <span class="dashboard-note" id="feedScope">Showing public routes for all time.</span>
       </div>
       <div class="storage-note" id="focusNote">Click a feed card to focus its route on the map.</div>
+      <section class="detail-panel" id="routeDetail">
+        <div class="profile-head">
+          <div>
+            <h2 id="detailName">Selected route</h2>
+            <div class="dashboard-note" id="detailMeta">Route detail</div>
+          </div>
+          <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="button" id="detailLikeBtn" type="button">Like</button>
+            <button class="button" id="detailAuthorBtn" type="button">View contributor</button>
+            <button class="button" id="clearDetailBtn" type="button">Close</button>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="stat"><strong id="detailDistance">0 km</strong><span>Distance</span></div>
+          <div class="stat"><strong id="detailDuration">0 h</strong><span>Duration</span></div>
+          <div class="stat"><strong id="detailGain">0 m</strong><span>Elevation gain</span></div>
+          <div class="stat"><strong id="detailLikes">0</strong><span>Likes</span></div>
+        </div>
+        <div class="meta" id="detailTags"></div>
+        <div class="notes" id="detailCaption"></div>
+        <div class="points" id="detailCoords"></div>
+      </section>
       <section class="log" id="entryLog"></section>
     </main>
   </div>
@@ -527,7 +576,8 @@
     const state = {
       routes: [],
       filtered: [],
-      selectedAuthor: ""
+      selectedAuthor: "",
+      selectedRouteId: ""
     };
 
     const el = {
@@ -568,6 +618,19 @@
       profileTags: document.getElementById("profileTags"),
       clearProfileBtn: document.getElementById("clearProfileBtn"),
       focusNote: document.getElementById("focusNote"),
+      routeDetail: document.getElementById("routeDetail"),
+      detailName: document.getElementById("detailName"),
+      detailMeta: document.getElementById("detailMeta"),
+      detailLikeBtn: document.getElementById("detailLikeBtn"),
+      detailAuthorBtn: document.getElementById("detailAuthorBtn"),
+      clearDetailBtn: document.getElementById("clearDetailBtn"),
+      detailDistance: document.getElementById("detailDistance"),
+      detailDuration: document.getElementById("detailDuration"),
+      detailGain: document.getElementById("detailGain"),
+      detailLikes: document.getElementById("detailLikes"),
+      detailTags: document.getElementById("detailTags"),
+      detailCaption: document.getElementById("detailCaption"),
+      detailCoords: document.getElementById("detailCoords"),
       entryLog: document.getElementById("entryLog")
     };
 
@@ -834,6 +897,9 @@
         return haystack.includes(query);
       });
       sortRoutes();
+      if (state.selectedRouteId && !state.filtered.some(route => route.id === state.selectedRouteId)) {
+        state.selectedRouteId = "";
+      }
       render();
     }
 
@@ -885,6 +951,7 @@
       renderStats();
       renderSummaries();
       renderProfile();
+      renderDetail();
       renderMap();
       renderLog();
       el.dashboardNote.textContent = `Metrics currently summarize ${state.filtered.length} ${scopeLabel()}.`;
@@ -1013,6 +1080,34 @@
         : `<div class="summary-row"><span>No tags for this contributor yet.</span><strong></strong></div>`;
     }
 
+    function renderDetail() {
+      const route = state.routes.find(item => item.id === state.selectedRouteId);
+      if (!route) {
+        el.routeDetail.classList.remove("active");
+        return;
+      }
+      el.routeDetail.classList.add("active");
+      el.detailName.textContent = route.name;
+      el.detailMeta.textContent = `${route.type === "train" ? "Train" : "Hike"} by ${route.author || "Anonymous hiker"}${route.date ? ` · ${route.date}` : ""}`;
+      el.detailDistance.textContent = formatKm(distanceKm(route.points));
+      el.detailDuration.textContent = route.durationHours ? `${route.durationHours} h` : "n/a";
+      el.detailGain.textContent = route.elevationGainM ? `${route.elevationGainM} m` : "n/a";
+      el.detailLikes.textContent = Number(route.likes) || 0;
+      el.detailTags.innerHTML = route.tags?.length
+        ? route.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")
+        : `<span class="pill">No tags</span>`;
+      el.detailCaption.textContent = route.caption || route.notes || "No caption yet.";
+      el.detailCoords.textContent = route.waypoints.map(point => `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`).join(" | ");
+    }
+
+    function selectRoute(route) {
+      state.selectedRouteId = route.id;
+      overviewMap.fitBounds(L.latLngBounds(route.points.map(point => L.latLng(point[0], point[1]))).pad(0.18));
+      el.focusNote.textContent = `Focused ${route.name} by ${route.author || "Anonymous hiker"} on the map.`;
+      renderDetail();
+      renderLog();
+    }
+
     function renderMap() {
       routeGroup.clearLayers();
       const mapRoutes = routesForMap();
@@ -1046,7 +1141,7 @@
       el.entryLog.innerHTML = "";
       state.filtered.forEach((route, index) => {
         const entry = document.createElement("article");
-        entry.className = `entry ${route.type}`;
+        entry.className = `entry ${route.type}${route.id === state.selectedRouteId ? " selected" : ""}`;
         entry.dataset.id = route.id;
         entry.innerHTML = `
           <div>
@@ -1074,8 +1169,7 @@
           <div class="points">${route.waypoints.map(point => `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`).join(" | ")}</div>
         `;
         entry.addEventListener("click", () => {
-          overviewMap.fitBounds(L.latLngBounds(route.points.map(point => L.latLng(point[0], point[1]))).pad(0.18));
-          el.focusNote.textContent = `Focused ${route.name} by ${route.author || "Anonymous hiker"} on the map.`;
+          selectRoute(route);
         });
         el.entryLog.appendChild(entry);
       });
@@ -1109,6 +1203,25 @@
     el.exportCommunityBtn.addEventListener("click", exportCommunityPackage);
     el.clearProfileBtn.addEventListener("click", () => {
       state.selectedAuthor = "";
+      applyFilters();
+    });
+    el.clearDetailBtn.addEventListener("click", () => {
+      state.selectedRouteId = "";
+      renderDetail();
+      renderLog();
+      el.focusNote.textContent = "Click a feed card to focus its route on the map.";
+    });
+    el.detailLikeBtn.addEventListener("click", () => {
+      const route = state.routes.find(item => item.id === state.selectedRouteId);
+      if (!route) return;
+      route.likes = (Number(route.likes) || 0) + 1;
+      saveRoutes();
+      applyFilters();
+    });
+    el.detailAuthorBtn.addEventListener("click", () => {
+      const route = state.routes.find(item => item.id === state.selectedRouteId);
+      if (!route) return;
+      state.selectedAuthor = route.author || "Anonymous hiker";
       applyFilters();
     });
     el.contributorSummary.addEventListener("click", event => {
