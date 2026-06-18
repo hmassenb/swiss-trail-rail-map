@@ -34,6 +34,7 @@ The overview page reads the same saved route data as the map page and displays:
 - yearly and monthly distance summaries
 - community feed cards with author, likes, captions, tags, duration, elevation, notes, distance, and clicked waypoint coordinates
 - social activity sorting by recent updates, likes, comments, or route metrics
+- filter-aware highlights for longest route, biggest climb, most liked, most discussed, and top contributor
 - top contributors and trending tags for the current filter/timeframe
 - estimated canton coverage for the current filter/timeframe
 - clickable contributor profiles with route totals, distance, elevation, likes, and top tags

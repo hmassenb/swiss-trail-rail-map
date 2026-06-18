@@ -606,6 +606,10 @@
           <h2>Canton Coverage</h2>
           <div class="summary-list" id="cantonSummary"></div>
         </div>
+        <div class="summary-panel">
+          <h2>Highlights</h2>
+          <div class="summary-list" id="highlightSummary"></div>
+        </div>
       </section>
       <section class="profile-panel" id="profilePanel">
         <div class="profile-head">
@@ -749,6 +753,7 @@
       contributorSummary: document.getElementById("contributorSummary"),
       tagSummary: document.getElementById("tagSummary"),
       cantonSummary: document.getElementById("cantonSummary"),
+      highlightSummary: document.getElementById("highlightSummary"),
       profilePanel: document.getElementById("profilePanel"),
       profileName: document.getElementById("profileName"),
       profileSubtitle: document.getElementById("profileSubtitle"),
@@ -1394,6 +1399,7 @@
       el.contributorSummary.innerHTML = contributorRows(state.filtered);
       el.tagSummary.innerHTML = tagRows(state.filtered);
       el.cantonSummary.innerHTML = cantonRows(state.filtered);
+      el.highlightSummary.innerHTML = highlightRows(state.filtered);
     }
 
     function groupDistance(routes, keyFn) {
@@ -1483,6 +1489,39 @@
         </div>
       `).join("");
       return `${coverage}${topRows}<div class="summary-row"><span>Estimated from nearest canton centers.</span><strong></strong></div>`;
+    }
+
+    function routeHighlight(label, route, value) {
+      if (!route) return "";
+      return `
+        <div class="summary-row action" data-route-highlight="${escapeHtml(route.id)}">
+          <span>${escapeHtml(label)} · ${escapeHtml(route.name)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </div>
+      `;
+    }
+
+    function highlightRows(routes) {
+      if (!routes.length) return `<div class="summary-row"><span>No highlights for this filter yet.</span><strong></strong></div>`;
+      const longest = routes.reduce((best, route) => distanceKm(route.points) > distanceKm(best.points) ? route : best, routes[0]);
+      const climb = routes.reduce((best, route) => (Number(route.elevationGainM) || 0) > (Number(best.elevationGainM) || 0) ? route : best, routes[0]);
+      const liked = routes.reduce((best, route) => (Number(route.likes) || 0) > (Number(best.likes) || 0) ? route : best, routes[0]);
+      const discussed = routes.reduce((best, route) => commentCount(route) > commentCount(best) ? route : best, routes[0]);
+      const contributors = routes.reduce((acc, route) => {
+        const author = route.author || "Anonymous hiker";
+        if (!acc[author]) acc[author] = { count: 0, km: 0 };
+        acc[author].count += 1;
+        acc[author].km += distanceKm(route.points);
+        return acc;
+      }, {});
+      const topContributor = Object.entries(contributors).sort(([, a], [, b]) => b.km - a.km || b.count - a.count)[0];
+      return [
+        routeHighlight("Longest route", longest, formatKm(distanceKm(longest.points))),
+        routeHighlight("Biggest climb", climb, `${Number(climb.elevationGainM) || 0} m`),
+        routeHighlight("Most liked", liked, `${Number(liked.likes) || 0}`),
+        routeHighlight("Most discussed", discussed, `${commentCount(discussed)}`),
+        topContributor ? `<div class="summary-row action" data-author="${escapeHtml(topContributor[0])}"><span>Top contributor · ${escapeHtml(topContributor[0])}</span><strong>${formatKm(topContributor[1].km)}</strong></div>` : ""
+      ].join("");
     }
 
     function renderProfile() {
@@ -1751,6 +1790,18 @@
       if (!row) return;
       state.selectedAuthor = row.dataset.author;
       applyFilters();
+    });
+    el.highlightSummary.addEventListener("click", event => {
+      const authorRow = event.target.closest("[data-author]");
+      if (authorRow) {
+        state.selectedAuthor = authorRow.dataset.author;
+        applyFilters();
+        return;
+      }
+      const routeRow = event.target.closest("[data-route-highlight]");
+      if (!routeRow) return;
+      const route = state.routes.find(item => item.id === routeRow.dataset.routeHighlight);
+      if (route) selectRoute(route);
     });
     el.entryLog.addEventListener("click", event => {
       const authorButton = event.target.closest("button[data-author]");
