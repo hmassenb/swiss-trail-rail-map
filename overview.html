@@ -234,6 +234,61 @@
     .goal-fill.routes { background: var(--blue); }
     .goal-fill.gain { background: #7c6f50; }
 
+    .progress-panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .progress-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .progress-head h2 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .progress-totals {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .progress-pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: #f6f8f6;
+      color: #344249;
+      font-size: 12px;
+      font-weight: 720;
+      white-space: nowrap;
+    }
+
+    .progress-chart {
+      width: 100%;
+      min-height: 210px;
+      border: 1px solid #edf0ee;
+      border-radius: 8px;
+      background: #f8faf8;
+    }
+
+    .progress-empty {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 12px 2px 0;
+    }
+
     .storage-note {
       color: #405057;
       background: rgba(255, 255, 255, 0.78);
@@ -742,6 +797,21 @@
           </div>
         </div>
       </section>
+      <section class="progress-panel" aria-label="Cumulative distance progress">
+        <div class="progress-head">
+          <div>
+            <h2>Cumulative Progress</h2>
+            <div class="dashboard-note" id="progressScope">Dated entries build the progress curve.</div>
+          </div>
+          <div class="progress-totals">
+            <span class="progress-pill" id="progressHikeTotal">0 km hiked</span>
+            <span class="progress-pill" id="progressTrainTotal">0 km train</span>
+            <span class="progress-pill" id="progressDateCount">0 dated entries</span>
+          </div>
+        </div>
+        <svg class="progress-chart" id="progressChart" viewBox="0 0 760 220" role="img" aria-label="Cumulative distance chart"></svg>
+        <div class="progress-empty" id="progressEmpty">Add dated routes to see distance progress over time.</div>
+      </section>
       <div class="storage-note" id="storageNote">Loading saved entries...</div>
       <div class="dashboard-note" id="dashboardNote">Metrics reflect the current filters.</div>
       <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -920,6 +990,12 @@
       goalGainValue: document.getElementById("goalGainValue"),
       goalGainFill: document.getElementById("goalGainFill"),
       goalGainMeta: document.getElementById("goalGainMeta"),
+      progressScope: document.getElementById("progressScope"),
+      progressHikeTotal: document.getElementById("progressHikeTotal"),
+      progressTrainTotal: document.getElementById("progressTrainTotal"),
+      progressDateCount: document.getElementById("progressDateCount"),
+      progressChart: document.getElementById("progressChart"),
+      progressEmpty: document.getElementById("progressEmpty"),
       storageNote: document.getElementById("storageNote"),
       dashboardNote: document.getElementById("dashboardNote"),
       feedScope: document.getElementById("feedScope"),
@@ -1592,6 +1668,7 @@
     function render() {
       renderStats();
       renderGoals();
+      renderProgress();
       renderSummaries();
       renderProfile();
       renderDetail();
@@ -1675,6 +1752,81 @@
         metaEl: el.goalGainMeta
       });
       el.goalScope.textContent = `Goals compare against ${scopeLabel()}.`;
+    }
+
+    function datedProgressRows() {
+      const byDate = new Map();
+      state.filtered.forEach(route => {
+        if (!route.date) return;
+        const key = route.date;
+        if (!byDate.has(key)) byDate.set(key, { date: key, hike: 0, train: 0, count: 0 });
+        const row = byDate.get(key);
+        row[route.type] += distanceKm(route.points);
+        row.count += 1;
+      });
+      let hike = 0;
+      let train = 0;
+      return [...byDate.values()]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(row => {
+          hike += row.hike;
+          train += row.train;
+          return { ...row, cumulativeHike: hike, cumulativeTrain: train };
+        });
+    }
+
+    function chartPolyline(points, key, xFor, yFor) {
+      return points.map((point, index) => `${xFor(index).toFixed(1)},${yFor(point[key]).toFixed(1)}`).join(" ");
+    }
+
+    function renderProgress() {
+      const rows = datedProgressRows();
+      const lastRow = rows.length ? rows[rows.length - 1] : null;
+      const hikeTotal = lastRow?.cumulativeHike || 0;
+      const trainTotal = lastRow?.cumulativeTrain || 0;
+      const entryCount = rows.reduce((sum, row) => sum + row.count, 0);
+      el.progressHikeTotal.textContent = `${formatKm(hikeTotal)} hiked`;
+      el.progressTrainTotal.textContent = `${formatKm(trainTotal)} train`;
+      el.progressDateCount.textContent = `${entryCount} dated entr${entryCount === 1 ? "y" : "ies"}`;
+      el.progressScope.textContent = `Cumulative dated distance for ${scopeLabel()}.`;
+      el.progressEmpty.hidden = rows.length > 0;
+      if (!rows.length) {
+        el.progressChart.innerHTML = "";
+        return;
+      }
+
+      const width = 760;
+      const height = 220;
+      const pad = { left: 54, right: 26, top: 20, bottom: 40 };
+      const chartWidth = width - pad.left - pad.right;
+      const chartHeight = height - pad.top - pad.bottom;
+      const maxDistance = Math.max(1, ...rows.map(row => Math.max(row.cumulativeHike, row.cumulativeTrain)));
+      const xFor = index => rows.length === 1 ? pad.left : pad.left + (index / (rows.length - 1)) * chartWidth;
+      const yFor = value => pad.top + chartHeight - (value / maxDistance) * chartHeight;
+      const hikePoints = chartPolyline(rows, "cumulativeHike", xFor, yFor);
+      const trainPoints = chartPolyline(rows, "cumulativeTrain", xFor, yFor);
+      const firstDate = rows[0].date;
+      const lastDate = rows[rows.length - 1].date;
+      const yTicks = [0, maxDistance / 2, maxDistance];
+      const tickMarkup = yTicks.map(value => {
+        const y = yFor(value);
+        return `<line x1="${pad.left}" y1="${y.toFixed(1)}" x2="${width - pad.right}" y2="${y.toFixed(1)}" stroke="#e1e7e3" />
+          <text x="${pad.left - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#5a666d">${escapeHtml(formatKm(value).replace(" km", ""))}</text>`;
+      }).join("");
+
+      el.progressChart.innerHTML = `
+        <rect x="0" y="0" width="${width}" height="${height}" fill="#f8faf8" />
+        ${tickMarkup}
+        <line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="#cbd4cf" />
+        <line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#cbd4cf" />
+        <polyline points="${hikePoints}" fill="none" stroke="#2f7654" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <polyline points="${trainPoints}" fill="none" stroke="#2f6f91" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.82" />
+        <circle cx="${xFor(rows.length - 1).toFixed(1)}" cy="${yFor(hikeTotal).toFixed(1)}" r="5" fill="#2f7654" />
+        <circle cx="${xFor(rows.length - 1).toFixed(1)}" cy="${yFor(trainTotal).toFixed(1)}" r="5" fill="#2f6f91" />
+        <text x="${pad.left}" y="${height - 14}" font-size="12" fill="#5a666d">${escapeHtml(firstDate)}</text>
+        <text x="${width - pad.right}" y="${height - 14}" text-anchor="end" font-size="12" fill="#5a666d">${escapeHtml(lastDate)}</text>
+        <text x="${width - pad.right}" y="18" text-anchor="end" font-size="12" fill="#344249">hike / train cumulative km</text>
+      `;
     }
 
     function renderSummaries() {
