@@ -423,6 +423,7 @@
       <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button class="button" id="seedDemoBtn" type="button">Load demo community</button>
         <button class="button" id="clearDemoBtn" type="button">Remove demo routes</button>
+        <button class="button" id="exportCommunityBtn" type="button">Export public community</button>
       </div>
       <section class="summary-grid">
         <div class="summary-panel">
@@ -479,6 +480,7 @@
       feedScope: document.getElementById("feedScope"),
       seedDemoBtn: document.getElementById("seedDemoBtn"),
       clearDemoBtn: document.getElementById("clearDemoBtn"),
+      exportCommunityBtn: document.getElementById("exportCommunityBtn"),
       showHikes: document.getElementById("showHikes"),
       showTrains: document.getElementById("showTrains"),
       showPrivate: document.getElementById("showPrivate"),
@@ -687,6 +689,28 @@
       saveRoutes();
       renderTagOptions();
       applyFilters();
+    }
+
+    function exportCommunityPackage() {
+      const publicRoutes = state.routes.filter(route => route.visibility !== "private");
+      const packageData = {
+        schema: "swiss-trail-rail-community-v1",
+        exportedAt: new Date().toISOString(),
+        routeCount: publicRoutes.length,
+        routes: publicRoutes
+      };
+      download("swiss-trail-rail-community.json", JSON.stringify(packageData, null, 2), "application/json");
+    }
+
+    function download(filename, content, mime) {
+      const blob = new Blob([content], { type: mime });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
     }
 
     function updateStorageNote(ok) {
@@ -969,6 +993,7 @@
     el.showPrivate.addEventListener("change", renderMap);
     el.seedDemoBtn.addEventListener("click", seedDemoRoutes);
     el.clearDemoBtn.addEventListener("click", clearDemoRoutes);
+    el.exportCommunityBtn.addEventListener("click", exportCommunityPackage);
     el.entryLog.addEventListener("click", event => {
       const button = event.target.closest("button[data-like-id]");
       if (!button) return;

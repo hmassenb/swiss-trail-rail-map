@@ -450,11 +450,12 @@
 
         <form id="importForm">
           <label>
-            GPX / JSON import
+            GPX / JSON community import
             <input class="file-input" id="importFile" type="file" accept=".gpx,.json,application/gpx+xml,application/json" />
           </label>
           <div class="button-row">
             <button id="exportJsonBtn" type="button">Export JSON</button>
+            <button id="exportCommunityBtn" type="button">Export community</button>
             <button id="exportGpxBtn" type="button">Export GPX</button>
           </div>
         </form>
@@ -505,6 +506,7 @@
       clearDraftBtn: document.getElementById("clearDraftBtn"),
       importFile: document.getElementById("importFile"),
       exportJsonBtn: document.getElementById("exportJsonBtn"),
+      exportCommunityBtn: document.getElementById("exportCommunityBtn"),
       exportGpxBtn: document.getElementById("exportGpxBtn"),
       routeList: document.getElementById("routeList"),
       hikeKm: document.getElementById("hikeKm"),
@@ -962,6 +964,17 @@
       download("swiss-trail-rail-log.json", JSON.stringify(state.routes, null, 2), "application/json");
     }
 
+    function exportCommunityPackage() {
+      const publicRoutes = state.routes.filter(route => route.visibility !== "private");
+      const packageData = {
+        schema: "swiss-trail-rail-community-v1",
+        exportedAt: new Date().toISOString(),
+        routeCount: publicRoutes.length,
+        routes: publicRoutes
+      };
+      download("swiss-trail-rail-community.json", JSON.stringify(packageData, null, 2), "application/json");
+    }
+
     function exportGpx() {
       const segments = state.routes.map(route => {
         const points = route.points.map(point => `      <trkpt lat="${point[0]}" lon="${point[1]}"></trkpt>`).join("\n");
@@ -1005,8 +1018,12 @@ ${segments}
       const text = await file.text();
       if (file.name.toLowerCase().endsWith(".json")) {
         const imported = JSON.parse(text);
-        if (!Array.isArray(imported)) throw new Error("JSON must contain a route array");
-        state.routes = [...state.routes, ...imported.map(normalizeRoute).filter(Boolean)];
+        const routeArray = Array.isArray(imported) ? imported : imported.routes;
+        if (!Array.isArray(routeArray)) throw new Error("JSON must contain a route array or community package");
+        const existingIds = new Set(state.routes.map(route => route.id));
+        const normalized = routeArray.map(normalizeRoute).filter(Boolean);
+        const merged = normalized.map(route => existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route);
+        state.routes = [...state.routes, ...merged];
       } else {
         state.routes = [...state.routes, ...parseGpx(text)];
       }
@@ -1122,6 +1139,7 @@ ${segments}
       if (event.key === "Enter") searchPlace();
     });
     el.exportJsonBtn.addEventListener("click", exportJson);
+    el.exportCommunityBtn.addEventListener("click", exportCommunityPackage);
     el.exportGpxBtn.addEventListener("click", exportGpx);
     el.importFile.addEventListener("change", async event => {
       const file = event.target.files[0];

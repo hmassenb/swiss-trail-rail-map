@@ -79,6 +79,17 @@ Routes are saved in the browser's local storage. Data is therefore local to the 
 
 Use `Export JSON` for backups or to move routes to another browser/device. Use `Import GPX / JSON` to restore or add routes.
 
+## Community Sharing
+
+Because this version has no backend, the community map can be shared by exchanging JSON packages:
+
+- Contributors add public routes in their own browser.
+- They use `Export community` or `Export public community`.
+- Another user imports that `.json` file through `GPX / JSON community import`.
+- Public routes from all imported packages are accumulated into the overview map and feed.
+
+Private routes are excluded from the community export.
+
 ## Map Services
 
 The app uses public web services for:
