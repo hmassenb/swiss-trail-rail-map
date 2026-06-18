@@ -853,6 +853,7 @@
       };
       localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(state.sync));
       updateSyncStatus(state.sync.url && state.sync.key ? "Cloud sync settings saved." : "Cloud sync is not configured.");
+      return Boolean(state.sync.url && state.sync.key);
     }
 
     function updateSyncStatus(text, warning = false) {
@@ -870,19 +871,26 @@
       };
     }
 
-    async function pushPublicRoutes() {
+    function syncConfigured() {
+      return Boolean(state.sync.url && state.sync.key);
+    }
+
+    async function pushRoutesToCloud(routes, quiet = false) {
       try {
-        saveSyncConfig();
-        const publicRoutes = state.routes.filter(route => route.visibility !== "private");
+        if (!syncConfigured()) {
+          if (!quiet) updateSyncStatus("Cloud sync is not configured.", true);
+          return false;
+        }
+        const publicRoutes = routes.filter(route => route.visibility !== "private");
+        if (!publicRoutes.length) {
+          if (!quiet) updateSyncStatus("No public routes to push.", true);
+          return false;
+        }
         const rows = publicRoutes.map(route => ({
           id: route.id,
           payload: route,
-          updated_at: new Date().toISOString()
+          updated_at: route.updatedAt || new Date().toISOString()
         }));
-        if (!rows.length) {
-          updateSyncStatus("No public routes to push.", true);
-          return;
-        }
         const response = await fetch(`${state.sync.url}/rest/v1/community_routes?on_conflict=id`, {
           method: "POST",
           headers: syncHeaders(),
@@ -890,14 +898,26 @@
         });
         if (!response.ok) throw new Error(await response.text());
         updateSyncStatus(`Pushed ${rows.length} public route${rows.length === 1 ? "" : "s"} to cloud.`);
+        return true;
       } catch (error) {
         updateSyncStatus(`Push failed: ${error.message}`, true);
+        return false;
       }
+    }
+
+    async function pushRouteToCloud(route) {
+      if (!syncConfigured() || route.visibility === "private") return;
+      await pushRoutesToCloud([route], true);
+    }
+
+    async function pushPublicRoutes() {
+      if (!saveSyncConfig()) return;
+      await pushRoutesToCloud(state.routes);
     }
 
     async function pullCommunityRoutes() {
       try {
-        saveSyncConfig();
+        if (!saveSyncConfig()) return;
         const response = await fetch(`${state.sync.url}/rest/v1/community_routes?select=payload`, {
           headers: syncHeaders()
         });
@@ -1531,8 +1551,10 @@
       const route = state.routes.find(item => item.id === state.selectedRouteId);
       if (!route) return;
       route.likes = (Number(route.likes) || 0) + 1;
+      route.updatedAt = new Date().toISOString();
       saveRoutes();
       applyFilters();
+      pushRouteToCloud(route);
     });
     el.detailAuthorBtn.addEventListener("click", () => {
       const route = state.routes.find(item => item.id === state.selectedRouteId);
@@ -1551,9 +1573,12 @@
         text,
         createdAt: new Date().toISOString()
       });
+      route.updatedAt = new Date().toISOString();
       el.commentText.value = "";
       saveRoutes();
       renderDetail();
+      renderLog();
+      pushRouteToCloud(route);
     });
     el.contributorSummary.addEventListener("click", event => {
       const row = event.target.closest("[data-author]");
@@ -1575,8 +1600,10 @@
       const route = state.routes.find(item => item.id === button.dataset.likeId);
       if (!route) return;
       route.likes = (Number(route.likes) || 0) + 1;
+      route.updatedAt = new Date().toISOString();
       saveRoutes();
       applyFilters();
+      pushRouteToCloud(route);
     });
 
     loadRoutes();
