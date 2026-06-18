@@ -37,6 +37,7 @@ The overview page reads the same saved route data as the map page and displays:
 - clickable contributor profiles with route totals, distance, elevation, likes, and top tags
 - feed-card route focusing on the cumulative map
 - selected-route detail cards with metrics, tags, caption, coordinates, like, and contributor actions
+- route-level share links using `overview.html#route=...`
 - route comments in the selected-route detail card
 - saved contributor profile defaults for route authorship and comments
 - quick timeframe presets for 30 days, 90 days, this year, and all time

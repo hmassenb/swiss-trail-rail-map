@@ -631,6 +631,7 @@
           </div>
           <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button class="button" id="detailLikeBtn" type="button">Like</button>
+            <button class="button" id="shareRouteBtn" type="button">Share route</button>
             <button class="button" id="detailAuthorBtn" type="button">View contributor</button>
             <button class="button" id="clearDetailBtn" type="button">Close</button>
           </div>
@@ -728,6 +729,7 @@
       detailName: document.getElementById("detailName"),
       detailMeta: document.getElementById("detailMeta"),
       detailLikeBtn: document.getElementById("detailLikeBtn"),
+      shareRouteBtn: document.getElementById("shareRouteBtn"),
       detailAuthorBtn: document.getElementById("detailAuthorBtn"),
       clearDetailBtn: document.getElementById("clearDetailBtn"),
       detailDistance: document.getElementById("detailDistance"),
@@ -1231,6 +1233,28 @@
       return `${visibility} ${type}${tag}${author} for ${time}`;
     }
 
+    function routeHash(id) {
+      return `route=${encodeURIComponent(id)}`;
+    }
+
+    function selectedHashRouteId() {
+      const hash = window.location.hash.replace(/^#/, "");
+      const params = new URLSearchParams(hash);
+      return params.get("route") || "";
+    }
+
+    function routeShareUrl(route) {
+      return `${window.location.origin}${window.location.pathname}#${routeHash(route.id)}`;
+    }
+
+    function updateRouteHash(route) {
+      window.history.replaceState(null, "", `#${routeHash(route.id)}`);
+    }
+
+    function clearRouteHash() {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
+
     function routesForMap() {
       return state.filtered.filter(route => {
         if (route.type === "hike" && !el.showHikes.checked) return false;
@@ -1413,10 +1437,39 @@
 
     function selectRoute(route) {
       state.selectedRouteId = route.id;
+      updateRouteHash(route);
       overviewMap.fitBounds(L.latLngBounds(route.points.map(point => L.latLng(point[0], point[1]))).pad(0.18));
       el.focusNote.textContent = `Focused ${route.name} by ${route.author || "Anonymous hiker"} on the map.`;
       renderDetail();
       renderLog();
+    }
+
+    function selectRouteById(id) {
+      const route = state.routes.find(item => item.id === id);
+      if (!route) return false;
+      state.selectedRouteId = route.id;
+      state.selectedAuthor = "";
+      el.visibilityFilter.value = route.visibility || "public";
+      el.typeFilter.value = "all";
+      el.tagFilter.value = "all";
+      el.timeFilter.value = "all";
+      el.dateFrom.value = "";
+      el.dateTo.value = "";
+      applyFilters();
+      selectRoute(route);
+      return true;
+    }
+
+    async function shareSelectedRoute() {
+      const route = state.routes.find(item => item.id === state.selectedRouteId);
+      if (!route) return;
+      const url = routeShareUrl(route);
+      try {
+        await navigator.clipboard.writeText(url);
+        el.focusNote.textContent = `Copied route link: ${url}`;
+      } catch {
+        el.focusNote.textContent = `Route link: ${url}`;
+      }
     }
 
     function renderMap() {
@@ -1543,10 +1596,12 @@
     });
     el.clearDetailBtn.addEventListener("click", () => {
       state.selectedRouteId = "";
+      clearRouteHash();
       renderDetail();
       renderLog();
       el.focusNote.textContent = "Click a feed card to focus its route on the map.";
     });
+    el.shareRouteBtn.addEventListener("click", shareSelectedRoute);
     el.detailLikeBtn.addEventListener("click", () => {
       const route = state.routes.find(item => item.id === state.selectedRouteId);
       if (!route) return;
@@ -1612,6 +1667,21 @@
     syncDateInputsToPreset();
     renderTagOptions();
     applyFilters();
+    if (selectedHashRouteId()) {
+      if (!selectRouteById(selectedHashRouteId())) {
+        el.focusNote.textContent = "The linked route is not in this browser dataset yet. Pull community data or import a shared JSON package.";
+      }
+    }
+    window.addEventListener("hashchange", () => {
+      const id = selectedHashRouteId();
+      if (id) {
+        selectRouteById(id);
+      } else {
+        state.selectedRouteId = "";
+        renderDetail();
+        renderLog();
+      }
+    });
   </script>
 </body>
 </html>
