@@ -1220,6 +1220,13 @@
       setStatus("Editing saved route");
     }
 
+    function requestedEditRouteId() {
+      const queryId = new URLSearchParams(window.location.search).get("edit");
+      const hash = window.location.hash.replace(/^#/, "");
+      const hashId = new URLSearchParams(hash).get("edit");
+      return queryId || hashId || "";
+    }
+
     function deleteRoute(id) {
       const route = state.routes.find(item => item.id === id);
       if (!route) return;
@@ -1633,6 +1640,9 @@ ${segments}
     renderDraft();
     renderPhotoPreview();
     renderRoutes();
+    if (requestedEditRouteId()) {
+      editRoute(requestedEditRouteId());
+    }
   </script>
 </body>
 </html>

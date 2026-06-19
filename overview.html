@@ -888,6 +888,7 @@
             <div class="dashboard-note" id="detailMeta">Route detail</div>
           </div>
           <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a class="button" id="editRouteLink" href="index.html">Edit on map</a>
             <button class="button" id="shareRouteBtn" type="button">Share route</button>
             <button class="button" id="detailAuthorBtn" type="button">Filter name</button>
             <button class="button" id="clearDetailBtn" type="button">Close</button>
@@ -1022,6 +1023,7 @@
       routeDetail: document.getElementById("routeDetail"),
       detailName: document.getElementById("detailName"),
       detailMeta: document.getElementById("detailMeta"),
+      editRouteLink: document.getElementById("editRouteLink"),
       shareRouteBtn: document.getElementById("shareRouteBtn"),
       detailAuthorBtn: document.getElementById("detailAuthorBtn"),
       clearDetailBtn: document.getElementById("clearDetailBtn"),
@@ -1582,6 +1584,10 @@
       return `${window.location.origin}${window.location.pathname}#${routeHash(route.id)}`;
     }
 
+    function routeEditUrl(route) {
+      return `index.html?edit=${encodeURIComponent(route.id)}`;
+    }
+
     function updateRouteHash(route) {
       window.history.replaceState(null, "", `#${routeHash(route.id)}`);
     }
@@ -1983,6 +1989,7 @@
       el.routeDetail.classList.add("active");
       el.detailName.textContent = route.name;
       el.detailMeta.textContent = `${route.type === "train" ? "Train" : "Hike"} by ${route.author || "Anonymous hiker"}${route.date ? ` · ${route.date}` : ""}`;
+      el.editRouteLink.href = routeEditUrl(route);
       el.detailDistance.textContent = formatKm(distanceKm(route.points));
       el.detailDuration.textContent = route.durationHours ? `${route.durationHours} h` : "n/a";
       el.detailGain.textContent = route.elevationGainM ? `${route.elevationGainM} m` : "n/a";
@@ -2099,6 +2106,7 @@
               </div>
               <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
                 ${route.photos?.length ? `<span class="like-button">${route.photos.length} photo${route.photos.length === 1 ? "" : "s"}</span>` : ""}
+                <a class="like-button" href="${escapeHtml(routeEditUrl(route))}" data-edit-link="${escapeHtml(route.id)}">Edit</a>
               </div>
             </div>
             <div class="meta">
@@ -2208,6 +2216,10 @@
       focusBackfill(row.dataset.backfill);
     });
     el.entryLog.addEventListener("click", event => {
+      if (event.target.closest("a[data-edit-link]")) {
+        event.stopPropagation();
+        return;
+      }
       const authorButton = event.target.closest("button[data-author]");
       if (authorButton) {
         event.stopPropagation();
