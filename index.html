@@ -321,6 +321,58 @@
       gap: 8px;
     }
 
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+      gap: 8px;
+    }
+
+    .photo-tile {
+      position: relative;
+      min-height: 76px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #eef2ee;
+    }
+
+    .photo-tile img {
+      width: 100%;
+      height: 100%;
+      min-height: 76px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .photo-tile button {
+      position: absolute;
+      right: 5px;
+      top: 5px;
+      min-height: 24px;
+      width: 24px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      background: rgba(25, 33, 38, 0.78);
+      color: #fff;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .photo-strip {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+    }
+
+    .photo-strip img {
+      width: 74px;
+      height: 54px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid var(--line);
+      flex: 0 0 auto;
+    }
+
     .route-actions {
       display: flex;
       gap: 6px;
@@ -438,8 +490,8 @@
             <label>
               Default visibility
               <select id="profileVisibilityInput">
-                <option value="public">Public</option>
                 <option value="private">Private</option>
+                <option value="public">Public</option>
               </select>
             </label>
           </div>
@@ -478,13 +530,13 @@
             <li id="checkName"><span>○</span><span>Add a route name.</span></li>
             <li id="checkPoints"><span>○</span><span>Click at least two points on the map.</span></li>
             <li id="checkDate"><span>○</span><span>Add a completion date for timeframe metrics.</span></li>
-            <li id="checkShare"><span>○</span><span>Choose public for the community map or private for your own log.</span></li>
+            <li id="checkShare"><span>○</span><span>Keep private for your own log, or choose public only when sharing/exporting.</span></li>
           </ul>
           <div class="hint" id="quickPostNote">Ready to start: name the route, then click the map.</div>
         </section>
 
         <form id="routeForm">
-          <p class="hint" style="margin: 0;">Post a completed route. Public routes appear in the community feed and cumulative map; private routes stay in your own saved log.</p>
+          <p class="hint" style="margin: 0;">Save a completed hike or train route for your own Switzerland log. New routes are private by default.</p>
           <label>
             Name
             <input id="routeName" required placeholder="Zurich to Uetliberg" />
@@ -497,8 +549,8 @@
             <label>
               Visibility
               <select id="routeVisibility">
-                <option value="public">Public</option>
                 <option value="private">Private</option>
+                <option value="public">Public</option>
               </select>
             </label>
           </div>
@@ -538,9 +590,15 @@
             <textarea id="routeNotes" placeholder="Weather, companions, line number, favorite section"></textarea>
           </label>
           <label>
-            Feed caption
-            <textarea id="routeCaption" placeholder="Short public caption for the community feed"></textarea>
+            Caption
+            <textarea id="routeCaption" placeholder="Short memory or caption for this route"></textarea>
           </label>
+          <label>
+            Photos
+            <input class="file-input" id="routePhotos" type="file" accept="image/*" multiple />
+          </label>
+          <div class="photo-grid" id="photoPreview"></div>
+          <p class="hint">Photos are compressed and saved in this browser with the route. Export JSON regularly if you use many photos.</p>
           <label>
             Load GPX track as draft
             <input class="file-input" id="draftGpxFile" type="file" accept=".gpx,application/gpx+xml" />
@@ -583,14 +641,16 @@
     const PROFILE_KEY = "swiss-trail-rail-profile:v1";
     const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
     const HIDDEN_CLOUD_KEY = "swiss-trail-rail-hidden-cloud:v1";
+    const PERSONAL_DEFAULT_KEY = "swiss-trail-rail-personal-default:v1";
     const state = {
       activeType: "hike",
       draft: [],
       draftRoute: [],
       routes: [],
-      profile: { name: "", bio: "", defaultVisibility: "public" },
+      profile: { name: "", bio: "", defaultVisibility: "private" },
       sync: { url: "", key: "" },
       hiddenCloudRouteIds: new Set(),
+      pendingPhotos: [],
       draftSource: "",
       layers: new Map(),
       selectedId: null,
@@ -631,6 +691,8 @@
       routeLoss: document.getElementById("routeLoss"),
       routeNotes: document.getElementById("routeNotes"),
       routeCaption: document.getElementById("routeCaption"),
+      routePhotos: document.getElementById("routePhotos"),
+      photoPreview: document.getElementById("photoPreview"),
       coordPreview: document.getElementById("coordPreview"),
       draftGpxFile: document.getElementById("draftGpxFile"),
       saveRouteBtn: document.getElementById("saveRouteBtn"),
@@ -705,7 +767,7 @@
       const count = state.routes.length;
       el.storageNote.classList.toggle("warning", !ok);
       el.storageNote.textContent = ok
-        ? `${count} saved route${count === 1 ? "" : "s"} stored in this browser. This prototype uses browser-local community data; export JSON for backup or sharing.`
+        ? `${count} saved route${count === 1 ? "" : "s"} stored in this browser. Export JSON regularly as your personal backup, especially when saving photos.`
         : "Browser storage is blocked. Routes stay visible for now, but export JSON to avoid losing them.";
     }
 
@@ -713,7 +775,7 @@
       return {
         name: String(profile.name || "").trim(),
         bio: String(profile.bio || "").trim(),
-        defaultVisibility: profile.defaultVisibility === "private" ? "private" : "public"
+        defaultVisibility: profile.defaultVisibility === "public" ? "public" : "private"
       };
     }
 
@@ -733,6 +795,11 @@
     function loadProfile() {
       try {
         state.profile = normalizeProfile(JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"));
+        if (!localStorage.getItem(PERSONAL_DEFAULT_KEY)) {
+          state.profile.defaultVisibility = "private";
+          localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile));
+          localStorage.setItem(PERSONAL_DEFAULT_KEY, "1");
+        }
       } catch {
         state.profile = normalizeProfile();
       }
@@ -805,6 +872,80 @@
       }
     }
 
+    function normalizePhoto(photo) {
+      if (!photo?.dataUrl || !String(photo.dataUrl).startsWith("data:image/")) return null;
+      return {
+        id: photo.id || crypto.randomUUID(),
+        name: String(photo.name || "route photo"),
+        type: String(photo.type || "image/jpeg"),
+        dataUrl: String(photo.dataUrl),
+        createdAt: photo.createdAt || new Date().toISOString()
+      };
+    }
+
+    function renderPhotoPreview() {
+      if (!state.pendingPhotos.length) {
+        el.photoPreview.innerHTML = `<div class="hint">No photos attached.</div>`;
+        return;
+      }
+      el.photoPreview.innerHTML = state.pendingPhotos.map(photo => `
+        <div class="photo-tile">
+          <img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />
+          <button type="button" title="Remove photo" data-photo-id="${escapeHtml(photo.id)}">x</button>
+        </div>
+      `).join("");
+    }
+
+    function compressImageFile(file) {
+      return new Promise((resolve, reject) => {
+        if (!file.type.startsWith("image/")) {
+          reject(new Error("Only image files can be attached."));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Could not read photo."));
+        reader.onload = () => {
+          const image = new Image();
+          image.onerror = () => reject(new Error("Could not load photo."));
+          image.onload = () => {
+            const maxSide = 1400;
+            const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, Math.round(image.width * scale));
+            canvas.height = Math.max(1, Math.round(image.height * scale));
+            const context = canvas.getContext("2d");
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            resolve({
+              id: crypto.randomUUID(),
+              name: file.name,
+              type: "image/jpeg",
+              dataUrl: canvas.toDataURL("image/jpeg", 0.82),
+              createdAt: new Date().toISOString()
+            });
+          };
+          image.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function addPhotoFiles(files) {
+      const incoming = [...files].slice(0, Math.max(0, 12 - state.pendingPhotos.length));
+      if (!incoming.length) {
+        setStatus("Photo limit reached");
+        return;
+      }
+      try {
+        setStatus("Preparing photos");
+        const photos = await Promise.all(incoming.map(compressImageFile));
+        state.pendingPhotos = [...state.pendingPhotos, ...photos].slice(0, 12);
+        renderPhotoPreview();
+        setStatus(`${photos.length} photo${photos.length === 1 ? "" : "s"} attached`);
+      } catch (error) {
+        setStatus(error.message || "Could not attach photos");
+      }
+    }
+
     function loadSyncConfig() {
       try {
         state.sync = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || '{"url":"","key":""}');
@@ -853,7 +994,7 @@
         el.quickPostNote.textContent = "You can save now, but adding a date improves timeframe metrics.";
       } else {
         el.quickPostNote.textContent = isPublic
-          ? "Ready to save to the community feed."
+          ? "Ready to save and include in public exports."
           : "Ready to save privately in this browser.";
       }
     }
@@ -1111,6 +1252,9 @@
       filtered.forEach(route => {
         const card = document.createElement("article");
         card.className = `route-card ${route.type}`;
+        const photoStrip = route.photos?.length
+          ? `<div class="photo-strip">${route.photos.slice(0, 6).map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")}</div>`
+          : "";
         card.innerHTML = `
           <div class="route-head">
             <div>
@@ -1135,6 +1279,7 @@
           ${route.tags?.length ? `<div class="route-meta">${route.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
           ${route.caption ? `<div class="route-meta">${escapeHtml(route.caption)}</div>` : ""}
           ${route.notes ? `<div class="route-meta">${escapeHtml(route.notes)}</div>` : ""}
+          ${photoStrip}
         `;
         el.routeList.appendChild(card);
       });
@@ -1179,12 +1324,15 @@
       state.draft = [];
       state.draftRoute = [];
       state.draftSource = "";
+      state.pendingPhotos = [];
+      el.routePhotos.value = "";
       state.selectedId = null;
       state.routingRequestId++;
       window.clearTimeout(setStatus.timer);
       el.mapStatus.textContent = "Ready";
       delete el.routeForm.dataset.editId;
       renderDraft();
+      renderPhotoPreview();
       renderRoutes();
     }
 
@@ -1202,6 +1350,9 @@
       el.routeLoss.value = route.elevationLossM || "";
       el.routeNotes.value = route.notes || "";
       el.routeCaption.value = route.caption || "";
+      state.pendingPhotos = Array.isArray(route.photos) ? route.photos.map(normalizePhoto).filter(Boolean) : [];
+      el.routePhotos.value = "";
+      renderPhotoPreview();
       el.routeForm.dataset.editId = route.id;
       state.draft = (route.waypoints || route.points).map(p => [p[0], p[1]]);
       state.draftRoute = route.points.map(p => [p[0], p[1]]);
@@ -1261,6 +1412,7 @@
         elevationLossM: numericValue(el.routeLoss.value),
         notes: el.routeNotes.value.trim(),
         caption: el.routeCaption.value.trim(),
+        photos: state.pendingPhotos.map(photo => ({ ...photo })),
         likes: previousRoute?.likes || 0,
         comments: Array.isArray(previousRoute?.comments) ? previousRoute.comments : [],
         waypoints,
@@ -1408,7 +1560,7 @@ ${segments}
         name: String(route.name || "Imported route"),
         author: route.author || "",
         authorBio: route.authorBio || "",
-        visibility: route.visibility === "private" ? "private" : "public",
+        visibility: route.visibility === "public" ? "public" : "private",
         type: route.type === "train" ? "train" : "hike",
         date: route.date || "",
         tags: Array.isArray(route.tags) ? parseTags(route.tags.join(",")) : parseTags(route.tags),
@@ -1417,6 +1569,7 @@ ${segments}
         elevationLossM,
         notes: route.notes || "",
         caption: route.caption || "",
+        photos: Array.isArray(route.photos) ? route.photos.map(normalizePhoto).filter(Boolean) : [],
         likes: Number.isFinite(Number(route.likes)) ? Number(route.likes) : 0,
         comments: Array.isArray(route.comments) ? route.comments.map(normalizeComment).filter(Boolean) : [],
         waypoints,
@@ -1562,6 +1715,16 @@ ${segments}
         event.target.value = "";
       }
     });
+    el.routePhotos.addEventListener("change", async event => {
+      if (event.target.files.length) await addPhotoFiles(event.target.files);
+      event.target.value = "";
+    });
+    el.photoPreview.addEventListener("click", event => {
+      const button = event.target.closest("button[data-photo-id]");
+      if (!button) return;
+      state.pendingPhotos = state.pendingPhotos.filter(photo => photo.id !== button.dataset.photoId);
+      renderPhotoPreview();
+    });
     el.draftGpxFile.addEventListener("change", async event => {
       const file = event.target.files[0];
       if (!file) return;
@@ -1588,6 +1751,7 @@ ${segments}
     loadHiddenCloudRoutes();
     loadRoutes();
     renderDraft();
+    renderPhotoPreview();
     renderRoutes();
   </script>
 </body>

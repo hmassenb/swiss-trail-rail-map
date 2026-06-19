@@ -1,10 +1,10 @@
 # Swiss Trail & Rail Map
 
-A lightweight social route map for tracking and sharing completed hikes and train rides across Switzerland.
+A personal GitHub-hosted route diary for tracking completed hikes and train rides across Switzerland.
 
-The app lets people add route waypoints on a topographic map, fit them to mapped paths or rail lines when routing is available, and save completed routes in the browser. Public entries are accumulated into a community overview map and feed.
+The app lets you add route waypoints on a topographic map, fit them to mapped paths or rail lines when routing is available, attach route photos, and save completed routes in the browser. New entries are private by default so you can backfill hikes and train routes from past years as your own log.
 
-This works as a browser-local social prototype by default. Optional Supabase cloud sync can be configured to turn it into a shared multi-user community feed.
+The app is fully static and works from GitHub Pages. Your route data and compressed photos live in your browser storage unless you export/import JSON backups. Optional public export and Supabase sync remain available if you later decide to share selected routes.
 
 ## Live Map
 
@@ -32,8 +32,10 @@ The overview page reads the same saved route data as the map page and displays:
 - live map legend with filtered hike, train, private, and currently drawn route counts
 - total entries, hiking distance, train distance, and elevation gain
 - average route distance, best day distance, active days, and current metric window
+- previous-period comparison for hiking distance, hike count, and elevation gain when a bounded timeframe is selected
 - adjustable hiking goals for the current filter/timeframe, with progress for distance, hike count, and elevation gain
 - cumulative dated progress chart for hiking and train distance within the active filter/timeframe
+- route photo thumbnails and selected-route photo galleries
 - yearly and monthly distance summaries
 - community feed cards with author, likes, captions, tags, duration, elevation, notes, distance, and clicked waypoint coordinates
 - social activity sorting by recent updates, likes, comments, or route metrics
@@ -70,12 +72,12 @@ Routes are entered directly in the browser:
 - Or load a GPX track as a draft, then review its geometry and add metadata before saving.
 - Add a route name, hiker name, visibility, optional date, and optional notes.
 - Add optional tags, duration, elevation gain, and elevation loss.
-- Add an optional public feed caption.
+- Add an optional caption and route photos.
 - Save the route.
 
-The map page includes a `Quick post` checklist that updates while a contributor fills in the route name, date, visibility, and clicked map points.
+The map page includes a `Quick post` checklist that updates while you fill in the route name, date, visibility, and clicked map points.
 
-The `My name` profile panel can store a default contributor name, short bio, and default visibility in the browser. New routes use that name automatically, and overview comments use the same saved identity.
+The `My name` profile panel can store a default name, short bio, and default visibility in the browser. New routes use that name automatically, and the default visibility is private unless you change it.
 
 The map page also includes `Cloud sync` controls. When Supabase sync is configured, newly saved public routes are pushed to the shared community table automatically; private routes are not pushed.
 
@@ -92,7 +94,8 @@ The app stores:
 - `elevationGainM`: optional elevation gain in meters
 - `elevationLossM`: optional elevation loss in meters
 - `notes`: optional free text
-- `caption`: optional public feed caption
+- `caption`: optional route memory or caption
+- `photos`: optional compressed image attachments stored with the route
 - `likes`: local community likes
 - `comments`: local route comments
 - `waypoints`: the points clicked by the user
@@ -104,6 +107,8 @@ The app stores:
 Routes are saved in the browser's local storage. Data is therefore local to the browser and URL where the app is opened.
 
 Use `Export JSON` for backups or to move routes to another browser/device. Use `Import GPX / JSON` to restore or add routes.
+
+Photos are compressed before saving, then stored inside the route JSON as data URLs. This keeps the app static and GitHub Pages friendly, but browser storage is finite. Export JSON regularly if you attach many photos or backfill many years of hikes.
 
 ## Community Sharing
 

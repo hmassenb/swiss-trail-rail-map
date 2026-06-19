@@ -609,6 +609,39 @@
       margin-bottom: 3px;
     }
 
+    .photo-strip {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+
+    .photo-strip img {
+      width: 86px;
+      height: 64px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid var(--line);
+      flex: 0 0 auto;
+      background: #eef2ee;
+    }
+
+    .detail-photos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .detail-photos img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #eef2ee;
+    }
+
     .profile-head {
       display: flex;
       align-items: start;
@@ -663,9 +696,9 @@
           <option value="train">Trains</option>
         </select>
         <select id="visibilityFilter">
-          <option value="public">Community</option>
           <option value="all">All saved</option>
           <option value="private">Private</option>
+          <option value="public">Public</option>
         </select>
         <select id="tagFilter">
           <option value="all">All tags</option>
@@ -725,7 +758,7 @@
       <div class="map-tools">
         <label><input id="showHikes" type="checkbox" checked /> Hikes</label>
         <label><input id="showTrains" type="checkbox" checked /> Trains</label>
-        <label><input id="showPrivate" type="checkbox" /> Private routes</label>
+        <label><input id="showPrivate" type="checkbox" checked /> Private routes</label>
         <div class="map-legend">
           <div class="legend-row"><span class="legend-line"></span><span>Hikes</span><strong id="legendHikes">0</strong></div>
           <div class="legend-row"><span class="legend-line train"></span><span>Trains</span><strong id="legendTrains">0</strong></div>
@@ -754,6 +787,20 @@
         <div class="stat"><strong id="activeDays">0</strong><span>Active days</span></div>
         <div class="stat"><strong id="periodLabel">All time</strong><span>Metric window</span></div>
       </div>
+      <section class="summary-panel" aria-label="Previous period comparison">
+        <div class="progress-head">
+          <div>
+            <h2>Compared With Previous Window</h2>
+            <div class="dashboard-note" id="comparisonScope">Choose 30 days, 90 days, this year, or a bounded custom range to compare progress.</div>
+          </div>
+        </div>
+        <div class="stats">
+          <div class="stat"><strong id="comparisonDistance">--</strong><span>Hiking distance change</span></div>
+          <div class="stat"><strong id="comparisonRoutes">--</strong><span>Hike count change</span></div>
+          <div class="stat"><strong id="comparisonGain">--</strong><span>Elevation gain change</span></div>
+          <div class="stat"><strong id="comparisonPrevious">--</strong><span>Previous window</span></div>
+        </div>
+      </section>
       <section class="goal-panel" aria-label="Adjustable hiking goals">
         <div class="goal-head">
           <div>
@@ -887,6 +934,7 @@
         </div>
         <div class="meta" id="detailTags"></div>
         <div class="notes" id="detailCaption"></div>
+        <div class="detail-photos" id="detailPhotos"></div>
         <div class="points" id="detailCoords"></div>
         <div class="comment-box">
           <div class="comment-list" id="detailComments"></div>
@@ -914,7 +962,7 @@
       selectedAuthor: "",
       selectedRouteId: "",
       sync: { url: "", key: "" },
-      profile: { name: "", bio: "", defaultVisibility: "public" },
+      profile: { name: "", bio: "", defaultVisibility: "private" },
       goals: { distanceKm: 100, routeCount: 10, elevationM: 5000 }
     };
     const CANTONS = [
@@ -976,6 +1024,11 @@
       bestDayDistance: document.getElementById("bestDayDistance"),
       activeDays: document.getElementById("activeDays"),
       periodLabel: document.getElementById("periodLabel"),
+      comparisonScope: document.getElementById("comparisonScope"),
+      comparisonDistance: document.getElementById("comparisonDistance"),
+      comparisonRoutes: document.getElementById("comparisonRoutes"),
+      comparisonGain: document.getElementById("comparisonGain"),
+      comparisonPrevious: document.getElementById("comparisonPrevious"),
       goalScope: document.getElementById("goalScope"),
       goalDistanceInput: document.getElementById("goalDistanceInput"),
       goalRoutesInput: document.getElementById("goalRoutesInput"),
@@ -1038,6 +1091,7 @@
       detailLikes: document.getElementById("detailLikes"),
       detailTags: document.getElementById("detailTags"),
       detailCaption: document.getElementById("detailCaption"),
+      detailPhotos: document.getElementById("detailPhotos"),
       detailCoords: document.getElementById("detailCoords"),
       detailComments: document.getElementById("detailComments"),
       commentAuthor: document.getElementById("commentAuthor"),
@@ -1170,7 +1224,7 @@
       return {
         name: String(profile.name || "").trim(),
         bio: String(profile.bio || "").trim(),
-        defaultVisibility: profile.defaultVisibility === "private" ? "private" : "public"
+        defaultVisibility: profile.defaultVisibility === "public" ? "public" : "private"
       };
     }
 
@@ -1339,7 +1393,7 @@
         name: String(route.name || "Untitled route"),
         author: route.author || "",
         authorBio: route.authorBio || "",
-        visibility: route.visibility === "private" ? "private" : "public",
+        visibility: route.visibility === "public" ? "public" : "private",
         type: route.type === "train" ? "train" : "hike",
         date: route.date || "",
         tags: Array.isArray(route.tags) ? parseTags(route.tags.join(",")) : parseTags(route.tags),
@@ -1350,6 +1404,7 @@
         caption: route.caption || "",
         likes: Number.isFinite(Number(route.likes)) ? Number(route.likes) : 0,
         comments: Array.isArray(route.comments) ? route.comments.map(normalizeComment).filter(Boolean) : [],
+        photos: Array.isArray(route.photos) ? route.photos.map(normalizePhoto).filter(Boolean) : [],
         waypoints,
         points,
         metrics: route.metrics || routeMetrics(points, waypoints),
@@ -1364,6 +1419,17 @@
         author: comment.author || "Anonymous",
         text: String(comment.text),
         createdAt: comment.createdAt || new Date().toISOString()
+      };
+    }
+
+    function normalizePhoto(photo) {
+      if (!photo?.dataUrl || !String(photo.dataUrl).startsWith("data:image/")) return null;
+      return {
+        id: photo.id || crypto.randomUUID(),
+        name: String(photo.name || "route photo"),
+        type: String(photo.type || "image/jpeg"),
+        dataUrl: String(photo.dataUrl),
+        createdAt: photo.createdAt || new Date().toISOString()
       };
     }
 
@@ -1488,7 +1554,7 @@
     function updateStorageNote(ok) {
       el.storageNote.classList.toggle("warning", !ok);
       el.storageNote.textContent = ok
-        ? `${state.routes.length} saved entr${state.routes.length === 1 ? "y" : "ies"} loaded from this browser-local community dataset.`
+        ? `${state.routes.length} saved entr${state.routes.length === 1 ? "y" : "ies"} loaded from this browser-local personal route log.`
         : "Browser storage could not be read. Open the map page and export JSON if your entries are stored elsewhere.";
     }
 
@@ -1500,30 +1566,36 @@
       if (tags.includes(current)) el.tagFilter.value = current;
     }
 
-    function applyFilters() {
+    function routeSearchText(route) {
+      return [
+        route.name,
+        route.author,
+        route.type,
+        route.date,
+        formatTags(route.tags),
+        route.caption,
+        route.notes,
+        route.points.map(point => point.join(",")).join(" ")
+      ].join(" ").toLowerCase();
+    }
+
+    function routeMatchesActiveScope(route) {
       const query = el.searchInput.value.trim().toLowerCase();
       const type = el.typeFilter.value;
       const visibility = el.visibilityFilter.value;
       const tag = el.tagFilter.value;
-      const time = el.timeFilter.value;
+      if (type !== "all" && route.type !== type) return false;
+      if (visibility !== "all" && route.visibility !== visibility) return false;
+      if (state.selectedAuthor && (route.author || "Anonymous hiker") !== state.selectedAuthor) return false;
+      if (tag !== "all" && !(route.tags || []).includes(tag)) return false;
+      return !query || routeSearchText(route).includes(query);
+    }
+
+    function applyFilters() {
+      const range = selectedDateRange();
       state.filtered = state.routes.filter(route => {
-        if (type !== "all" && route.type !== type) return false;
-        if (visibility !== "all" && route.visibility !== visibility) return false;
-        if (state.selectedAuthor && (route.author || "Anonymous hiker") !== state.selectedAuthor) return false;
-        if (tag !== "all" && !(route.tags || []).includes(tag)) return false;
-        if (!dateInTimeframe(route.date, time)) return false;
-        if (!query) return true;
-        const haystack = [
-          route.name,
-          route.author,
-          route.type,
-          route.date,
-          formatTags(route.tags),
-          route.caption,
-          route.notes,
-          route.points.map(point => point.join(",")).join(" ")
-        ].join(" ").toLowerCase();
-        return haystack.includes(query);
+        if (!routeMatchesActiveScope(route)) return false;
+        return dateInRange(route.date, range);
       });
       sortRoutes();
       if (state.selectedRouteId && !state.filtered.some(route => route.id === state.selectedRouteId)) {
@@ -1588,14 +1660,27 @@
       el.dateTo.value = range.to ? dateInputValue(range.to) : "";
     }
 
-    function dateInTimeframe(date, mode) {
-      const range = selectedDateRange();
+    function dateInRange(date, range) {
       if (range.mode === "all") return true;
       const routeDate = parseRouteDate(date);
       if (!routeDate) return false;
       if (range.from && routeDate < range.from) return false;
       if (range.to && routeDate > range.to) return false;
       return true;
+    }
+
+    function dateInTimeframe(date, mode) {
+      return dateInRange(date, selectedDateRange());
+    }
+
+    function previousDateRange() {
+      const range = selectedDateRange();
+      if (!range.from || !range.to) return null;
+      const dayMs = 24 * 60 * 60 * 1000;
+      const spanMs = range.to.getTime() - range.from.getTime() + dayMs;
+      const previousTo = new Date(range.from.getTime() - dayMs);
+      const previousFrom = new Date(previousTo.getTime() - spanMs + dayMs);
+      return { mode: "comparison", from: previousFrom, to: previousTo };
     }
 
     function timeframeLabel() {
@@ -1667,6 +1752,7 @@
 
     function render() {
       renderStats();
+      renderComparison();
       renderGoals();
       renderProgress();
       renderSummaries();
@@ -1678,8 +1764,8 @@
       el.feedScope.textContent = `Showing ${scopeLabel()}.`;
     }
 
-    function filteredTotals() {
-      return state.filtered.reduce((acc, route) => {
+    function totalsForRoutes(routes) {
+      return routes.reduce((acc, route) => {
         const km = distanceKm(route.points);
         acc[route.type] += km;
         acc.distance += km;
@@ -1693,6 +1779,10 @@
         }
         return acc;
       }, { hike: 0, train: 0, hikeCount: 0, distance: 0, gain: 0, duration: 0, likes: 0, contributors: new Set(), byDay: {} });
+    }
+
+    function filteredTotals() {
+      return totalsForRoutes(state.filtered);
     }
 
     function renderStats() {
@@ -1710,6 +1800,40 @@
       el.bestDayDistance.textContent = formatKm(bestDay);
       el.activeDays.textContent = Object.keys(totals.byDay).length;
       el.periodLabel.textContent = timeframeLabel();
+    }
+
+    function signedValue(value, suffix = "") {
+      const sign = value > 0 ? "+" : "";
+      return `${sign}${value}${suffix}`;
+    }
+
+    function signedKm(value) {
+      const sign = value > 0 ? "+" : "";
+      return `${sign}${formatKm(value)}`;
+    }
+
+    function renderComparison() {
+      const previous = previousDateRange();
+      if (!previous) {
+        el.comparisonDistance.textContent = "--";
+        el.comparisonRoutes.textContent = "--";
+        el.comparisonGain.textContent = "--";
+        el.comparisonPrevious.textContent = "No window";
+        el.comparisonScope.textContent = "Choose 30 days, 90 days, this year, or a bounded custom range to compare progress.";
+        return;
+      }
+
+      const currentTotals = filteredTotals();
+      const previousRoutes = state.routes.filter(route => routeMatchesActiveScope(route) && dateInRange(route.date, previous));
+      const previousTotals = totalsForRoutes(previousRoutes);
+      const distanceDelta = currentTotals.hike - previousTotals.hike;
+      const routesDelta = currentTotals.hikeCount - previousTotals.hikeCount;
+      const gainDelta = Math.round(currentTotals.gain - previousTotals.gain);
+      el.comparisonDistance.textContent = signedKm(distanceDelta);
+      el.comparisonRoutes.textContent = signedValue(routesDelta);
+      el.comparisonGain.textContent = signedValue(gainDelta, " m");
+      el.comparisonPrevious.textContent = `${dateInputValue(previous.from)} to ${dateInputValue(previous.to)}`;
+      el.comparisonScope.textContent = `Current ${timeframeLabel()} compared with the previous matching window under the same filters.`;
     }
 
     function goalPercent(current, target) {
@@ -2009,6 +2133,9 @@
         ? route.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")
         : `<span class="pill">No tags</span>`;
       el.detailCaption.textContent = route.caption || route.notes || "No caption yet.";
+      el.detailPhotos.innerHTML = route.photos?.length
+        ? route.photos.map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")
+        : "";
       el.detailCoords.textContent = route.waypoints.map(point => `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`).join(" | ");
       if (!el.commentAuthor.value.trim()) el.commentAuthor.value = state.profile.name;
       el.detailComments.innerHTML = route.comments?.length
@@ -2093,7 +2220,7 @@
 
     function renderLog() {
       if (!state.filtered.length) {
-        el.entryLog.innerHTML = `<div class="empty">No entries match the current filters. Add a public hike on the map page or loosen the timeframe, tag, and visibility filters.</div>`;
+        el.entryLog.innerHTML = `<div class="empty">No entries match the current filters. Add a hike on the map page or loosen the timeframe, tag, and visibility filters.</div>`;
         return;
       }
       el.entryLog.innerHTML = "";
@@ -2102,6 +2229,9 @@
         entry.className = `entry ${route.type}${route.id === state.selectedRouteId ? " selected" : ""}`;
         entry.dataset.id = route.id;
         const comments = commentCount(route);
+        const photoStrip = route.photos?.length
+          ? `<div class="photo-strip">${route.photos.slice(0, 8).map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")}</div>`
+          : "";
         entry.innerHTML = `
           <div>
             <div class="feed-head">
@@ -2127,6 +2257,7 @@
             ${route.tags?.length ? `<div class="meta" style="margin-top: 8px;">${route.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
             ${route.caption ? `<div class="notes">${escapeHtml(route.caption)}</div>` : ""}
             ${route.notes ? `<div class="notes">${escapeHtml(route.notes)}</div>` : ""}
+            ${photoStrip}
           </div>
           <div class="points">${route.waypoints.map(point => `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`).join(" | ")}</div>
         `;
