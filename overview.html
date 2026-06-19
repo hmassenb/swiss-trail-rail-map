@@ -549,20 +549,6 @@
       letter-spacing: 0;
     }
 
-    .profile-panel {
-      display: none;
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-left: 5px solid var(--green);
-      border-radius: 8px;
-      padding: 14px;
-      gap: 10px;
-    }
-
-    .profile-panel.active {
-      display: grid;
-    }
-
     .detail-panel {
       display: none;
       background: var(--paper);
@@ -684,7 +670,6 @@
       <div class="title-row">
         <h1>Completed Hikes Map</h1>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="button" id="myRoutesBtn" type="button">My routes</button>
           <a class="button" href="index.html">Back to map</a>
         </div>
       </div>
@@ -892,24 +877,8 @@
           <div class="summary-list" id="highlightSummary"></div>
         </div>
       </section>
-      <section class="profile-panel" id="profilePanel">
-        <div class="profile-head">
-          <div>
-            <h2 id="profileName">Contributor</h2>
-            <div class="dashboard-note" id="profileSubtitle">Contributor profile</div>
-          </div>
-          <button class="button" id="clearProfileBtn" type="button">Show everyone</button>
-        </div>
-        <div class="stats">
-          <div class="stat"><strong id="profileRoutes">0</strong><span>Routes</span></div>
-          <div class="stat"><strong id="profileKm">0 km</strong><span>Total distance</span></div>
-          <div class="stat"><strong id="profileGain">0 m</strong><span>Elevation gain</span></div>
-          <div class="stat"><strong id="profileLikes">0</strong><span>Likes</span></div>
-        </div>
-        <div class="summary-list" id="profileTags"></div>
-      </section>
       <div class="feed-title">
-        <h2>Community Feed</h2>
+        <h2>Route Log</h2>
         <span class="dashboard-note" id="feedScope">Showing public routes for all time.</span>
       </div>
       <div class="storage-note" id="focusNote">Click a feed card to focus its route on the map.</div>
@@ -953,7 +922,6 @@
   <script>
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
     const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
-    const PROFILE_KEY = "swiss-trail-rail-profile:v1";
     const GOALS_KEY = "swiss-trail-rail-goals:v1";
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
     const state = {
@@ -962,7 +930,6 @@
       selectedAuthor: "",
       selectedRouteId: "",
       sync: { url: "", key: "" },
-      profile: { name: "", bio: "", defaultVisibility: "private" },
       goals: { distanceKm: 100, routeCount: 10, elevationM: 5000 }
     };
     const CANTONS = [
@@ -996,7 +963,6 @@
 
     const el = {
       searchInput: document.getElementById("searchInput"),
-      myRoutesBtn: document.getElementById("myRoutesBtn"),
       typeFilter: document.getElementById("typeFilter"),
       visibilityFilter: document.getElementById("visibilityFilter"),
       tagFilter: document.getElementById("tagFilter"),
@@ -1068,15 +1034,6 @@
       tagSummary: document.getElementById("tagSummary"),
       cantonSummary: document.getElementById("cantonSummary"),
       highlightSummary: document.getElementById("highlightSummary"),
-      profilePanel: document.getElementById("profilePanel"),
-      profileName: document.getElementById("profileName"),
-      profileSubtitle: document.getElementById("profileSubtitle"),
-      profileRoutes: document.getElementById("profileRoutes"),
-      profileKm: document.getElementById("profileKm"),
-      profileGain: document.getElementById("profileGain"),
-      profileLikes: document.getElementById("profileLikes"),
-      profileTags: document.getElementById("profileTags"),
-      clearProfileBtn: document.getElementById("clearProfileBtn"),
       focusNote: document.getElementById("focusNote"),
       routeDetail: document.getElementById("routeDetail"),
       detailName: document.getElementById("detailName"),
@@ -1218,23 +1175,6 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.routes));
       localStorage.setItem(`${STORAGE_KEY}:savedAt`, new Date().toISOString());
       updateStorageNote(true);
-    }
-
-    function normalizeProfile(profile = {}) {
-      return {
-        name: String(profile.name || "").trim(),
-        bio: String(profile.bio || "").trim(),
-        defaultVisibility: profile.defaultVisibility === "public" ? "public" : "private"
-      };
-    }
-
-    function loadProfile() {
-      try {
-        state.profile = normalizeProfile(JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"));
-      } catch {
-        state.profile = normalizeProfile();
-      }
-      el.commentAuthor.value = state.profile.name;
     }
 
     function normalizeGoals(goals = {}) {
@@ -1737,16 +1677,7 @@
       if (!author) return;
       state.selectedAuthor = author;
       applyFilters();
-      el.profilePanel.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-
-    function showMyRoutes() {
-      if (!state.profile.name) {
-        el.focusNote.textContent = "Save a profile name on the map page first, then use My routes here.";
-        return;
-      }
-      showContributor(state.profile.name);
-      el.focusNote.textContent = `Showing routes posted as ${state.profile.name}.`;
+      el.focusNote.textContent = `Showing routes by ${author}. Clear the search and filters to show all routes again.`;
     }
 
     function routesForMap() {
@@ -1764,7 +1695,6 @@
       renderGoals();
       renderProgress();
       renderSummaries();
-      renderProfile();
       renderDetail();
       renderMap();
       renderLog();
@@ -2095,34 +2025,6 @@
       ].join("");
     }
 
-    function renderProfile() {
-      if (!state.selectedAuthor) {
-        el.profilePanel.classList.remove("active");
-        return;
-      }
-      const routes = state.routes.filter(route => (route.author || "Anonymous hiker") === state.selectedAuthor);
-      const totals = routes.reduce((acc, route) => {
-        acc.km += distanceKm(route.points);
-        acc.gain += Number(route.elevationGainM) || 0;
-        acc.likes += Number(route.likes) || 0;
-        (route.tags || []).forEach(tag => {
-          acc.tags[tag] = (acc.tags[tag] || 0) + 1;
-        });
-        return acc;
-      }, { km: 0, gain: 0, likes: 0, tags: {} });
-      el.profilePanel.classList.add("active");
-      el.profileName.textContent = state.selectedAuthor;
-      el.profileSubtitle.textContent = `${routes.length} saved route${routes.length === 1 ? "" : "s"} across all time`;
-      el.profileRoutes.textContent = routes.length;
-      el.profileKm.textContent = formatKm(totals.km);
-      el.profileGain.textContent = `${Math.round(totals.gain)} m`;
-      el.profileLikes.textContent = totals.likes;
-      const tags = Object.entries(totals.tags).sort(([, a], [, b]) => b - a).slice(0, 8);
-      el.profileTags.innerHTML = tags.length
-        ? tags.map(([tag, count]) => `<div class="summary-row"><span>${escapeHtml(tag)}</span><strong>${count}</strong></div>`).join("")
-        : `<div class="summary-row"><span>No tags for this contributor yet.</span><strong></strong></div>`;
-    }
-
     function renderDetail() {
       const route = state.routes.find(item => item.id === state.selectedRouteId);
       if (!route) {
@@ -2145,7 +2047,6 @@
         ? route.photos.map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")
         : "";
       el.detailCoords.textContent = route.waypoints.map(point => `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`).join(" | ");
-      if (!el.commentAuthor.value.trim()) el.commentAuthor.value = state.profile.name;
       el.detailComments.innerHTML = route.comments?.length
         ? route.comments
           .slice()
@@ -2328,11 +2229,6 @@
     el.seedDemoBtn.addEventListener("click", seedDemoRoutes);
     el.clearDemoBtn.addEventListener("click", clearDemoRoutes);
     el.exportCommunityBtn.addEventListener("click", exportCommunityPackage);
-    el.myRoutesBtn.addEventListener("click", showMyRoutes);
-    el.clearProfileBtn.addEventListener("click", () => {
-      state.selectedAuthor = "";
-      applyFilters();
-    });
     el.clearDetailBtn.addEventListener("click", () => {
       state.selectedRouteId = "";
       clearRouteHash();
@@ -2362,7 +2258,7 @@
       route.comments = Array.isArray(route.comments) ? route.comments : [];
       route.comments.push({
         id: crypto.randomUUID(),
-        author: el.commentAuthor.value.trim() || state.profile.name || "Anonymous",
+        author: el.commentAuthor.value.trim() || "Anonymous",
         text,
         createdAt: new Date().toISOString()
       });
@@ -2409,7 +2305,6 @@
     });
 
     loadRoutes();
-    loadProfile();
     loadGoals();
     loadSyncConfig();
     syncDateInputsToPreset();

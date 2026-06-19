@@ -460,7 +460,7 @@
       <header>
         <h1>Swiss Trail & Rail Log</h1>
         <div class="button-row" style="margin-bottom: 12px;">
-          <a href="overview.html" style="display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 7px 10px; border: 1px solid #bbc5c8; border-radius: 6px; color: var(--ink); background: #fff; text-decoration: none; font-size: 13px; font-weight: 680;">Community overview</a>
+          <a href="overview.html" style="display: inline-flex; align-items: center; justify-content: center; min-height: 34px; padding: 7px 10px; border: 1px solid #bbc5c8; border-radius: 6px; color: var(--ink); background: #fff; text-decoration: none; font-size: 13px; font-weight: 680;">Overview map</a>
         </div>
         <div class="search-row">
           <input id="searchInput" type="search" placeholder="Search village, lake, pass, peak" />
@@ -480,30 +480,6 @@
           <div class="stat"><strong id="trainKm">0 km</strong><span>By train</span></div>
         </div>
         <div class="storage-note" id="storageNote">Checking browser storage...</div>
-
-        <section class="profile-settings" aria-label="Contributor profile">
-          <div class="field-row">
-            <label>
-              My name
-              <input id="profileNameInput" placeholder="Hannah" />
-            </label>
-            <label>
-              Default visibility
-              <select id="profileVisibilityInput">
-                <option value="private">Private</option>
-                <option value="public">Public</option>
-              </select>
-            </label>
-          </div>
-          <label>
-            Home base or short bio
-            <input id="profileBioInput" placeholder="Zurich, weekend hiker, lake routes" />
-          </label>
-          <div class="button-row">
-            <button id="saveProfileBtn" type="button">Save profile</button>
-            <span class="hint" id="profileNote">Used as the default author for routes and comments.</span>
-          </div>
-        </section>
 
         <details class="profile-settings">
           <summary style="cursor: pointer; font-weight: 760;">Cloud sync</summary>
@@ -638,16 +614,13 @@
   <script>
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
-    const PROFILE_KEY = "swiss-trail-rail-profile:v1";
     const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
     const HIDDEN_CLOUD_KEY = "swiss-trail-rail-hidden-cloud:v1";
-    const PERSONAL_DEFAULT_KEY = "swiss-trail-rail-personal-default:v1";
     const state = {
       activeType: "hike",
       draft: [],
       draftRoute: [],
       routes: [],
-      profile: { name: "", bio: "", defaultVisibility: "private" },
       sync: { url: "", key: "" },
       hiddenCloudRouteIds: new Set(),
       pendingPhotos: [],
@@ -663,11 +636,6 @@
       fitSwissBtn: document.getElementById("fitSwissBtn"),
       tabHike: document.getElementById("tabHike"),
       tabTrain: document.getElementById("tabTrain"),
-      profileNameInput: document.getElementById("profileNameInput"),
-      profileVisibilityInput: document.getElementById("profileVisibilityInput"),
-      profileBioInput: document.getElementById("profileBioInput"),
-      saveProfileBtn: document.getElementById("saveProfileBtn"),
-      profileNote: document.getElementById("profileNote"),
       supabaseUrl: document.getElementById("supabaseUrl"),
       supabaseKey: document.getElementById("supabaseKey"),
       saveSyncBtn: document.getElementById("saveSyncBtn"),
@@ -769,61 +737,6 @@
       el.storageNote.textContent = ok
         ? `${count} saved route${count === 1 ? "" : "s"} stored in this browser. Export JSON regularly as your personal backup, especially when saving photos.`
         : "Browser storage is blocked. Routes stay visible for now, but export JSON to avoid losing them.";
-    }
-
-    function normalizeProfile(profile = {}) {
-      return {
-        name: String(profile.name || "").trim(),
-        bio: String(profile.bio || "").trim(),
-        defaultVisibility: profile.defaultVisibility === "public" ? "public" : "private"
-      };
-    }
-
-    function applyProfileDefaults() {
-      el.profileNameInput.value = state.profile.name;
-      el.profileVisibilityInput.value = state.profile.defaultVisibility;
-      el.profileBioInput.value = state.profile.bio;
-      if (!el.routeForm.dataset.editId) {
-        if (!el.routeAuthor.value.trim()) el.routeAuthor.value = state.profile.name;
-        el.routeVisibility.value = state.profile.defaultVisibility;
-      }
-      el.profileNote.textContent = state.profile.name
-        ? `Posting as ${state.profile.name}.`
-        : "Used as the default author for routes and comments.";
-    }
-
-    function loadProfile() {
-      try {
-        state.profile = normalizeProfile(JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"));
-        if (!localStorage.getItem(PERSONAL_DEFAULT_KEY)) {
-          state.profile.defaultVisibility = "private";
-          localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile));
-          localStorage.setItem(PERSONAL_DEFAULT_KEY, "1");
-        }
-      } catch {
-        state.profile = normalizeProfile();
-      }
-      applyProfileDefaults();
-    }
-
-    function saveProfile() {
-      state.profile = normalizeProfile({
-        name: el.profileNameInput.value,
-        bio: el.profileBioInput.value,
-        defaultVisibility: el.profileVisibilityInput.value
-      });
-      try {
-        localStorage.setItem(PROFILE_KEY, JSON.stringify(state.profile));
-        if (!el.routeForm.dataset.editId) {
-          el.routeAuthor.value = state.profile.name;
-          el.routeVisibility.value = state.profile.defaultVisibility;
-        }
-        el.profileNote.textContent = state.profile.name
-          ? `Profile saved. New routes will post as ${state.profile.name}.`
-          : "Profile saved. New routes can still be anonymous.";
-      } catch {
-        el.profileNote.textContent = "Could not save profile in this browser.";
-      }
     }
 
     function loadRoutes() {
@@ -1334,8 +1247,7 @@
     function resetForm() {
       el.routeForm.reset();
       el.routeType.value = state.activeType;
-      el.routeAuthor.value = state.profile.name;
-      el.routeVisibility.value = state.profile.defaultVisibility;
+      el.routeVisibility.value = "private";
       state.draft = [];
       state.draftRoute = [];
       state.draftSource = "";
@@ -1420,8 +1332,8 @@
       const route = {
         id: editId || crypto.randomUUID(),
         name: routeName,
-        author: el.routeAuthor.value.trim() || state.profile.name,
-        authorBio: state.profile.bio,
+        author: el.routeAuthor.value.trim(),
+        authorBio: "",
         visibility: el.routeVisibility.value,
         type: el.routeType.value,
         date: el.routeDate.value,
@@ -1726,7 +1638,6 @@ ${segments}
       input.addEventListener("input", updateQuickPost);
       input.addEventListener("change", updateQuickPost);
     });
-    el.saveProfileBtn.addEventListener("click", saveProfile);
     el.saveSyncBtn.addEventListener("click", saveSyncConfig);
     el.pushCloudBtn.addEventListener("click", pushPublicRoutes);
     el.pullCloudBtn.addEventListener("click", pullCommunityRoutes);
@@ -1789,7 +1700,6 @@ ${segments}
     });
     window.addEventListener("beforeunload", () => saveRoutes(true));
 
-    loadProfile();
     loadSyncConfig();
     loadHiddenCloudRoutes();
     loadRoutes();

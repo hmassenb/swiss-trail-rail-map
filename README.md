@@ -42,13 +42,10 @@ The overview page reads the same saved route data as the map page and displays:
 - filter-aware highlights for longest route, biggest climb, most liked, most discussed, and top contributor
 - top contributors and trending tags for the current filter/timeframe
 - estimated canton coverage for the current filter/timeframe
-- clickable contributor profiles with route totals, distance, elevation, likes, and top tags
-- a `My routes` shortcut based on the saved contributor profile
 - feed-card route focusing on the cumulative map
 - selected-route detail cards with metrics, tags, caption, coordinates, like, and contributor actions
 - route-level share links using `overview.html#route=...`
 - route comments in the selected-route detail card
-- saved contributor profile defaults for route authorship and comments
 - quick timeframe presets for 30 days, 90 days, this year, and all time
 - custom timeframe metrics that update the feed, map, contributor summaries, tags, and dashboard cards together
 - optional demo community routes to preview the cumulative social map before adding real entries
@@ -77,7 +74,7 @@ Routes are entered directly in the browser:
 
 The map page includes a `Quick post` checklist that updates while you fill in the route name, date, visibility, and clicked map points.
 
-The `My name` profile panel can store a default name, short bio, and default visibility in the browser. New routes use that name automatically, and the default visibility is private unless you change it.
+Each route can store its own optional hiker name. There is no separate user profile setup.
 
 The map page also includes `Cloud sync` controls. When Supabase sync is configured, newly saved public routes are pushed to the shared community table automatically; private routes are not pushed.
 
@@ -85,7 +82,6 @@ The app stores:
 
 - `name`: route title
 - `author`: hiker or contributor name
-- `authorBio`: optional contributor bio copied from the saved profile
 - `visibility`: `public` or `private`
 - `type`: `hike` or `train`
 - `date`: optional completion date
