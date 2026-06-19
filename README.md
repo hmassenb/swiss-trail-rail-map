@@ -24,11 +24,11 @@ The app is fully static and works from GitHub Pages. Your route data and compres
 
 The overview page reads the same saved route data as the map page and displays:
 
-- all logged hikes and train rides on one overview map
+- one Switzerland-bounded overview map that opens on all completed hikes
 - a searchable route log
 - filters for hikes, trains, visibility, tags, and timeframes
 - exact custom date ranges with `From` and `To` controls
-- cumulative map controls for hikes, trains, and private routes
+- cumulative map controls for hikes, optional trains, and private routes
 - live map legend with filtered hike, train, private, and currently drawn route counts
 - total entries, hiking distance, train distance, and elevation gain
 - average route distance, best day distance, active days, and current metric window
@@ -71,7 +71,7 @@ Routes are entered directly in the browser:
 - Click the map to add waypoints.
 - Or load a GPX track as a draft, then review its geometry and add metadata before saving.
 - Add a route name, hiker name, visibility, optional date, and optional notes.
-- Add optional tags, duration, elevation gain, and elevation loss.
+- Add optional tags and duration. If the GPX contains elevation points, elevation gain/loss is calculated locally and filled automatically.
 - Add an optional caption and route photos.
 - Save the route.
 

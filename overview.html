@@ -682,7 +682,7 @@
   <div class="shell">
     <header>
       <div class="title-row">
-        <h1>Route Overview Log</h1>
+        <h1>Completed Hikes Map</h1>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <button class="button" id="myRoutesBtn" type="button">My routes</button>
           <a class="button" href="index.html">Back to map</a>
@@ -691,8 +691,8 @@
       <div class="controls">
         <input id="searchInput" type="search" placeholder="Search name, notes, date, coordinates" />
         <select id="typeFilter">
-          <option value="all">All entries</option>
           <option value="hike">Hikes</option>
+          <option value="all">All entries</option>
           <option value="train">Trains</option>
         </select>
         <select id="visibilityFilter">
@@ -757,7 +757,7 @@
       <div id="overviewMap" aria-label="Overview map of logged routes"></div>
       <div class="map-tools">
         <label><input id="showHikes" type="checkbox" checked /> Hikes</label>
-        <label><input id="showTrains" type="checkbox" checked /> Trains</label>
+        <label><input id="showTrains" type="checkbox" /> Trains</label>
         <label><input id="showPrivate" type="checkbox" checked /> Private routes</label>
         <div class="map-legend">
           <div class="legend-row"><span class="legend-line"></span><span>Hikes</span><strong id="legendHikes">0</strong></div>
@@ -1106,7 +1106,7 @@
     });
     const overviewMap = L.map("overviewMap", {
       layers: [topo],
-      maxBounds: SWISS_BOUNDS.pad(0.75)
+      maxBounds: SWISS_BOUNDS
     }).fitBounds(SWISS_BOUNDS);
     const routeGroup = L.featureGroup().addTo(overviewMap);
 
@@ -1379,10 +1379,18 @@
     function normalizeRoute(route) {
       if (!route?.points || route.points.length < 2) return null;
       const points = route.points
-        .map(point => [Number(point[0]), Number(point[1])])
+        .map(point => {
+          const normalized = [Number(point[0]), Number(point[1])];
+          if (Number.isFinite(Number(point[2]))) normalized.push(Number(point[2]));
+          return normalized;
+        })
         .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
       const waypoints = (route.waypoints || route.points)
-        .map(point => [Number(point[0]), Number(point[1])])
+        .map(point => {
+          const normalized = [Number(point[0]), Number(point[1])];
+          if (Number.isFinite(Number(point[2]))) normalized.push(Number(point[2]));
+          return normalized;
+        })
         .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
       if (points.length < 2 || waypoints.length < 2) return null;
       const durationHours = numericValue(route.durationHours);

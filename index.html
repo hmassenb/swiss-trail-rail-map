@@ -730,7 +730,7 @@
 
     const map = L.map("map", {
       layers: [topo, hikingOverlay, railOverlay],
-      maxBounds: SWISS_BOUNDS.pad(0.75),
+      maxBounds: SWISS_BOUNDS,
       doubleClickZoom: false
     }).fitBounds(SWISS_BOUNDS);
 
@@ -1122,6 +1122,21 @@
       };
     }
 
+    function elevationTotals(elevations) {
+      let gain = 0;
+      let loss = 0;
+      const values = elevations.map(Number).filter(Number.isFinite);
+      for (let i = 1; i < values.length; i++) {
+        const delta = values[i] - values[i - 1];
+        if (delta > 0) gain += delta;
+        if (delta < 0) loss += Math.abs(delta);
+      }
+      return {
+        gain: Math.round(gain),
+        loss: Math.round(loss)
+      };
+    }
+
     function boundsFor(points) {
       return L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
     }
@@ -1395,7 +1410,11 @@
         }
       }
       const waypoints = state.draft.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]);
-      const points = routedPoints.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]);
+      const points = routedPoints.map(point => {
+        const savedPoint = [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))];
+        if (Number.isFinite(Number(point[2]))) savedPoint.push(Number(Number(point[2]).toFixed(1)));
+        return savedPoint;
+      });
       const editId = el.routeForm.dataset.editId;
       const previousRoute = editId ? state.routes.find(item => item.id === editId) : null;
       const route = {
@@ -1478,7 +1497,10 @@
 
     function exportGpx() {
       const segments = state.routes.map(route => {
-        const points = route.points.map(point => `      <trkpt lat="${point[0]}" lon="${point[1]}"></trkpt>`).join("\n");
+        const points = route.points.map(point => {
+          const ele = Number.isFinite(Number(point[2])) ? `<ele>${Number(point[2]).toFixed(1)}</ele>` : "";
+          return `      <trkpt lat="${point[0]}" lon="${point[1]}">${ele}</trkpt>`;
+        }).join("\n");
         const type = route.type === "train" ? "train" : "hike";
         const descParts = [
           route.notes,
@@ -1546,10 +1568,18 @@ ${segments}
     function normalizeRoute(route) {
       if (!route?.points || route.points.length < 2) return null;
       const points = route.points
-        .map(point => [Number(point[0]), Number(point[1])])
+        .map(point => {
+          const normalized = [Number(point[0]), Number(point[1])];
+          if (Number.isFinite(Number(point[2]))) normalized.push(Number(point[2]));
+          return normalized;
+        })
         .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
       const waypoints = (route.waypoints || route.points)
-        .map(point => [Number(point[0]), Number(point[1])])
+        .map(point => {
+          const normalized = [Number(point[0]), Number(point[1])];
+          if (Number.isFinite(Number(point[2]))) normalized.push(Number(point[2]));
+          return normalized;
+        })
         .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
       if (points.length < 2 || waypoints.length < 2) return null;
       const durationHours = numericValue(route.durationHours);
@@ -1596,6 +1626,8 @@ ${segments}
         type: track.type,
         date: track.date,
         notes: track.notes,
+        elevationGainM: track.elevationGainM,
+        elevationLossM: track.elevationLossM,
         waypoints: track.points,
         points: track.points,
         updatedAt: new Date().toISOString()
@@ -1608,17 +1640,24 @@ ${segments}
       const tracks = [...doc.getElementsByTagName("trk")];
       const parsedTracks = [];
       tracks.forEach((track, index) => {
-        const points = [...track.getElementsByTagName("trkpt")].map(point => [
-          Number(point.getAttribute("lat")),
-          Number(point.getAttribute("lon"))
-        ]).filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
+        const elevations = [];
+        const points = [...track.getElementsByTagName("trkpt")].map(point => {
+          const lat = Number(point.getAttribute("lat"));
+          const lon = Number(point.getAttribute("lon"));
+          const ele = Number(point.getElementsByTagName("ele")[0]?.textContent);
+          if (Number.isFinite(ele)) elevations.push(ele);
+          return Number.isFinite(ele) ? [lat, lon, ele] : [lat, lon];
+        }).filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
         if (points.length < 2) return;
+        const elevation = elevationTotals(elevations);
         const typeText = (track.getElementsByTagName("type")[0]?.textContent || "").toLowerCase();
         parsedTracks.push({
           name: track.getElementsByTagName("name")[0]?.textContent || `Imported GPX ${index + 1}`,
           type: typeText.includes("train") || typeText.includes("rail") ? "train" : "hike",
           date: (track.getElementsByTagName("time")[0]?.textContent || "").slice(0, 10),
           notes: track.getElementsByTagName("desc")[0]?.textContent || "",
+          elevationGainM: elevation.gain || "",
+          elevationLossM: elevation.loss || "",
           points
         });
       });
@@ -1648,10 +1687,14 @@ ${segments}
       if (!el.routeName.value.trim()) el.routeName.value = track.name;
       if (!el.routeDate.value && track.date) el.routeDate.value = track.date;
       if (!el.routeNotes.value.trim() && track.notes) el.routeNotes.value = track.notes;
+      if (!el.routeGain.value && track.elevationGainM) el.routeGain.value = track.elevationGainM;
+      if (!el.routeLoss.value && track.elevationLossM) el.routeLoss.value = track.elevationLossM;
       renderDraft();
       activateType(track.type);
       map.fitBounds(boundsFor(track.points).pad(0.18));
-      setStatus(`Loaded GPX draft with ${track.points.length} track points`);
+      setStatus(track.elevationGainM
+        ? `Loaded GPX draft with ${track.points.length} points and ${track.elevationGainM} m gain`
+        : `Loaded GPX draft with ${track.points.length} track points`);
     }
 
     function escapeHtml(value) {
@@ -1669,7 +1712,7 @@ ${segments}
     }
 
     map.on("click", event => {
-      if (!SWISS_BOUNDS.pad(0.1).contains(event.latlng)) {
+      if (!SWISS_BOUNDS.contains(event.latlng)) {
         setStatus("Point is outside Switzerland");
         return;
       }
