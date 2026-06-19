@@ -588,6 +588,7 @@
   <script>
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
+    const BACKUP_KEY = `${STORAGE_KEY}:lastBackup`;
     const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
     const HIDDEN_CLOUD_KEY = "swiss-trail-rail-hidden-cloud:v1";
     const state = {
@@ -698,10 +699,49 @@
 
     function updateStorageNote(ok = canUseLocalStorage()) {
       const count = state.routes.length;
-      el.storageNote.classList.toggle("warning", !ok);
-      el.storageNote.textContent = ok
-        ? `${count} saved route${count === 1 ? "" : "s"} stored in this browser. Export JSON regularly as your personal backup, especially when saving photos.`
-        : "Browser storage is blocked. Routes stay visible for now, but export JSON to avoid losing them.";
+      const backup = backupInfo();
+      const hasChanges = count > 0 && (!backup || backup.routeCount !== count || backup.savedAt !== latestSavedAt());
+      el.storageNote.classList.toggle("warning", !ok || hasChanges);
+      if (!ok) {
+        el.storageNote.textContent = "Browser storage is blocked. Routes stay visible for now, but export JSON to avoid losing them.";
+        return;
+      }
+      if (!count) {
+        el.storageNote.textContent = "No routes saved yet. Your future entries will stay in this browser until you export a JSON backup.";
+        return;
+      }
+      el.storageNote.textContent = hasChanges
+        ? `${count} saved route${count === 1 ? "" : "s"} in this browser. Export JSON now to back up the latest changes${backup ? `; last backup was ${formatDateTime(backup.exportedAt)}.` : "."}`
+        : `${count} saved route${count === 1 ? "" : "s"} in this browser. Last JSON backup: ${formatDateTime(backup.exportedAt)}.`;
+    }
+
+    function latestSavedAt() {
+      return localStorage.getItem(`${STORAGE_KEY}:savedAt`) || "";
+    }
+
+    function backupInfo() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(BACKUP_KEY) || "null");
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function rememberBackup() {
+      localStorage.setItem(BACKUP_KEY, JSON.stringify({
+        exportedAt: new Date().toISOString(),
+        routeCount: state.routes.length,
+        savedAt: latestSavedAt()
+      }));
+      updateStorageNote(true);
+    }
+
+    function formatDateTime(value) {
+      if (!value) return "never";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "unknown";
+      return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
     }
 
     function loadRoutes() {
@@ -713,17 +753,17 @@
         }
         const rawRoutes = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
         state.routes = Array.isArray(rawRoutes) ? rawRoutes.map(normalizeSavedRoute).filter(Boolean) : [];
-        saveRoutes(true);
+        saveRoutes(true, false);
       } catch {
         state.routes = [];
         updateStorageNote(false);
       }
     }
 
-    function saveRoutes(silent = false) {
+    function saveRoutes(silent = false, touchSavedAt = true) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state.routes));
-        localStorage.setItem(`${STORAGE_KEY}:savedAt`, new Date().toISOString());
+        if (touchSavedAt) localStorage.setItem(`${STORAGE_KEY}:savedAt`, new Date().toISOString());
         updateStorageNote(true);
         return true;
       } catch {
@@ -1295,6 +1335,8 @@
 
     function exportJson() {
       download("swiss-trail-rail-log.json", JSON.stringify(state.routes, null, 2), "application/json");
+      rememberBackup();
+      setStatus("JSON backup exported");
     }
 
     function exportGpx() {

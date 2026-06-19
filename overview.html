@@ -891,6 +891,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
+    const BACKUP_KEY = `${STORAGE_KEY}:lastBackup`;
     const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
     const GOALS_KEY = "swiss-trail-rail-goals:v1";
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
@@ -1129,6 +1130,26 @@
       updateStorageNote(true);
     }
 
+    function latestSavedAt() {
+      return localStorage.getItem(`${STORAGE_KEY}:savedAt`) || "";
+    }
+
+    function backupInfo() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(BACKUP_KEY) || "null");
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function formatDateTime(value) {
+      if (!value) return "never";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "unknown";
+      return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    }
+
     function normalizeGoals(goals = {}) {
       const numberOrDefault = (value, fallback) => {
         const number = Number(value);
@@ -1340,10 +1361,21 @@
     }
 
     function updateStorageNote(ok) {
-      el.storageNote.classList.toggle("warning", !ok);
-      el.storageNote.textContent = ok
-        ? `${state.routes.length} saved entr${state.routes.length === 1 ? "y" : "ies"} loaded from this browser-local personal route log.`
-        : "Browser storage could not be read. Open the map page and export JSON if your entries are stored elsewhere.";
+      const backup = backupInfo();
+      const count = state.routes.length;
+      const hasChanges = count > 0 && (!backup || backup.routeCount !== count || backup.savedAt !== latestSavedAt());
+      el.storageNote.classList.toggle("warning", !ok || hasChanges);
+      if (!ok) {
+        el.storageNote.textContent = "Browser storage could not be read. Open the map page and export JSON if your entries are stored elsewhere.";
+        return;
+      }
+      if (!count) {
+        el.storageNote.textContent = "No saved entries in this browser yet. Add hikes on the map page, then export JSON as your backup.";
+        return;
+      }
+      el.storageNote.textContent = hasChanges
+        ? `${count} saved entr${count === 1 ? "y" : "ies"} loaded. Export JSON on the map page to back up the latest changes${backup ? `; last backup was ${formatDateTime(backup.exportedAt)}.` : "."}`
+        : `${count} saved entr${count === 1 ? "y" : "ies"} loaded. Last JSON backup: ${formatDateTime(backup.exportedAt)}.`;
     }
 
     function renderTagOptions() {

@@ -101,6 +101,8 @@ Use `Export JSON` for backups or to move routes to another browser/device. Use `
 
 Photos are compressed before saving, then stored inside the route JSON as data URLs. This keeps the app static and GitHub Pages friendly, but browser storage is finite. Export JSON regularly if you attach many photos or backfill many years of hikes.
 
+After a JSON export, the app records the backup time and route count in browser storage. The map and overview pages warn you when the current browser data has changed since the last export.
+
 For manually clicked hike routes, the app sends sampled route coordinates to Open-Elevation during save to estimate elevation gain and loss. If that lookup fails, manually entered elevation values are used instead.
 
 ## Map Services
@@ -126,7 +128,6 @@ To turn this into a more useful distance-tracking tool, the strongest remaining 
 
 2. Improve persistence
    - Keep local browser storage for privacy.
-   - Add a visible backup reminder.
    - Consider optional GitHub Gist, JSON file, or small backend sync later if cross-device use becomes important.
 
 3. Add richer progress views
