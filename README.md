@@ -68,7 +68,7 @@ Routes are entered directly in the browser:
 - Click the map to add waypoints.
 - Or load a GPX track as a draft, then review its geometry and add metadata before saving.
 - Add a route name, hiker name, visibility, optional date, and optional notes.
-- Add optional tags and duration. If the GPX contains elevation points, elevation gain/loss is calculated locally and filled automatically.
+- Add optional tags and duration. Elevation gain/loss is calculated automatically for hikes: GPX elevation is used locally when available, and clicked routes use an external elevation lookup.
 - Add an optional caption and route photos.
 - Save the route.
 
@@ -105,6 +105,8 @@ Routes are saved in the browser's local storage. Data is therefore local to the 
 Use `Export JSON` for backups or to move routes to another browser/device. Use `Import GPX / JSON` to restore or add routes.
 
 Photos are compressed before saving, then stored inside the route JSON as data URLs. This keeps the app static and GitHub Pages friendly, but browser storage is finite. Export JSON regularly if you attach many photos or backfill many years of hikes.
+
+For manually clicked hike routes, the app sends sampled route coordinates to Open-Elevation during save to estimate elevation gain and loss. If that lookup fails, manually entered elevation values are used instead.
 
 ## Community Sharing
 

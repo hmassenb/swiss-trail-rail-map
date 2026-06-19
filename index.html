@@ -561,6 +561,7 @@
             Elevation loss
             <input id="routeLoss" type="number" min="0" step="10" placeholder="meters" />
           </label>
+          <p class="hint">For hikes, elevation gain/loss is calculated automatically on save. GPX elevation is used locally when available; clicked routes use an external elevation lookup.</p>
           <label>
             Notes
             <textarea id="routeNotes" placeholder="Weather, companions, line number, favorite section"></textarea>
@@ -1050,6 +1051,42 @@
       };
     }
 
+    function pointElevationTotals(points) {
+      const elevations = points.map(point => Number(point[2])).filter(Number.isFinite);
+      return elevations.length >= 2 ? elevationTotals(elevations) : null;
+    }
+
+    function sampleElevationPoints(points, target = 90) {
+      if (points.length <= target) return points.map(point => [point[0], point[1]]);
+      const sampled = [];
+      for (let i = 0; i < target; i++) {
+        const index = Math.round((i / (target - 1)) * (points.length - 1));
+        sampled.push([points[index][0], points[index][1]]);
+      }
+      return sampled;
+    }
+
+    async function fetchElevationTotals(points) {
+      const sampled = sampleElevationPoints(points);
+      const locations = sampled.map(point => `${point[0]},${point[1]}`).join("|");
+      const url = `https://api.open-elevation.com/api/v1/lookup?locations=${encodeURIComponent(locations)}`;
+      const response = await fetch(url, { headers: { "Accept": "application/json" } });
+      if (!response.ok) throw new Error("Elevation lookup failed");
+      const data = await response.json();
+      const elevations = (Array.isArray(data.results) ? data.results : [])
+        .map(result => Number(result.elevation))
+        .filter(Number.isFinite);
+      if (elevations.length < 2) throw new Error("No elevation profile returned");
+      return elevationTotals(elevations);
+    }
+
+    async function automaticElevation(points, type) {
+      if (type !== "hike" || points.length < 2) return null;
+      const localTotals = pointElevationTotals(points);
+      if (localTotals) return localTotals;
+      return fetchElevationTotals(points);
+    }
+
     function boundsFor(points) {
       return L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
     }
@@ -1329,6 +1366,20 @@
       });
       const editId = el.routeForm.dataset.editId;
       const previousRoute = editId ? state.routes.find(item => item.id === editId) : null;
+      const manualGain = numericValue(el.routeGain.value);
+      const manualLoss = numericValue(el.routeLoss.value);
+      let automaticGain = "";
+      let automaticLoss = "";
+      if (el.routeType.value === "hike") {
+        try {
+          setStatus("Calculating elevation");
+          const elevation = await automaticElevation(points, el.routeType.value);
+          automaticGain = elevation?.gain || "";
+          automaticLoss = elevation?.loss || "";
+        } catch {
+          setStatus("Elevation lookup failed; using entered values");
+        }
+      }
       const route = {
         id: editId || crypto.randomUUID(),
         name: routeName,
@@ -1339,8 +1390,8 @@
         date: el.routeDate.value,
         tags: parseTags(el.routeTags.value),
         durationHours: numericValue(el.routeDuration.value),
-        elevationGainM: numericValue(el.routeGain.value),
-        elevationLossM: numericValue(el.routeLoss.value),
+        elevationGainM: automaticGain || manualGain,
+        elevationLossM: automaticLoss || manualLoss,
         notes: el.routeNotes.value.trim(),
         caption: el.routeCaption.value.trim(),
         photos: state.pendingPhotos.map(photo => ({ ...photo })),
