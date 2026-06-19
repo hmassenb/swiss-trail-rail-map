@@ -680,11 +680,6 @@
           <option value="all">All entries</option>
           <option value="train">Trains</option>
         </select>
-        <select id="visibilityFilter">
-          <option value="all">All saved</option>
-          <option value="private">Private</option>
-          <option value="public">Public</option>
-        </select>
         <select id="tagFilter">
           <option value="all">All tags</option>
         </select>
@@ -702,7 +697,6 @@
           <option value="name-asc">Name A-Z</option>
           <option value="distance-desc">Longest first</option>
           <option value="gain-desc">Most elevation</option>
-          <option value="likes-desc">Most liked</option>
         </select>
       </div>
       <div class="button-row" id="timePresets" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -722,20 +716,6 @@
         </label>
         <button class="button" id="clearDateRangeBtn" type="button">Clear range</button>
       </div>
-      <details class="summary-panel">
-        <summary style="cursor: pointer; font-weight: 760;">Cloud sync</summary>
-        <div class="dashboard-note" style="margin-top: 8px;">Optional Supabase sync turns this browser-local prototype into a shared community feed.</div>
-        <div class="controls" style="margin-top: 10px; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr);">
-          <input id="supabaseUrl" placeholder="Supabase project URL" />
-          <input id="supabaseKey" placeholder="Supabase anon key" />
-        </div>
-        <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
-          <button class="button" id="saveSyncBtn" type="button">Save sync settings</button>
-          <button class="button" id="pushCloudBtn" type="button">Push public routes</button>
-          <button class="button" id="pullCloudBtn" type="button">Pull community</button>
-        </div>
-        <div class="storage-note" id="syncStatus" style="margin-top: 10px;">Cloud sync is not configured.</div>
-      </details>
     </header>
 
     <section class="map-wrap">
@@ -743,7 +723,7 @@
       <div class="map-tools">
         <label><input id="showHikes" type="checkbox" checked /> Hikes</label>
         <label><input id="showTrains" type="checkbox" /> Trains</label>
-        <label><input id="showPrivate" type="checkbox" checked /> Private routes</label>
+        <label><input id="showPrivate" type="checkbox" checked /> Saved routes</label>
         <div class="map-legend">
           <div class="legend-row"><span class="legend-line"></span><span>Hikes</span><strong id="legendHikes">0</strong></div>
           <div class="legend-row"><span class="legend-line train"></span><span>Trains</span><strong id="legendTrains">0</strong></div>
@@ -758,12 +738,12 @@
         <div class="stat"><strong id="entryCount">0</strong><span>Logged entries</span></div>
         <div class="stat"><strong id="hikeKm">0 km</strong><span>Hiked</span></div>
         <div class="stat"><strong id="trainKm">0 km</strong><span>By train</span></div>
-        <div class="stat"><strong id="contributorCount">0</strong><span>Contributors</span></div>
+        <div class="stat"><strong id="contributorCount">0</strong><span>Names</span></div>
       </div>
       <div class="stats">
         <div class="stat"><strong id="gainM">0 m</strong><span>Elevation gain</span></div>
         <div class="stat"><strong id="durationTotal">0 h</strong><span>Logged duration</span></div>
-        <div class="stat"><strong id="likesTotal">0</strong><span>Community likes</span></div>
+        <div class="stat"><strong id="photoTotal">0</strong><span>Saved photos</span></div>
         <div class="stat"><strong id="visibleCount">0</strong><span>Visible in feed</span></div>
       </div>
       <div class="stats">
@@ -847,9 +827,8 @@
       <div class="storage-note" id="storageNote">Loading saved entries...</div>
       <div class="dashboard-note" id="dashboardNote">Metrics reflect the current filters.</div>
       <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button class="button" id="seedDemoBtn" type="button">Load demo community</button>
+        <button class="button" id="seedDemoBtn" type="button">Load demo routes</button>
         <button class="button" id="clearDemoBtn" type="button">Remove demo routes</button>
-        <button class="button" id="exportCommunityBtn" type="button">Export public community</button>
       </div>
       <section class="summary-grid">
         <div class="summary-panel">
@@ -861,7 +840,7 @@
           <div class="summary-list" id="monthSummary"></div>
         </div>
         <div class="summary-panel">
-          <h2>Top Contributors</h2>
+          <h2>Route Names</h2>
           <div class="summary-list" id="contributorSummary"></div>
         </div>
         <div class="summary-panel">
@@ -879,7 +858,7 @@
       </section>
       <div class="feed-title">
         <h2>Route Log</h2>
-        <span class="dashboard-note" id="feedScope">Showing public routes for all time.</span>
+        <span class="dashboard-note" id="feedScope">Showing saved routes for all time.</span>
       </div>
       <div class="storage-note" id="focusNote">Click a feed card to focus its route on the map.</div>
       <section class="detail-panel" id="routeDetail">
@@ -889,9 +868,8 @@
             <div class="dashboard-note" id="detailMeta">Route detail</div>
           </div>
           <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button class="button" id="detailLikeBtn" type="button">Like</button>
             <button class="button" id="shareRouteBtn" type="button">Share route</button>
-            <button class="button" id="detailAuthorBtn" type="button">View contributor</button>
+            <button class="button" id="detailAuthorBtn" type="button">Filter name</button>
             <button class="button" id="clearDetailBtn" type="button">Close</button>
           </div>
         </div>
@@ -899,20 +877,12 @@
           <div class="stat"><strong id="detailDistance">0 km</strong><span>Distance</span></div>
           <div class="stat"><strong id="detailDuration">0 h</strong><span>Duration</span></div>
           <div class="stat"><strong id="detailGain">0 m</strong><span>Elevation gain</span></div>
-          <div class="stat"><strong id="detailLikes">0</strong><span>Likes / comments</span></div>
+          <div class="stat"><strong id="detailPhotoCount">0</strong><span>Photos</span></div>
         </div>
         <div class="meta" id="detailTags"></div>
         <div class="notes" id="detailCaption"></div>
         <div class="detail-photos" id="detailPhotos"></div>
         <div class="points" id="detailCoords"></div>
-        <div class="comment-box">
-          <div class="comment-list" id="detailComments"></div>
-          <div class="controls" style="grid-template-columns: 160px minmax(180px, 1fr) auto;">
-            <input id="commentAuthor" placeholder="Your name" />
-            <input id="commentText" placeholder="Add a comment" />
-            <button class="button" id="addCommentBtn" type="button">Comment</button>
-          </div>
-        </div>
       </section>
       <section class="log" id="entryLog"></section>
     </main>
@@ -929,7 +899,6 @@
       filtered: [],
       selectedAuthor: "",
       selectedRouteId: "",
-      sync: { url: "", key: "" },
       goals: { distanceKm: 100, routeCount: 10, elevationM: 5000 }
     };
     const CANTONS = [
@@ -964,7 +933,6 @@
     const el = {
       searchInput: document.getElementById("searchInput"),
       typeFilter: document.getElementById("typeFilter"),
-      visibilityFilter: document.getElementById("visibilityFilter"),
       tagFilter: document.getElementById("tagFilter"),
       timeFilter: document.getElementById("timeFilter"),
       sortBy: document.getElementById("sortBy"),
@@ -972,19 +940,13 @@
       dateFrom: document.getElementById("dateFrom"),
       dateTo: document.getElementById("dateTo"),
       clearDateRangeBtn: document.getElementById("clearDateRangeBtn"),
-      supabaseUrl: document.getElementById("supabaseUrl"),
-      supabaseKey: document.getElementById("supabaseKey"),
-      saveSyncBtn: document.getElementById("saveSyncBtn"),
-      pushCloudBtn: document.getElementById("pushCloudBtn"),
-      pullCloudBtn: document.getElementById("pullCloudBtn"),
-      syncStatus: document.getElementById("syncStatus"),
       entryCount: document.getElementById("entryCount"),
       hikeKm: document.getElementById("hikeKm"),
       trainKm: document.getElementById("trainKm"),
       contributorCount: document.getElementById("contributorCount"),
       gainM: document.getElementById("gainM"),
       durationTotal: document.getElementById("durationTotal"),
-      likesTotal: document.getElementById("likesTotal"),
+      photoTotal: document.getElementById("photoTotal"),
       visibleCount: document.getElementById("visibleCount"),
       avgDistance: document.getElementById("avgDistance"),
       bestDayDistance: document.getElementById("bestDayDistance"),
@@ -1020,7 +982,6 @@
       feedScope: document.getElementById("feedScope"),
       seedDemoBtn: document.getElementById("seedDemoBtn"),
       clearDemoBtn: document.getElementById("clearDemoBtn"),
-      exportCommunityBtn: document.getElementById("exportCommunityBtn"),
       showHikes: document.getElementById("showHikes"),
       showTrains: document.getElementById("showTrains"),
       showPrivate: document.getElementById("showPrivate"),
@@ -1038,22 +999,17 @@
       routeDetail: document.getElementById("routeDetail"),
       detailName: document.getElementById("detailName"),
       detailMeta: document.getElementById("detailMeta"),
-      detailLikeBtn: document.getElementById("detailLikeBtn"),
       shareRouteBtn: document.getElementById("shareRouteBtn"),
       detailAuthorBtn: document.getElementById("detailAuthorBtn"),
       clearDetailBtn: document.getElementById("clearDetailBtn"),
       detailDistance: document.getElementById("detailDistance"),
       detailDuration: document.getElementById("detailDuration"),
       detailGain: document.getElementById("detailGain"),
-      detailLikes: document.getElementById("detailLikes"),
+      detailPhotoCount: document.getElementById("detailPhotoCount"),
       detailTags: document.getElementById("detailTags"),
       detailCaption: document.getElementById("detailCaption"),
       detailPhotos: document.getElementById("detailPhotos"),
       detailCoords: document.getElementById("detailCoords"),
-      detailComments: document.getElementById("detailComments"),
-      commentAuthor: document.getElementById("commentAuthor"),
-      commentText: document.getElementById("commentText"),
-      addCommentBtn: document.getElementById("addCommentBtn"),
       entryLog: document.getElementById("entryLog")
     };
 
@@ -1121,10 +1077,6 @@
 
     function formatTags(tags) {
       return (Array.isArray(tags) ? tags : []).join(", ");
-    }
-
-    function commentCount(route) {
-      return Array.isArray(route.comments) ? route.comments.length : 0;
     }
 
     function latestCommentAt(route) {
@@ -1213,107 +1165,6 @@
       localStorage.setItem(GOALS_KEY, JSON.stringify(state.goals));
       applyGoalInputs();
       renderGoals();
-    }
-
-    function loadSyncConfig() {
-      try {
-        state.sync = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || '{"url":"","key":""}');
-      } catch {
-        state.sync = { url: "", key: "" };
-      }
-      el.supabaseUrl.value = state.sync.url || "";
-      el.supabaseKey.value = state.sync.key || "";
-      updateSyncStatus(state.sync.url && state.sync.key ? "Cloud sync configured." : "Cloud sync is not configured.");
-    }
-
-    function saveSyncConfig() {
-      state.sync = {
-        url: el.supabaseUrl.value.trim().replace(/\/$/, ""),
-        key: el.supabaseKey.value.trim()
-      };
-      localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(state.sync));
-      updateSyncStatus(state.sync.url && state.sync.key ? "Cloud sync settings saved." : "Cloud sync is not configured.");
-      return Boolean(state.sync.url && state.sync.key);
-    }
-
-    function updateSyncStatus(text, warning = false) {
-      el.syncStatus.textContent = text;
-      el.syncStatus.classList.toggle("warning", warning);
-    }
-
-    function syncHeaders() {
-      if (!state.sync.url || !state.sync.key) throw new Error("Missing Supabase URL or anon key");
-      return {
-        "apikey": state.sync.key,
-        "Authorization": `Bearer ${state.sync.key}`,
-        "Content-Type": "application/json",
-        "Prefer": "resolution=merge-duplicates"
-      };
-    }
-
-    function syncConfigured() {
-      return Boolean(state.sync.url && state.sync.key);
-    }
-
-    async function pushRoutesToCloud(routes, quiet = false) {
-      try {
-        if (!syncConfigured()) {
-          if (!quiet) updateSyncStatus("Cloud sync is not configured.", true);
-          return false;
-        }
-        const publicRoutes = routes.filter(route => route.visibility !== "private");
-        if (!publicRoutes.length) {
-          if (!quiet) updateSyncStatus("No public routes to push.", true);
-          return false;
-        }
-        const rows = publicRoutes.map(route => ({
-          id: route.id,
-          payload: route,
-          updated_at: route.updatedAt || new Date().toISOString()
-        }));
-        const response = await fetch(`${state.sync.url}/rest/v1/community_routes?on_conflict=id`, {
-          method: "POST",
-          headers: syncHeaders(),
-          body: JSON.stringify(rows)
-        });
-        if (!response.ok) throw new Error(await response.text());
-        updateSyncStatus(`Pushed ${rows.length} public route${rows.length === 1 ? "" : "s"} to cloud.`);
-        return true;
-      } catch (error) {
-        updateSyncStatus(`Push failed: ${error.message}`, true);
-        return false;
-      }
-    }
-
-    async function pushRouteToCloud(route) {
-      if (!syncConfigured() || route.visibility === "private") return;
-      await pushRoutesToCloud([route], true);
-    }
-
-    async function pushPublicRoutes() {
-      if (!saveSyncConfig()) return;
-      await pushRoutesToCloud(state.routes);
-    }
-
-    async function pullCommunityRoutes() {
-      try {
-        if (!saveSyncConfig()) return;
-        const response = await fetch(`${state.sync.url}/rest/v1/community_routes?select=payload`, {
-          headers: syncHeaders()
-        });
-        if (!response.ok) throw new Error(await response.text());
-        const rows = await response.json();
-        const incoming = rows.map(row => normalizeRoute(row.payload)).filter(Boolean);
-        const byId = new Map(state.routes.map(route => [route.id, route]));
-        incoming.forEach(route => byId.set(route.id, route));
-        state.routes = [...byId.values()];
-        saveRoutes();
-        renderTagOptions();
-        applyFilters();
-        updateSyncStatus(`Pulled ${incoming.length} community route${incoming.length === 1 ? "" : "s"} from cloud.`);
-      } catch (error) {
-        updateSyncStatus(`Pull failed: ${error.message}`, true);
-      }
     }
 
     function normalizeRoute(route) {
@@ -1477,17 +1328,6 @@
       applyFilters();
     }
 
-    function exportCommunityPackage() {
-      const publicRoutes = state.routes.filter(route => route.visibility !== "private");
-      const packageData = {
-        schema: "swiss-trail-rail-community-v1",
-        exportedAt: new Date().toISOString(),
-        routeCount: publicRoutes.length,
-        routes: publicRoutes
-      };
-      download("swiss-trail-rail-community.json", JSON.stringify(packageData, null, 2), "application/json");
-    }
-
     function download(filename, content, mime) {
       const blob = new Blob([content], { type: mime });
       const link = document.createElement("a");
@@ -1530,10 +1370,8 @@
     function routeMatchesActiveScope(route) {
       const query = el.searchInput.value.trim().toLowerCase();
       const type = el.typeFilter.value;
-      const visibility = el.visibilityFilter.value;
       const tag = el.tagFilter.value;
       if (type !== "all" && route.type !== type) return false;
-      if (visibility !== "all" && route.visibility !== visibility) return false;
       if (state.selectedAuthor && (route.author || "Anonymous hiker") !== state.selectedAuthor) return false;
       if (tag !== "all" && !(route.tags || []).includes(tag)) return false;
       return !query || routeSearchText(route).includes(query);
@@ -1560,7 +1398,6 @@
         if (mode === "name-asc") return a.name.localeCompare(b.name);
         if (mode === "distance-desc") return distanceKm(b.points) - distanceKm(a.points);
         if (mode === "gain-desc") return (Number(b.elevationGainM) || 0) - (Number(a.elevationGainM) || 0);
-        if (mode === "likes-desc") return (Number(b.likes) || 0) - (Number(a.likes) || 0);
         return (b.date || "0000").localeCompare(a.date || "0000");
       });
     }
@@ -1643,12 +1480,11 @@
     }
 
     function scopeLabel() {
-      const visibility = el.visibilityFilter.options[el.visibilityFilter.selectedIndex].textContent.toLowerCase();
       const time = timeframeLabel();
       const type = el.typeFilter.options[el.typeFilter.selectedIndex].textContent.toLowerCase();
       const tag = el.tagFilter.value === "all" ? "" : ` tagged ${el.tagFilter.value}`;
       const author = state.selectedAuthor ? ` by ${state.selectedAuthor}` : "";
-      return `${visibility} ${type}${tag}${author} for ${time}`;
+      return `${type}${tag}${author} for ${time}`;
     }
 
     function routeHash(id) {
@@ -1709,14 +1545,14 @@
         acc.distance += km;
         acc.gain += Number(route.elevationGainM) || 0;
         acc.duration += Number(route.durationHours) || 0;
-        acc.likes += Number(route.likes) || 0;
+        acc.photos += Array.isArray(route.photos) ? route.photos.length : 0;
         if (route.type === "hike") acc.hikeCount += 1;
         if (route.author) acc.contributors.add(route.author);
         if (route.date) {
           acc.byDay[route.date] = (acc.byDay[route.date] || 0) + km;
         }
         return acc;
-      }, { hike: 0, train: 0, hikeCount: 0, distance: 0, gain: 0, duration: 0, likes: 0, contributors: new Set(), byDay: {} });
+      }, { hike: 0, train: 0, hikeCount: 0, distance: 0, gain: 0, duration: 0, photos: 0, contributors: new Set(), byDay: {} });
     }
 
     function filteredTotals() {
@@ -1732,7 +1568,7 @@
       el.contributorCount.textContent = totals.contributors.size;
       el.gainM.textContent = `${Math.round(totals.gain)} m`;
       el.durationTotal.textContent = `${totals.duration.toFixed(totals.duration >= 10 ? 0 : 1)} h`;
-      el.likesTotal.textContent = totals.likes;
+      el.photoTotal.textContent = totals.photos;
       el.visibleCount.textContent = state.filtered.length;
       el.avgDistance.textContent = formatKm(state.filtered.length ? totals.distance / state.filtered.length : 0);
       el.bestDayDistance.textContent = formatKm(bestDay);
@@ -1929,19 +1765,18 @@
     function contributorRows(routes) {
       const grouped = routes.reduce((acc, route) => {
         const author = route.author || "Anonymous hiker";
-        if (!acc[author]) acc[author] = { count: 0, km: 0, likes: 0 };
+        if (!acc[author]) acc[author] = { count: 0, km: 0 };
         acc[author].count += 1;
         acc[author].km += distanceKm(route.points);
-        acc[author].likes += Number(route.likes) || 0;
         return acc;
       }, {});
       const rows = Object.entries(grouped)
-        .sort(([, a], [, b]) => b.km - a.km || b.likes - a.likes)
+        .sort(([, a], [, b]) => b.km - a.km || b.count - a.count)
         .slice(0, 6);
-      if (!rows.length) return `<div class="summary-row"><span>No contributors yet.</span><strong></strong></div>`;
+      if (!rows.length) return `<div class="summary-row"><span>No names logged yet.</span><strong></strong></div>`;
       return rows.map(([author, data]) => `
         <div class="summary-row action" data-author="${escapeHtml(author)}">
-          <span>${escapeHtml(author)} · ${data.count} post${data.count === 1 ? "" : "s"} · ${data.likes} likes</span>
+          <span>${escapeHtml(author)} · ${data.count} route${data.count === 1 ? "" : "s"}</span>
           <strong>${formatKm(data.km)}</strong>
         </div>
       `).join("");
@@ -2006,8 +1841,7 @@
       if (!routes.length) return `<div class="summary-row"><span>No highlights for this filter yet.</span><strong></strong></div>`;
       const longest = routes.reduce((best, route) => distanceKm(route.points) > distanceKm(best.points) ? route : best, routes[0]);
       const climb = routes.reduce((best, route) => (Number(route.elevationGainM) || 0) > (Number(best.elevationGainM) || 0) ? route : best, routes[0]);
-      const liked = routes.reduce((best, route) => (Number(route.likes) || 0) > (Number(best.likes) || 0) ? route : best, routes[0]);
-      const discussed = routes.reduce((best, route) => commentCount(route) > commentCount(best) ? route : best, routes[0]);
+      const mostPhotos = routes.reduce((best, route) => (route.photos?.length || 0) > (best.photos?.length || 0) ? route : best, routes[0]);
       const contributors = routes.reduce((acc, route) => {
         const author = route.author || "Anonymous hiker";
         if (!acc[author]) acc[author] = { count: 0, km: 0 };
@@ -2019,9 +1853,8 @@
       return [
         routeHighlight("Longest route", longest, formatKm(distanceKm(longest.points))),
         routeHighlight("Biggest climb", climb, `${Number(climb.elevationGainM) || 0} m`),
-        routeHighlight("Most liked", liked, `${Number(liked.likes) || 0}`),
-        routeHighlight("Most discussed", discussed, `${commentCount(discussed)}`),
-        topContributor ? `<div class="summary-row action" data-author="${escapeHtml(topContributor[0])}"><span>Top contributor · ${escapeHtml(topContributor[0])}</span><strong>${formatKm(topContributor[1].km)}</strong></div>` : ""
+        routeHighlight("Most photos", mostPhotos, `${mostPhotos.photos?.length || 0}`),
+        topContributor ? `<div class="summary-row action" data-author="${escapeHtml(topContributor[0])}"><span>Most logged name · ${escapeHtml(topContributor[0])}</span><strong>${formatKm(topContributor[1].km)}</strong></div>` : ""
       ].join("");
     }
 
@@ -2037,8 +1870,7 @@
       el.detailDistance.textContent = formatKm(distanceKm(route.points));
       el.detailDuration.textContent = route.durationHours ? `${route.durationHours} h` : "n/a";
       el.detailGain.textContent = route.elevationGainM ? `${route.elevationGainM} m` : "n/a";
-      el.detailLikes.textContent = `${Number(route.likes) || 0} / ${commentCount(route)}`;
-      el.detailLikes.nextElementSibling.textContent = "Likes / comments";
+      el.detailPhotoCount.textContent = route.photos?.length || 0;
       el.detailTags.innerHTML = route.tags?.length
         ? route.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")
         : `<span class="pill">No tags</span>`;
@@ -2047,13 +1879,6 @@
         ? route.photos.map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")
         : "";
       el.detailCoords.textContent = route.waypoints.map(point => `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`).join(" | ");
-      el.detailComments.innerHTML = route.comments?.length
-        ? route.comments
-          .slice()
-          .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
-          .map(comment => `<div class="comment"><strong>${escapeHtml(comment.author)}${comment.createdAt ? ` · ${escapeHtml(comment.createdAt.slice(0, 10))}` : ""}</strong>${escapeHtml(comment.text)}</div>`)
-          .join("")
-        : `<div class="comment">No comments yet.</div>`;
     }
 
     function selectRoute(route) {
@@ -2070,7 +1895,6 @@
       if (!route) return false;
       state.selectedRouteId = route.id;
       state.selectedAuthor = "";
-      el.visibilityFilter.value = route.visibility || "public";
       el.typeFilter.value = "all";
       el.tagFilter.value = "all";
       el.timeFilter.value = "all";
@@ -2129,7 +1953,7 @@
 
     function renderLog() {
       if (!state.filtered.length) {
-        el.entryLog.innerHTML = `<div class="empty">No entries match the current filters. Add a hike on the map page or loosen the timeframe, tag, and visibility filters.</div>`;
+        el.entryLog.innerHTML = `<div class="empty">No entries match the current filters. Add a hike on the map page or loosen the timeframe and tag filters.</div>`;
         return;
       }
       el.entryLog.innerHTML = "";
@@ -2137,7 +1961,6 @@
         const entry = document.createElement("article");
         entry.className = `entry ${route.type}${route.id === state.selectedRouteId ? " selected" : ""}`;
         entry.dataset.id = route.id;
-        const comments = commentCount(route);
         const photoStrip = route.photos?.length
           ? `<div class="photo-strip">${route.photos.slice(0, 8).map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")}</div>`
           : "";
@@ -2147,11 +1970,10 @@
               <div>
                 <h2>${index + 1}. ${escapeHtml(route.name)}</h2>
                 <button class="author like-button" type="button" data-author="${escapeHtml(route.author || "Anonymous hiker")}">${escapeHtml(route.author || "Anonymous hiker")}</button>
-                <div class="author">${route.visibility === "private" ? "Private" : "Community"} · ${escapeHtml(activityLabel(route))}</div>
+                <div class="author">Saved · ${escapeHtml(activityLabel(route))}</div>
               </div>
               <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
-                <span class="like-button">${comments} comment${comments === 1 ? "" : "s"}</span>
-                <button class="like-button" type="button" data-like-id="${route.id}">${Number(route.likes) || 0} likes</button>
+                ${route.photos?.length ? `<span class="like-button">${route.photos.length} photo${route.photos.length === 1 ? "" : "s"}</span>` : ""}
               </div>
             </div>
             <div class="meta">
@@ -2193,7 +2015,6 @@
 
     el.searchInput.addEventListener("input", applyFilters);
     el.typeFilter.addEventListener("change", applyFilters);
-    el.visibilityFilter.addEventListener("change", applyFilters);
     el.tagFilter.addEventListener("change", applyFilters);
     el.timeFilter.addEventListener("change", () => {
       syncDateInputsToPreset();
@@ -2212,9 +2033,6 @@
       applyFilters();
     });
     el.sortBy.addEventListener("change", applyFilters);
-    el.saveSyncBtn.addEventListener("click", saveSyncConfig);
-    el.pushCloudBtn.addEventListener("click", pushPublicRoutes);
-    el.pullCloudBtn.addEventListener("click", pullCommunityRoutes);
     el.saveGoalsBtn.addEventListener("click", saveGoals);
     el.timePresets.addEventListener("click", event => {
       const button = event.target.closest("button[data-time-preset]");
@@ -2228,7 +2046,6 @@
     el.showPrivate.addEventListener("change", renderMap);
     el.seedDemoBtn.addEventListener("click", seedDemoRoutes);
     el.clearDemoBtn.addEventListener("click", clearDemoRoutes);
-    el.exportCommunityBtn.addEventListener("click", exportCommunityPackage);
     el.clearDetailBtn.addEventListener("click", () => {
       state.selectedRouteId = "";
       clearRouteHash();
@@ -2237,37 +2054,10 @@
       el.focusNote.textContent = "Click a feed card to focus its route on the map.";
     });
     el.shareRouteBtn.addEventListener("click", shareSelectedRoute);
-    el.detailLikeBtn.addEventListener("click", () => {
-      const route = state.routes.find(item => item.id === state.selectedRouteId);
-      if (!route) return;
-      route.likes = (Number(route.likes) || 0) + 1;
-      route.updatedAt = new Date().toISOString();
-      saveRoutes();
-      applyFilters();
-      pushRouteToCloud(route);
-    });
     el.detailAuthorBtn.addEventListener("click", () => {
       const route = state.routes.find(item => item.id === state.selectedRouteId);
       if (!route) return;
       showContributor(route.author || "Anonymous hiker");
-    });
-    el.addCommentBtn.addEventListener("click", () => {
-      const route = state.routes.find(item => item.id === state.selectedRouteId);
-      const text = el.commentText.value.trim();
-      if (!route || !text) return;
-      route.comments = Array.isArray(route.comments) ? route.comments : [];
-      route.comments.push({
-        id: crypto.randomUUID(),
-        author: el.commentAuthor.value.trim() || "Anonymous",
-        text,
-        createdAt: new Date().toISOString()
-      });
-      route.updatedAt = new Date().toISOString();
-      el.commentText.value = "";
-      saveRoutes();
-      renderDetail();
-      renderLog();
-      pushRouteToCloud(route);
     });
     el.contributorSummary.addEventListener("click", event => {
       const row = event.target.closest("[data-author]");
@@ -2292,27 +2082,16 @@
         showContributor(authorButton.dataset.author);
         return;
       }
-      const button = event.target.closest("button[data-like-id]");
-      if (!button) return;
-      event.stopPropagation();
-      const route = state.routes.find(item => item.id === button.dataset.likeId);
-      if (!route) return;
-      route.likes = (Number(route.likes) || 0) + 1;
-      route.updatedAt = new Date().toISOString();
-      saveRoutes();
-      applyFilters();
-      pushRouteToCloud(route);
     });
 
     loadRoutes();
     loadGoals();
-    loadSyncConfig();
     syncDateInputsToPreset();
     renderTagOptions();
     applyFilters();
     if (selectedHashRouteId()) {
       if (!selectRouteById(selectedHashRouteId())) {
-        el.focusNote.textContent = "The linked route is not in this browser dataset yet. Pull community data or import a shared JSON package.";
+        el.focusNote.textContent = "The linked route is not in this browser dataset yet. Import your JSON backup on this device.";
       }
     }
     window.addEventListener("hashchange", () => {

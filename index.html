@@ -481,32 +481,13 @@
         </div>
         <div class="storage-note" id="storageNote">Checking browser storage...</div>
 
-        <details class="profile-settings">
-          <summary style="cursor: pointer; font-weight: 760;">Cloud sync</summary>
-          <p class="hint" style="margin: 0;">Optional Supabase sync shares public routes with the community overview. Private routes stay local.</p>
-          <label>
-            Supabase project URL
-            <input id="supabaseUrl" placeholder="https://your-project.supabase.co" />
-          </label>
-          <label>
-            Supabase anon key
-            <input id="supabaseKey" placeholder="Public anon key" />
-          </label>
-          <div class="button-row">
-            <button id="saveSyncBtn" type="button">Save sync</button>
-            <button id="pushCloudBtn" type="button">Push public</button>
-            <button id="pullCloudBtn" type="button">Pull community</button>
-          </div>
-          <div class="storage-note" id="syncStatus" style="margin-bottom: 0;">Cloud sync is not configured.</div>
-        </details>
-
         <section class="quick-post" aria-label="Route posting checklist">
           <h2>Quick post</h2>
           <ul class="quick-list">
             <li id="checkName"><span>○</span><span>Add a route name.</span></li>
             <li id="checkPoints"><span>○</span><span>Click at least two points on the map.</span></li>
             <li id="checkDate"><span>○</span><span>Add a completion date for timeframe metrics.</span></li>
-            <li id="checkShare"><span>○</span><span>Keep private for your own log, or choose public only when sharing/exporting.</span></li>
+            <li id="checkShare"><span>○</span><span>Keep the entry in your personal route log.</span></li>
           </ul>
           <div class="hint" id="quickPostNote">Ready to start: name the route, then click the map.</div>
         </section>
@@ -521,13 +502,6 @@
             <label>
               Hiker name
               <input id="routeAuthor" placeholder="Hannah" />
-            </label>
-            <label>
-              Visibility
-              <select id="routeVisibility">
-                <option value="private">Private</option>
-                <option value="public">Public</option>
-              </select>
             </label>
           </div>
           <div class="field-row">
@@ -593,12 +567,11 @@
 
         <form id="importForm">
           <label>
-            GPX / JSON community import
+            GPX / JSON import
             <input class="file-input" id="importFile" type="file" accept=".gpx,.json,application/gpx+xml,application/json" />
           </label>
           <div class="button-row">
             <button id="exportJsonBtn" type="button">Export JSON</button>
-            <button id="exportCommunityBtn" type="button">Export community</button>
             <button id="exportGpxBtn" type="button">Export GPX</button>
           </div>
         </form>
@@ -622,7 +595,6 @@
       draft: [],
       draftRoute: [],
       routes: [],
-      sync: { url: "", key: "" },
       hiddenCloudRouteIds: new Set(),
       pendingPhotos: [],
       draftSource: "",
@@ -637,12 +609,6 @@
       fitSwissBtn: document.getElementById("fitSwissBtn"),
       tabHike: document.getElementById("tabHike"),
       tabTrain: document.getElementById("tabTrain"),
-      supabaseUrl: document.getElementById("supabaseUrl"),
-      supabaseKey: document.getElementById("supabaseKey"),
-      saveSyncBtn: document.getElementById("saveSyncBtn"),
-      pushCloudBtn: document.getElementById("pushCloudBtn"),
-      pullCloudBtn: document.getElementById("pullCloudBtn"),
-      syncStatus: document.getElementById("syncStatus"),
       checkName: document.getElementById("checkName"),
       checkPoints: document.getElementById("checkPoints"),
       checkDate: document.getElementById("checkDate"),
@@ -651,7 +617,6 @@
       routeForm: document.getElementById("routeForm"),
       routeName: document.getElementById("routeName"),
       routeAuthor: document.getElementById("routeAuthor"),
-      routeVisibility: document.getElementById("routeVisibility"),
       routeDate: document.getElementById("routeDate"),
       routeType: document.getElementById("routeType"),
       routeTags: document.getElementById("routeTags"),
@@ -669,7 +634,6 @@
       clearDraftBtn: document.getElementById("clearDraftBtn"),
       importFile: document.getElementById("importFile"),
       exportJsonBtn: document.getElementById("exportJsonBtn"),
-      exportCommunityBtn: document.getElementById("exportCommunityBtn"),
       exportGpxBtn: document.getElementById("exportGpxBtn"),
       routeList: document.getElementById("routeList"),
       hikeKm: document.getElementById("hikeKm"),
@@ -782,7 +746,7 @@
       try {
         localStorage.setItem(HIDDEN_CLOUD_KEY, JSON.stringify([...state.hiddenCloudRouteIds]));
       } catch {
-        setStatus("Could not remember hidden community routes");
+        setStatus("Could not remember hidden cloud routes");
       }
     }
 
@@ -860,32 +824,6 @@
       }
     }
 
-    function loadSyncConfig() {
-      try {
-        state.sync = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || '{"url":"","key":""}');
-      } catch {
-        state.sync = { url: "", key: "" };
-      }
-      el.supabaseUrl.value = state.sync.url || "";
-      el.supabaseKey.value = state.sync.key || "";
-      updateSyncStatus(state.sync.url && state.sync.key ? "Cloud sync configured. Public routes auto-push after save." : "Cloud sync is not configured.");
-    }
-
-    function saveSyncConfig() {
-      state.sync = {
-        url: el.supabaseUrl.value.trim().replace(/\/$/, ""),
-        key: el.supabaseKey.value.trim()
-      };
-      localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(state.sync));
-      updateSyncStatus(state.sync.url && state.sync.key ? "Cloud sync settings saved. Public routes will auto-push." : "Cloud sync is not configured.");
-      return Boolean(state.sync.url && state.sync.key);
-    }
-
-    function updateSyncStatus(text, warning = false) {
-      el.syncStatus.textContent = text;
-      el.syncStatus.classList.toggle("warning", warning);
-    }
-
     function setCheck(item, done) {
       item.classList.toggle("done", done);
       item.querySelector("span").textContent = done ? "✓" : "○";
@@ -895,7 +833,6 @@
       const hasName = Boolean(el.routeName.value.trim());
       const hasPoints = state.draft.length >= 2;
       const hasDate = Boolean(el.routeDate.value);
-      const isPublic = el.routeVisibility.value === "public";
       setCheck(el.checkName, hasName);
       setCheck(el.checkPoints, hasPoints);
       setCheck(el.checkDate, hasDate);
@@ -907,85 +844,7 @@
       } else if (!hasDate) {
         el.quickPostNote.textContent = "You can save now, but adding a date improves timeframe metrics.";
       } else {
-        el.quickPostNote.textContent = isPublic
-          ? "Ready to save and include in public exports."
-          : "Ready to save privately in this browser.";
-      }
-    }
-
-    function syncHeaders() {
-      if (!state.sync.url || !state.sync.key) throw new Error("Missing Supabase URL or anon key");
-      return {
-        "apikey": state.sync.key,
-        "Authorization": `Bearer ${state.sync.key}`,
-        "Content-Type": "application/json",
-        "Prefer": "resolution=merge-duplicates"
-      };
-    }
-
-    function syncConfigured() {
-      return Boolean(state.sync.url && state.sync.key);
-    }
-
-    async function pushRoutesToCloud(routes, quiet = false) {
-      try {
-        if (!syncConfigured()) {
-          if (!quiet) updateSyncStatus("Cloud sync is not configured.", true);
-          return false;
-        }
-        const publicRoutes = routes.filter(route => route.visibility !== "private");
-        if (!publicRoutes.length) {
-          if (!quiet) updateSyncStatus("No public routes to push.", true);
-          return false;
-        }
-        const rows = publicRoutes.map(route => ({
-          id: route.id,
-          payload: route,
-          updated_at: route.updatedAt || new Date().toISOString()
-        }));
-        const response = await fetch(`${state.sync.url}/rest/v1/community_routes?on_conflict=id`, {
-          method: "POST",
-          headers: syncHeaders(),
-          body: JSON.stringify(rows)
-        });
-        if (!response.ok) throw new Error(await response.text());
-        updateSyncStatus(`Pushed ${rows.length} public route${rows.length === 1 ? "" : "s"} to cloud.`);
-        return true;
-      } catch (error) {
-        updateSyncStatus(`Push failed: ${error.message}`, true);
-        return false;
-      }
-    }
-
-    async function pushPublicRoutes() {
-      if (!saveSyncConfig()) return;
-      await pushRoutesToCloud(state.routes);
-    }
-
-    async function pushRouteToCloud(route) {
-      if (!syncConfigured() || route.visibility === "private") return;
-      await pushRoutesToCloud([route], true);
-    }
-
-    async function pullCommunityRoutes() {
-      try {
-        if (!saveSyncConfig()) return;
-        const response = await fetch(`${state.sync.url}/rest/v1/community_routes?select=payload`, {
-          headers: syncHeaders()
-        });
-        if (!response.ok) throw new Error(await response.text());
-        const rows = await response.json();
-        const incoming = rows
-          .map(row => normalizeSavedRoute(row.payload))
-          .filter(route => route && !state.hiddenCloudRouteIds.has(route.id));
-        const byId = new Map(state.routes.map(route => [route.id, route]));
-        incoming.forEach(route => byId.set(route.id, route));
-        state.routes = [...byId.values()];
-        saveRoutes();
-        renderRoutes();
-        updateSyncStatus(`Pulled ${incoming.length} community route${incoming.length === 1 ? "" : "s"} from cloud.`);
-      } catch (error) {
-        updateSyncStatus(`Pull failed: ${error.message}`, true);
+        el.quickPostNote.textContent = "Ready to save in this browser.";
       }
     }
 
@@ -1228,8 +1087,6 @@
                 <span>${route.type === "train" ? "Train" : "Hike"}</span>
                 <span>${formatKm(distanceKm(route.points))}</span>
                 ${route.author ? `<span>${escapeHtml(route.author)}</span>` : ""}
-                <span>${route.visibility === "private" ? "Private" : "Public"}</span>
-                ${route.likes ? `<span>${escapeHtml(route.likes)} likes</span>` : ""}
                 ${route.date ? `<span>${escapeHtml(route.date)}</span>` : ""}
                 ${route.durationHours ? `<span>${escapeHtml(route.durationHours)} h</span>` : ""}
                 ${route.elevationGainM ? `<span>+${escapeHtml(route.elevationGainM)} m</span>` : ""}
@@ -1284,7 +1141,6 @@
     function resetForm() {
       el.routeForm.reset();
       el.routeType.value = state.activeType;
-      el.routeVisibility.value = "private";
       state.draft = [];
       state.draftRoute = [];
       state.draftSource = "";
@@ -1306,7 +1162,6 @@
       activateType(route.type);
       el.routeName.value = route.name;
       el.routeAuthor.value = route.author || "";
-      el.routeVisibility.value = route.visibility || "public";
       el.routeDate.value = route.date || "";
       el.routeTags.value = formatTags(route.tags);
       el.routeDuration.value = route.durationHours || "";
@@ -1329,15 +1184,11 @@
       const route = state.routes.find(item => item.id === id);
       if (!route) return;
       if (!confirm(`Delete "${route.name}"?`)) return;
-      if (route.visibility !== "private") {
-        state.hiddenCloudRouteIds.add(route.id);
-        saveHiddenCloudRoutes();
-      }
       state.routes = state.routes.filter(item => item.id !== id);
       if (state.selectedId === id) state.selectedId = null;
       saveRoutes();
       renderRoutes();
-      setStatus(route.visibility === "private" ? "Route deleted" : "Community route hidden on this browser");
+      setStatus("Route deleted from this browser");
     }
 
     async function saveRoute(event) {
@@ -1385,7 +1236,7 @@
         name: routeName,
         author: el.routeAuthor.value.trim(),
         authorBio: "",
-        visibility: el.routeVisibility.value,
+        visibility: "private",
         type: el.routeType.value,
         date: el.routeDate.value,
         tags: parseTags(el.routeTags.value),
@@ -1413,7 +1264,6 @@
       activateType(route.type);
       selectRoute(route.id, true);
       setStatus("Route saved");
-      pushRouteToCloud(route);
     }
 
     async function searchPlace() {
@@ -1445,17 +1295,6 @@
 
     function exportJson() {
       download("swiss-trail-rail-log.json", JSON.stringify(state.routes, null, 2), "application/json");
-    }
-
-    function exportCommunityPackage() {
-      const publicRoutes = state.routes.filter(route => route.visibility !== "private");
-      const packageData = {
-        schema: "swiss-trail-rail-community-v1",
-        exportedAt: new Date().toISOString(),
-        routeCount: publicRoutes.length,
-        routes: publicRoutes
-      };
-      download("swiss-trail-rail-community.json", JSON.stringify(packageData, null, 2), "application/json");
     }
 
     function exportGpx() {
@@ -1505,7 +1344,7 @@ ${segments}
       if (file.name.toLowerCase().endsWith(".json")) {
         const imported = JSON.parse(text);
         const routeArray = Array.isArray(imported) ? imported : imported.routes;
-        if (!Array.isArray(routeArray)) throw new Error("JSON must contain a route array or community package");
+        if (!Array.isArray(routeArray)) throw new Error("JSON must contain a route array or backup package");
         const existingIds = new Set(state.routes.map(route => route.id));
         const normalized = routeArray.map(normalizeRoute).filter(Boolean);
         const merged = normalized.map(route => existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route);
@@ -1685,13 +1524,10 @@ ${segments}
     });
 
     el.routeForm.addEventListener("submit", saveRoute);
-    [el.routeName, el.routeDate, el.routeVisibility].forEach(input => {
+    [el.routeName, el.routeDate].forEach(input => {
       input.addEventListener("input", updateQuickPost);
       input.addEventListener("change", updateQuickPost);
     });
-    el.saveSyncBtn.addEventListener("click", saveSyncConfig);
-    el.pushCloudBtn.addEventListener("click", pushPublicRoutes);
-    el.pullCloudBtn.addEventListener("click", pullCommunityRoutes);
     el.undoPointBtn.addEventListener("click", () => {
       state.draftSource = "";
       state.draft.pop();
@@ -1707,7 +1543,6 @@ ${segments}
       if (event.key === "Enter") searchPlace();
     });
     el.exportJsonBtn.addEventListener("click", exportJson);
-    el.exportCommunityBtn.addEventListener("click", exportCommunityPackage);
     el.exportGpxBtn.addEventListener("click", exportGpx);
     el.importFile.addEventListener("change", async event => {
       const file = event.target.files[0];
@@ -1751,7 +1586,6 @@ ${segments}
     });
     window.addEventListener("beforeunload", () => saveRoutes(true));
 
-    loadSyncConfig();
     loadHiddenCloudRoutes();
     loadRoutes();
     renderDraft();
