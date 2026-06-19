@@ -45,6 +45,7 @@ The overview page reads the same saved route data as the map page and displays:
 - feed-card route focusing on the cumulative map
 - selected-route detail cards with metrics, tags, caption, coordinates, photo count, and name filtering
 - route-level share links using `overview.html#route=...`
+- a backfill checklist for missing dates, duration, hike elevation, and photos
 - quick timeframe presets for 30 days, 90 days, this year, and all time
 - custom timeframe metrics that update the route log, map, name summaries, tags, and dashboard cards together
 - optional demo routes to preview the tracker before adding real entries

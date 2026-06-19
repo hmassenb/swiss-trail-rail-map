@@ -413,6 +413,22 @@
       margin: -1px -7px 0;
     }
 
+    button.summary-row {
+      width: calc(100% + 14px);
+      border-left: 0;
+      border-right: 0;
+      border-bottom: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+    }
+
+    a.summary-row {
+      color: inherit;
+      text-decoration: none;
+    }
+
     .summary-row.action:hover {
       background: #eef2ee;
     }
@@ -855,6 +871,10 @@
           <h2>Highlights</h2>
           <div class="summary-list" id="highlightSummary"></div>
         </div>
+        <div class="summary-panel">
+          <h2>Backfill Checklist</h2>
+          <div class="summary-list" id="backfillSummary"></div>
+        </div>
       </section>
       <div class="feed-title">
         <h2>Route Log</h2>
@@ -900,6 +920,7 @@
       filtered: [],
       selectedAuthor: "",
       selectedRouteId: "",
+      activeBackfill: "",
       goals: { distanceKm: 100, routeCount: 10, elevationM: 5000 }
     };
     const CANTONS = [
@@ -996,6 +1017,7 @@
       tagSummary: document.getElementById("tagSummary"),
       cantonSummary: document.getElementById("cantonSummary"),
       highlightSummary: document.getElementById("highlightSummary"),
+      backfillSummary: document.getElementById("backfillSummary"),
       focusNote: document.getElementById("focusNote"),
       routeDetail: document.getElementById("routeDetail"),
       detailName: document.getElementById("detailName"),
@@ -1409,10 +1431,31 @@
       return !query || routeSearchText(route).includes(query);
     }
 
+    function backfillCheck(key) {
+      const checks = {
+        missingDate: route => !route.date,
+        missingDuration: route => !Number(route.durationHours),
+        missingElevation: route => route.type === "hike" && !Number(route.elevationGainM),
+        noPhotos: route => !route.photos?.length
+      };
+      return checks[key] || null;
+    }
+
+    function backfillLabel(key) {
+      return {
+        missingDate: "missing dates",
+        missingDuration: "missing duration",
+        missingElevation: "hikes missing elevation",
+        noPhotos: "routes without photos"
+      }[key] || "backfill checklist";
+    }
+
     function applyFilters() {
       const range = selectedDateRange();
+      const activeCheck = backfillCheck(state.activeBackfill);
       state.filtered = state.routes.filter(route => {
         if (!routeMatchesActiveScope(route)) return false;
+        if (activeCheck && !activeCheck(route)) return false;
         return dateInRange(route.date, range);
       });
       sortRoutes();
@@ -1529,6 +1572,12 @@
       return params.get("route") || "";
     }
 
+    function selectedHashBackfill() {
+      const hash = window.location.hash.replace(/^#/, "");
+      const params = new URLSearchParams(hash);
+      return new URLSearchParams(window.location.search).get("backfill") || params.get("backfill") || "";
+    }
+
     function routeShareUrl(route) {
       return `${window.location.origin}${window.location.pathname}#${routeHash(route.id)}`;
     }
@@ -1566,8 +1615,13 @@
       renderDetail();
       renderMap();
       renderLog();
-      el.dashboardNote.textContent = `Metrics currently summarize ${state.filtered.length} ${scopeLabel()}.`;
-      el.feedScope.textContent = `Showing ${scopeLabel()}.`;
+      if (state.activeBackfill) {
+        el.dashboardNote.textContent = `Showing ${state.filtered.length} route${state.filtered.length === 1 ? "" : "s"} for ${backfillLabel(state.activeBackfill)}. Open overview.html to reset the checklist view.`;
+        el.feedScope.textContent = `Backfill view: ${backfillLabel(state.activeBackfill)}.`;
+      } else {
+        el.dashboardNote.textContent = `Metrics currently summarize ${state.filtered.length} ${scopeLabel()}.`;
+        el.feedScope.textContent = `Showing ${scopeLabel()}.`;
+      }
     }
 
     function totalsForRoutes(routes) {
@@ -1769,6 +1823,7 @@
       el.tagSummary.innerHTML = tagRows(state.filtered);
       el.cantonSummary.innerHTML = cantonRows(state.filtered);
       el.highlightSummary.innerHTML = highlightRows(state.filtered);
+      el.backfillSummary.innerHTML = backfillRows(state.filtered);
     }
 
     function groupDistance(routes, keyFn) {
@@ -1833,6 +1888,35 @@
           <strong>${formatKm(data.km)}</strong>
         </div>
       `).join("");
+    }
+
+    function backfillRows(routes) {
+      if (!routes.length) return `<div class="summary-row"><span>No routes in this filter.</span><strong></strong></div>`;
+      const groups = {
+        missingDate: routes.filter(route => !route.date),
+        missingDuration: routes.filter(route => !Number(route.durationHours)),
+        missingElevation: routes.filter(route => route.type === "hike" && !Number(route.elevationGainM)),
+        noPhotos: routes.filter(route => !route.photos?.length)
+      };
+      const completeEnough = routes.filter(route =>
+        route.date &&
+        Number(route.durationHours) &&
+        (route.type !== "hike" || Number(route.elevationGainM)) &&
+        route.photos?.length
+      );
+      const row = (label, list, key) => `
+        <a class="summary-row action" href="overview.html?backfill=${encodeURIComponent(key)}" data-backfill="${key}">
+          <span>${escapeHtml(label)}</span>
+          <strong>${list.length}</strong>
+        </a>
+      `;
+      return [
+        row("Missing dates", groups.missingDate, "missingDate"),
+        row("Missing duration", groups.missingDuration, "missingDuration"),
+        row("Hikes missing elevation", groups.missingElevation, "missingElevation"),
+        row("Routes without photos", groups.noPhotos, "noPhotos"),
+        `<div class="summary-row"><span>Complete with date, duration, elevation/photo context</span><strong>${completeEnough.length}</strong></div>`
+      ].join("");
     }
 
     function cantonRows(routes) {
@@ -1920,6 +2004,15 @@
       el.focusNote.textContent = `Focused ${route.name} by ${route.author || "Anonymous hiker"} on the map.`;
       renderDetail();
       renderLog();
+    }
+
+    function focusBackfill(key) {
+      if (!backfillCheck(key)) return;
+      state.activeBackfill = key;
+      state.selectedRouteId = "";
+      applyFilters();
+      el.focusNote.textContent = "Backfill view: edit matching routes from the map page, then return here to check progress.";
+      document.getElementById("entryLog").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     function selectRouteById(id) {
@@ -2107,6 +2200,13 @@
       const route = state.routes.find(item => item.id === routeRow.dataset.routeHighlight);
       if (route) selectRoute(route);
     });
+    el.backfillSummary.addEventListener("click", event => {
+      const row = event.target.closest("[data-backfill]");
+      if (!row) return;
+      event.preventDefault();
+      window.history.replaceState(null, "", `overview.html?backfill=${encodeURIComponent(row.dataset.backfill)}`);
+      focusBackfill(row.dataset.backfill);
+    });
     el.entryLog.addEventListener("click", event => {
       const authorButton = event.target.closest("button[data-author]");
       if (authorButton) {
@@ -2120,13 +2220,22 @@
     loadGoals();
     syncDateInputsToPreset();
     renderTagOptions();
+    if (selectedHashBackfill()) state.activeBackfill = selectedHashBackfill();
     applyFilters();
-    if (selectedHashRouteId()) {
+    if (state.activeBackfill) {
+      el.focusNote.textContent = "Backfill view: edit matching routes from the map page, then return here to check progress.";
+    } else if (selectedHashRouteId()) {
       if (!selectRouteById(selectedHashRouteId())) {
         el.focusNote.textContent = "The linked route is not in this browser dataset yet. Import your JSON backup on this device.";
       }
     }
     window.addEventListener("hashchange", () => {
+      const backfill = selectedHashBackfill();
+      if (backfill) {
+        focusBackfill(backfill);
+        return;
+      }
+      state.activeBackfill = "";
       const id = selectedHashRouteId();
       if (id) {
         selectRouteById(id);
