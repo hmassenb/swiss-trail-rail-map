@@ -510,6 +510,8 @@
         <div class="stats">
           <div class="stat"><strong id="hikeKm">0 km</strong><span>Hiked</span></div>
           <div class="stat"><strong id="trainKm">0 km</strong><span>By train</span></div>
+          <div class="stat"><strong id="completeRoutes">0</strong><span>Complete</span></div>
+          <div class="stat"><strong id="incompleteRoutes">0</strong><span>Needs info</span></div>
         </div>
         <div class="storage-note" id="storageNote">Checking browser storage...</div>
 
@@ -530,12 +532,6 @@
             Name
             <input id="routeName" required placeholder="Zurich to Uetliberg" />
           </label>
-          <div class="field-row">
-            <label>
-              Hiker name
-              <input id="routeAuthor" placeholder="Hannah" />
-            </label>
-          </div>
           <div class="field-row">
             <label>
               Date
@@ -649,7 +645,6 @@
       quickPostNote: document.getElementById("quickPostNote"),
       routeForm: document.getElementById("routeForm"),
       routeName: document.getElementById("routeName"),
-      routeAuthor: document.getElementById("routeAuthor"),
       routeDate: document.getElementById("routeDate"),
       routeType: document.getElementById("routeType"),
       routeTags: document.getElementById("routeTags"),
@@ -671,6 +666,8 @@
       routeList: document.getElementById("routeList"),
       hikeKm: document.getElementById("hikeKm"),
       trainKm: document.getElementById("trainKm"),
+      completeRoutes: document.getElementById("completeRoutes"),
+      incompleteRoutes: document.getElementById("incompleteRoutes"),
       storageNote: document.getElementById("storageNote"),
       mapStatus: document.getElementById("mapStatus")
     };
@@ -1102,13 +1099,12 @@
 
     function popupHtml(route) {
       const km = formatKm(distanceKm(route.points));
-      const author = route.author ? `<br><strong>By:</strong> ${escapeHtml(route.author)}` : "";
       const date = route.date ? `<br><strong>Date:</strong> ${escapeHtml(route.date)}` : "";
       const duration = route.durationHours ? `<br><strong>Duration:</strong> ${escapeHtml(route.durationHours)} h` : "";
       const gain = route.elevationGainM ? `<br><strong>Gain:</strong> ${escapeHtml(route.elevationGainM)} m` : "";
       const tags = route.tags?.length ? `<br><strong>Tags:</strong> ${escapeHtml(formatTags(route.tags))}` : "";
       const notes = route.notes ? `<br><strong>Notes:</strong> ${escapeHtml(route.notes)}` : "";
-      return `<strong>${escapeHtml(route.name)}</strong><br><strong>Type:</strong> ${route.type === "train" ? "Train" : "Hike"}<br><strong>Distance:</strong> ${km}${author}${date}${duration}${gain}${tags}${notes}`;
+      return `<strong>${escapeHtml(route.name)}</strong><br><strong>Type:</strong> ${route.type === "train" ? "Train" : "Hike"}<br><strong>Distance:</strong> ${km}${date}${duration}${gain}${tags}${notes}`;
     }
 
     function renderRoutes() {
@@ -1159,7 +1155,6 @@
               <div class="route-meta">
                 <span>${route.type === "train" ? "Train" : "Hike"}</span>
                 <span>${formatKm(distanceKm(route.points))}</span>
-                ${route.author ? `<span>${escapeHtml(route.author)}</span>` : ""}
                 ${route.date ? `<span>${escapeHtml(route.date)}</span>` : ""}
                 ${route.durationHours ? `<span>${escapeHtml(route.durationHours)} h</span>` : ""}
                 ${route.elevationGainM ? `<span>+${escapeHtml(route.elevationGainM)} m</span>` : ""}
@@ -1182,22 +1177,31 @@
     }
 
     function routeCompletenessBadges(route) {
+      const missing = missingRouteFields(route);
+      if (!missing.length) return `<span class="route-badge done">Complete</span>`;
+      return missing.map(item => `<span class="route-badge missing">Missing ${escapeHtml(item)}</span>`).join("");
+    }
+
+    function missingRouteFields(route) {
       const missing = [];
       if (!route.date) missing.push("date");
       if (!Number(route.durationHours)) missing.push("duration");
       if (route.type === "hike" && !Number(route.elevationGainM)) missing.push("elevation");
       if (!route.photos?.length) missing.push("photos");
-      if (!missing.length) return `<span class="route-badge done">Complete</span>`;
-      return missing.map(item => `<span class="route-badge missing">Missing ${escapeHtml(item)}</span>`).join("");
+      return missing;
     }
 
     function renderStats() {
       const totals = state.routes.reduce((acc, route) => {
         acc[route.type] += distanceKm(route.points || []);
+        if (missingRouteFields(route).length) acc.incomplete += 1;
+        else acc.complete += 1;
         return acc;
-      }, { hike: 0, train: 0 });
+      }, { hike: 0, train: 0, complete: 0, incomplete: 0 });
       el.hikeKm.textContent = formatKm(totals.hike);
       el.trainKm.textContent = formatKm(totals.train);
+      el.completeRoutes.textContent = totals.complete;
+      el.incompleteRoutes.textContent = totals.incomplete;
     }
 
     function selectRoute(id, zoom = false) {
@@ -1245,7 +1249,6 @@
       if (!route) return;
       activateType(route.type);
       el.routeName.value = route.name;
-      el.routeAuthor.value = route.author || "";
       el.routeDate.value = route.date || "";
       el.routeTags.value = formatTags(route.tags);
       el.routeDuration.value = route.durationHours || "";
@@ -1325,8 +1328,6 @@
       const route = {
         id: editId || crypto.randomUUID(),
         name: routeName,
-        author: el.routeAuthor.value.trim(),
-        authorBio: "",
         visibility: "private",
         type: el.routeType.value,
         date: el.routeDate.value,
@@ -1337,8 +1338,6 @@
         notes: el.routeNotes.value.trim(),
         caption: el.routeCaption.value.trim(),
         photos: state.pendingPhotos.map(photo => ({ ...photo })),
-        likes: previousRoute?.likes || 0,
-        comments: Array.isArray(previousRoute?.comments) ? previousRoute.comments : [],
         waypoints,
         points,
         metrics: routeMetrics(points, waypoints),
@@ -1496,8 +1495,6 @@ ${segments}
       return {
         id: crypto.randomUUID(),
         name: String(route.name || "Imported route"),
-        author: route.author || "",
-        authorBio: route.authorBio || "",
         visibility: route.visibility === "public" ? "public" : "private",
         type: route.type === "train" ? "train" : "hike",
         date: route.date || "",
@@ -1508,22 +1505,10 @@ ${segments}
         notes: route.notes || "",
         caption: route.caption || "",
         photos: Array.isArray(route.photos) ? route.photos.map(normalizePhoto).filter(Boolean) : [],
-        likes: Number.isFinite(Number(route.likes)) ? Number(route.likes) : 0,
-        comments: Array.isArray(route.comments) ? route.comments.map(normalizeComment).filter(Boolean) : [],
         waypoints,
         points,
         metrics: routeMetrics(points, waypoints),
         updatedAt: new Date().toISOString()
-      };
-    }
-
-    function normalizeComment(comment) {
-      if (!comment?.text) return null;
-      return {
-        id: comment.id || crypto.randomUUID(),
-        author: comment.author || "Anonymous",
-        text: String(comment.text),
-        createdAt: comment.createdAt || new Date().toISOString()
       };
     }
 

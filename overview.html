@@ -494,19 +494,6 @@
       background: #eef2ee;
     }
 
-    button.author {
-      border: 0;
-      background: transparent;
-      padding: 0;
-      color: #2f6f91;
-      cursor: pointer;
-    }
-
-    button.author:hover {
-      text-decoration: underline;
-      background: transparent;
-    }
-
     .meta {
       display: flex;
       flex-wrap: wrap;
@@ -754,7 +741,7 @@
         <div class="stat"><strong id="entryCount">0</strong><span>Logged entries</span></div>
         <div class="stat"><strong id="hikeKm">0 km</strong><span>Hiked</span></div>
         <div class="stat"><strong id="trainKm">0 km</strong><span>By train</span></div>
-        <div class="stat"><strong id="contributorCount">0</strong><span>Names</span></div>
+        <div class="stat"><strong id="completeCount">0</strong><span>Complete</span></div>
       </div>
       <div class="stats">
         <div class="stat"><strong id="gainM">0 m</strong><span>Elevation gain</span></div>
@@ -856,8 +843,8 @@
           <div class="summary-list" id="monthSummary"></div>
         </div>
         <div class="summary-panel">
-          <h2>Route Names</h2>
-          <div class="summary-list" id="contributorSummary"></div>
+          <h2>Archive Health</h2>
+          <div class="summary-list" id="archiveSummary"></div>
         </div>
         <div class="summary-panel">
           <h2>Trending Tags</h2>
@@ -890,7 +877,6 @@
           <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
             <a class="button" id="editRouteLink" href="index.html">Edit on map</a>
             <button class="button" id="shareRouteBtn" type="button">Share route</button>
-            <button class="button" id="detailAuthorBtn" type="button">Filter name</button>
             <button class="button" id="clearDetailBtn" type="button">Close</button>
           </div>
         </div>
@@ -919,7 +905,6 @@
     const state = {
       routes: [],
       filtered: [],
-      selectedAuthor: "",
       selectedRouteId: "",
       activeBackfill: "",
       goals: { distanceKm: 100, routeCount: 10, elevationM: 5000 }
@@ -966,7 +951,7 @@
       entryCount: document.getElementById("entryCount"),
       hikeKm: document.getElementById("hikeKm"),
       trainKm: document.getElementById("trainKm"),
-      contributorCount: document.getElementById("contributorCount"),
+      completeCount: document.getElementById("completeCount"),
       gainM: document.getElementById("gainM"),
       durationTotal: document.getElementById("durationTotal"),
       photoTotal: document.getElementById("photoTotal"),
@@ -1014,7 +999,7 @@
       legendVisible: document.getElementById("legendVisible"),
       yearSummary: document.getElementById("yearSummary"),
       monthSummary: document.getElementById("monthSummary"),
-      contributorSummary: document.getElementById("contributorSummary"),
+      archiveSummary: document.getElementById("archiveSummary"),
       tagSummary: document.getElementById("tagSummary"),
       cantonSummary: document.getElementById("cantonSummary"),
       highlightSummary: document.getElementById("highlightSummary"),
@@ -1025,7 +1010,6 @@
       detailMeta: document.getElementById("detailMeta"),
       editRouteLink: document.getElementById("editRouteLink"),
       shareRouteBtn: document.getElementById("shareRouteBtn"),
-      detailAuthorBtn: document.getElementById("detailAuthorBtn"),
       clearDetailBtn: document.getElementById("clearDetailBtn"),
       detailDistance: document.getElementById("detailDistance"),
       detailDuration: document.getElementById("detailDuration"),
@@ -1104,23 +1088,15 @@
       return (Array.isArray(tags) ? tags : []).join(", ");
     }
 
-    function latestCommentAt(route) {
-      if (!Array.isArray(route.comments)) return "";
-      return route.comments.reduce((latest, comment) => {
-        const createdAt = comment.createdAt || "";
-        return createdAt > latest ? createdAt : latest;
-      }, "");
-    }
-
     function activityStamp(route) {
-      return route.updatedAt || latestCommentAt(route) || (route.date ? `${route.date}T00:00:00.000Z` : "");
+      return route.updatedAt || (route.date ? `${route.date}T00:00:00.000Z` : "");
     }
 
     function activityLabel(route) {
       const stamp = activityStamp(route);
       if (!stamp) return "No activity date";
       const date = stamp.slice(0, 10);
-      return route.updatedAt || latestCommentAt(route) ? `Active ${date}` : `Completed ${date}`;
+      return route.updatedAt ? `Active ${date}` : `Completed ${date}`;
     }
 
     function numericValue(value) {
@@ -1235,8 +1211,6 @@
       return {
         id: route.id || crypto.randomUUID(),
         name: String(route.name || "Untitled route"),
-        author: route.author || "",
-        authorBio: route.authorBio || "",
         visibility: route.visibility === "public" ? "public" : "private",
         type: route.type === "train" ? "train" : "hike",
         date: route.date || "",
@@ -1246,23 +1220,11 @@
         elevationLossM,
         notes: route.notes || "",
         caption: route.caption || "",
-        likes: Number.isFinite(Number(route.likes)) ? Number(route.likes) : 0,
-        comments: Array.isArray(route.comments) ? route.comments.map(normalizeComment).filter(Boolean) : [],
         photos: Array.isArray(route.photos) ? route.photos.map(normalizePhoto).filter(Boolean) : [],
         waypoints,
         points,
         metrics: route.metrics || routeMetrics(points, waypoints),
         updatedAt: route.updatedAt || ""
-      };
-    }
-
-    function normalizeComment(comment) {
-      if (!comment?.text) return null;
-      return {
-        id: comment.id || crypto.randomUUID(),
-        author: comment.author || "Anonymous",
-        text: String(comment.text),
-        createdAt: comment.createdAt || new Date().toISOString()
       };
     }
 
@@ -1282,7 +1244,6 @@
         {
           id: "demo-uetliberg",
           name: "Uetliberg sunset loop",
-          author: "Mira",
           visibility: "public",
           type: "hike",
           date: "2026-06-02",
@@ -1292,8 +1253,6 @@
           elevationLossM: 360,
           caption: "Easy evening hike with a city view at the end.",
           notes: "Good after-work route.",
-          likes: 8,
-          comments: [{ author: "Noah", text: "Great evening route idea.", createdAt: "2026-06-03T08:00:00.000Z" }],
           waypoints: [[47.3769, 8.5417], [47.3493, 8.4915], [47.3537, 8.4894]],
           points: [[47.3769, 8.5417], [47.366, 8.522], [47.358, 8.504], [47.3493, 8.4915], [47.3537, 8.4894]],
           updatedAt: "2026-06-02T18:30:00.000Z"
@@ -1301,7 +1260,6 @@
         {
           id: "demo-rigi",
           name: "Rigi ridge walk",
-          author: "Noah",
           visibility: "public",
           type: "hike",
           date: "2026-05-18",
@@ -1311,8 +1269,6 @@
           elevationLossM: 510,
           caption: "Classic views over Vierwaldstattersee.",
           notes: "Bring layers; windy on the ridge.",
-          likes: 15,
-          comments: [{ author: "Mira", text: "Saving this for a clear weekend.", createdAt: "2026-05-19T09:10:00.000Z" }],
           waypoints: [[47.0567, 8.4857], [47.0343, 8.4676], [47.0275, 8.4782]],
           points: [[47.0567, 8.4857], [47.0502, 8.479], [47.043, 8.472], [47.0343, 8.4676], [47.0275, 8.4782]],
           updatedAt: "2026-05-18T14:20:00.000Z"
@@ -1320,7 +1276,6 @@
         {
           id: "demo-zermatt",
           name: "Zermatt five lakes trail",
-          author: "Lena",
           visibility: "public",
           type: "hike",
           date: "2026-04-27",
@@ -1330,8 +1285,6 @@
           elevationLossM: 820,
           caption: "Matterhorn views and cold lake stops.",
           notes: "Best on clear days.",
-          likes: 22,
-          comments: [{ author: "Jonas", text: "The lake section looks amazing.", createdAt: "2026-04-28T17:45:00.000Z" }],
           waypoints: [[46.0207, 7.7491], [46.0061, 7.7856], [46.0033, 7.8017]],
           points: [[46.0207, 7.7491], [46.015, 7.761], [46.009, 7.774], [46.0061, 7.7856], [46.0033, 7.8017]],
           updatedAt: "2026-04-27T15:00:00.000Z"
@@ -1339,7 +1292,6 @@
         {
           id: "demo-train-gotthard",
           name: "Gotthard panorama train",
-          author: "Jonas",
           visibility: "public",
           type: "train",
           date: "2026-03-12",
@@ -1349,7 +1301,6 @@
           elevationLossM: "",
           caption: "Scenic train day through the old Gotthard line.",
           notes: "Marked as train route for the rail layer.",
-          likes: 11,
           waypoints: [[47.0502, 8.3093], [46.8804, 8.6444], [46.1706, 8.7996]],
           points: [[47.0502, 8.3093], [46.990, 8.420], [46.8804, 8.6444], [46.550, 8.720], [46.1706, 8.7996]],
           updatedAt: "2026-03-12T12:00:00.000Z"
@@ -1413,7 +1364,6 @@
     function routeSearchText(route) {
       return [
         route.name,
-        route.author,
         route.type,
         route.date,
         formatTags(route.tags),
@@ -1428,7 +1378,6 @@
       const type = el.typeFilter.value;
       const tag = el.tagFilter.value;
       if (type !== "all" && route.type !== type) return false;
-      if (state.selectedAuthor && (route.author || "Anonymous hiker") !== state.selectedAuthor) return false;
       if (tag !== "all" && !(route.tags || []).includes(tag)) return false;
       return !query || routeSearchText(route).includes(query);
     }
@@ -1441,6 +1390,16 @@
         noPhotos: route => !route.photos?.length
       };
       return checks[key] || null;
+    }
+
+
+    function missingRouteFields(route) {
+      const missing = [];
+      if (!route.date) missing.push("date");
+      if (!Number(route.durationHours)) missing.push("duration");
+      if (route.type === "hike" && !Number(route.elevationGainM)) missing.push("elevation");
+      if (!route.photos?.length) missing.push("photos");
+      return missing;
     }
 
     function backfillLabel(key) {
@@ -1560,8 +1519,7 @@
       const time = timeframeLabel();
       const type = el.typeFilter.options[el.typeFilter.selectedIndex].textContent.toLowerCase();
       const tag = el.tagFilter.value === "all" ? "" : ` tagged ${el.tagFilter.value}`;
-      const author = state.selectedAuthor ? ` by ${state.selectedAuthor}` : "";
-      return `${type}${tag}${author} for ${time}`;
+      return `${type}${tag} for ${time}`;
     }
 
     function routeHash(id) {
@@ -1594,13 +1552,6 @@
 
     function clearRouteHash() {
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
-    }
-
-    function showContributor(author) {
-      if (!author) return;
-      state.selectedAuthor = author;
-      applyFilters();
-      el.focusNote.textContent = `Showing routes by ${author}. Clear the search and filters to show all routes again.`;
     }
 
     function routesForMap() {
@@ -1639,12 +1590,11 @@
         acc.duration += Number(route.durationHours) || 0;
         acc.photos += Array.isArray(route.photos) ? route.photos.length : 0;
         if (route.type === "hike") acc.hikeCount += 1;
-        if (route.author) acc.contributors.add(route.author);
         if (route.date) {
           acc.byDay[route.date] = (acc.byDay[route.date] || 0) + km;
         }
         return acc;
-      }, { hike: 0, train: 0, hikeCount: 0, distance: 0, gain: 0, duration: 0, photos: 0, contributors: new Set(), byDay: {} });
+      }, { hike: 0, train: 0, hikeCount: 0, distance: 0, gain: 0, duration: 0, photos: 0, byDay: {} });
     }
 
     function filteredTotals() {
@@ -1657,7 +1607,7 @@
       el.entryCount.textContent = state.routes.length;
       el.hikeKm.textContent = formatKm(totals.hike);
       el.trainKm.textContent = formatKm(totals.train);
-      el.contributorCount.textContent = totals.contributors.size;
+      el.completeCount.textContent = state.filtered.filter(route => !missingRouteFields(route).length).length;
       el.gainM.textContent = `${Math.round(totals.gain)} m`;
       el.durationTotal.textContent = `${totals.duration.toFixed(totals.duration >= 10 ? 0 : 1)} h`;
       el.photoTotal.textContent = totals.photos;
@@ -1825,7 +1775,7 @@
       const byMonth = groupDistance(datedRoutes, route => route.date.slice(0, 7));
       el.yearSummary.innerHTML = summaryRows(byYear, 8, "No dated entries yet.");
       el.monthSummary.innerHTML = summaryRows(byMonth, 12, "No dated entries yet.");
-      el.contributorSummary.innerHTML = contributorRows(state.filtered);
+      el.archiveSummary.innerHTML = archiveHealthRows(state.filtered);
       el.tagSummary.innerHTML = tagRows(state.filtered);
       el.cantonSummary.innerHTML = cantonRows(state.filtered);
       el.highlightSummary.innerHTML = highlightRows(state.filtered);
@@ -1855,24 +1805,18 @@
       `).join("");
     }
 
-    function contributorRows(routes) {
-      const grouped = routes.reduce((acc, route) => {
-        const author = route.author || "Anonymous hiker";
-        if (!acc[author]) acc[author] = { count: 0, km: 0 };
-        acc[author].count += 1;
-        acc[author].km += distanceKm(route.points);
-        return acc;
-      }, {});
-      const rows = Object.entries(grouped)
-        .sort(([, a], [, b]) => b.km - a.km || b.count - a.count)
-        .slice(0, 6);
-      if (!rows.length) return `<div class="summary-row"><span>No names logged yet.</span><strong></strong></div>`;
-      return rows.map(([author, data]) => `
-        <div class="summary-row action" data-author="${escapeHtml(author)}">
-          <span>${escapeHtml(author)} · ${data.count} route${data.count === 1 ? "" : "s"}</span>
-          <strong>${formatKm(data.km)}</strong>
-        </div>
-      `).join("");
+    function archiveHealthRows(routes) {
+      if (!routes.length) return `<div class="summary-row"><span>No routes in this filter.</span><strong></strong></div>`;
+      const complete = routes.filter(route => !missingRouteFields(route).length);
+      const dated = routes.filter(route => route.date);
+      const withDuration = routes.filter(route => Number(route.durationHours));
+      const withPhotos = routes.filter(route => route.photos?.length);
+      return [
+        `<div class="summary-row"><span>Complete routes</span><strong>${complete.length}</strong></div>`,
+        `<div class="summary-row"><span>Dated routes</span><strong>${dated.length}</strong></div>`,
+        `<div class="summary-row"><span>Routes with duration</span><strong>${withDuration.length}</strong></div>`,
+        `<div class="summary-row"><span>Routes with photos</span><strong>${withPhotos.length}</strong></div>`
+      ].join("");
     }
 
     function tagRows(routes) {
@@ -1964,19 +1908,10 @@
       const longest = routes.reduce((best, route) => distanceKm(route.points) > distanceKm(best.points) ? route : best, routes[0]);
       const climb = routes.reduce((best, route) => (Number(route.elevationGainM) || 0) > (Number(best.elevationGainM) || 0) ? route : best, routes[0]);
       const mostPhotos = routes.reduce((best, route) => (route.photos?.length || 0) > (best.photos?.length || 0) ? route : best, routes[0]);
-      const contributors = routes.reduce((acc, route) => {
-        const author = route.author || "Anonymous hiker";
-        if (!acc[author]) acc[author] = { count: 0, km: 0 };
-        acc[author].count += 1;
-        acc[author].km += distanceKm(route.points);
-        return acc;
-      }, {});
-      const topContributor = Object.entries(contributors).sort(([, a], [, b]) => b.km - a.km || b.count - a.count)[0];
       return [
         routeHighlight("Longest route", longest, formatKm(distanceKm(longest.points))),
         routeHighlight("Biggest climb", climb, `${Number(climb.elevationGainM) || 0} m`),
-        routeHighlight("Most photos", mostPhotos, `${mostPhotos.photos?.length || 0}`),
-        topContributor ? `<div class="summary-row action" data-author="${escapeHtml(topContributor[0])}"><span>Most logged name · ${escapeHtml(topContributor[0])}</span><strong>${formatKm(topContributor[1].km)}</strong></div>` : ""
+        routeHighlight("Most photos", mostPhotos, `${mostPhotos.photos?.length || 0}`)
       ].join("");
     }
 
@@ -1988,7 +1923,7 @@
       }
       el.routeDetail.classList.add("active");
       el.detailName.textContent = route.name;
-      el.detailMeta.textContent = `${route.type === "train" ? "Train" : "Hike"} by ${route.author || "Anonymous hiker"}${route.date ? ` · ${route.date}` : ""}`;
+      el.detailMeta.textContent = `${route.type === "train" ? "Train" : "Hike"}${route.date ? ` - ${route.date}` : ""}`;
       el.editRouteLink.href = routeEditUrl(route);
       el.detailDistance.textContent = formatKm(distanceKm(route.points));
       el.detailDuration.textContent = route.durationHours ? `${route.durationHours} h` : "n/a";
@@ -2008,7 +1943,7 @@
       state.selectedRouteId = route.id;
       updateRouteHash(route);
       overviewMap.fitBounds(L.latLngBounds(route.points.map(point => L.latLng(point[0], point[1]))).pad(0.18));
-      el.focusNote.textContent = `Focused ${route.name} by ${route.author || "Anonymous hiker"} on the map.`;
+      el.focusNote.textContent = `Focused ${route.name} on the map.`;
       renderDetail();
       renderLog();
     }
@@ -2026,7 +1961,6 @@
       const route = state.routes.find(item => item.id === id);
       if (!route) return false;
       state.selectedRouteId = route.id;
-      state.selectedAuthor = "";
       el.typeFilter.value = "all";
       el.tagFilter.value = "all";
       el.timeFilter.value = "all";
@@ -2101,7 +2035,6 @@
             <div class="feed-head">
               <div>
                 <h2>${index + 1}. ${escapeHtml(route.name)}</h2>
-                <button class="author like-button" type="button" data-author="${escapeHtml(route.author || "Anonymous hiker")}">${escapeHtml(route.author || "Anonymous hiker")}</button>
                 <div class="author">Saved · ${escapeHtml(activityLabel(route))}</div>
               </div>
               <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
@@ -2187,22 +2120,7 @@
       el.focusNote.textContent = "Click a feed card to focus its route on the map.";
     });
     el.shareRouteBtn.addEventListener("click", shareSelectedRoute);
-    el.detailAuthorBtn.addEventListener("click", () => {
-      const route = state.routes.find(item => item.id === state.selectedRouteId);
-      if (!route) return;
-      showContributor(route.author || "Anonymous hiker");
-    });
-    el.contributorSummary.addEventListener("click", event => {
-      const row = event.target.closest("[data-author]");
-      if (!row) return;
-      showContributor(row.dataset.author);
-    });
     el.highlightSummary.addEventListener("click", event => {
-      const authorRow = event.target.closest("[data-author]");
-      if (authorRow) {
-        showContributor(authorRow.dataset.author);
-        return;
-      }
       const routeRow = event.target.closest("[data-route-highlight]");
       if (!routeRow) return;
       const route = state.routes.find(item => item.id === routeRow.dataset.routeHighlight);
@@ -2218,12 +2136,6 @@
     el.entryLog.addEventListener("click", event => {
       if (event.target.closest("a[data-edit-link]")) {
         event.stopPropagation();
-        return;
-      }
-      const authorButton = event.target.closest("button[data-author]");
-      if (authorButton) {
-        event.stopPropagation();
-        showContributor(authorButton.dataset.author);
         return;
       }
     });

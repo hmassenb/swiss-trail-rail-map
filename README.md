@@ -31,6 +31,7 @@ The overview page reads the same saved route data as the map page and displays:
 - cumulative map controls for hikes, trains, and saved routes
 - live map legend with filtered hike, train, private, and currently drawn route counts
 - total entries, hiking distance, train distance, and elevation gain
+- complete-route and archive-health counts for backfilling older entries
 - average route distance, best day distance, active days, and current metric window
 - previous-period comparison for hiking distance, hike count, and elevation gain when a bounded timeframe is selected
 - adjustable hiking goals for the current filter/timeframe, with progress for distance, hike count, and elevation gain
@@ -39,8 +40,8 @@ The overview page reads the same saved route data as the map page and displays:
 - yearly and monthly distance summaries
 - route cards with name, caption, tags, duration, elevation, notes, distance, photos, and clicked waypoint coordinates
 - sorting by date, recent updates, name, distance, or elevation
-- filter-aware highlights for longest route, biggest climb, most photos, and most logged name
-- saved names and trending tags for the current filter/timeframe
+- filter-aware highlights for longest route, biggest climb, and most photos
+- archive-health and trending-tag summaries for the current filter/timeframe
 - estimated canton coverage for the current filter/timeframe
 - feed-card route focusing on the cumulative map
 - selected-route detail cards with metrics, tags, caption, coordinates, photo count, and name filtering
@@ -69,19 +70,16 @@ Routes are entered directly in the browser:
 - Click the map to add waypoints.
 - Or load a GPX track as a draft, then review its geometry and add metadata before saving.
 - Searches, clicked points, GPX drafts, and imported routes are kept inside the Switzerland map bounds; imports outside Switzerland are skipped.
-- Add a route name, optional hiker name, optional date, and optional notes.
+- Add a route name, optional date, and optional notes.
 - Add optional tags and duration. Elevation gain/loss is calculated automatically for hikes: GPX elevation is used locally when available, and clicked routes use an external elevation lookup.
 - Add an optional caption and route photos.
 - Save the route.
 
-The map page includes a `Quick post` checklist that updates while you fill in the route name, date, and clicked map points. Saved route cards also show completeness badges for missing date, duration, elevation, and photos.
-
-Each route can store its own optional hiker name. There is no separate user profile setup.
+The map page includes a `Quick post` checklist that updates while you fill in the route name, date, and clicked map points. Saved route cards and the top stats show completeness for missing date, duration, elevation, and photos.
 
 The app stores:
 
 - `name`: route title
-- `author`: optional hiker name
 - `visibility`: currently saved as `private` for personal tracking
 - `type`: `hike` or `train`
 - `date`: optional completion date
