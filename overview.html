@@ -684,7 +684,7 @@
   <div class="shell">
     <header>
       <div class="title-row">
-        <h1>Completed Hikes Map</h1>
+        <h1>Swiss Trail & Rail Overview</h1>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
           <a class="button" href="index.html">Back to map</a>
         </div>
@@ -692,8 +692,8 @@
       <div class="controls">
         <input id="searchInput" type="search" placeholder="Search name, notes, date, coordinates" />
         <select id="typeFilter">
-          <option value="hike">Hikes</option>
           <option value="all">All entries</option>
+          <option value="hike">Hikes</option>
           <option value="train">Trains</option>
         </select>
         <select id="tagFilter">
@@ -738,12 +738,12 @@
       <div id="overviewMap" aria-label="Overview map of logged routes"></div>
       <div class="map-tools">
         <label><input id="showHikes" type="checkbox" checked /> Hikes</label>
-        <label><input id="showTrains" type="checkbox" /> Trains</label>
+        <label><input id="showTrains" type="checkbox" checked /> Trains</label>
         <label><input id="showPrivate" type="checkbox" checked /> Saved routes</label>
         <div class="map-legend">
           <div class="legend-row"><span class="legend-line"></span><span>Hikes</span><strong id="legendHikes">0</strong></div>
           <div class="legend-row"><span class="legend-line train"></span><span>Trains</span><strong id="legendTrains">0</strong></div>
-          <div class="legend-row"><span class="legend-line private"></span><span>Private</span><strong id="legendPrivate">0</strong></div>
+          <div class="legend-row"><span class="legend-line private"></span><span>Saved</span><strong id="legendPrivate">0</strong></div>
           <div class="legend-row"><span></span><span>Drawn now</span><strong id="legendVisible">0</strong></div>
         </div>
       </div>

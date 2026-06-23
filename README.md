@@ -24,11 +24,11 @@ The app is fully static and works from GitHub Pages. Your route data and compres
 
 The overview page reads the same saved route data as the map page and displays:
 
-- one Switzerland-bounded overview map that opens on all completed hikes
+- one Switzerland-bounded overview map that opens on all saved hikes and train routes
 - a searchable route log
 - filters for hikes, trains, tags, and timeframes
 - exact custom date ranges with `From` and `To` controls
-- cumulative map controls for hikes, optional trains, and private routes
+- cumulative map controls for hikes, trains, and saved routes
 - live map legend with filtered hike, train, private, and currently drawn route counts
 - total entries, hiking distance, train distance, and elevation gain
 - average route distance, best day distance, active days, and current metric window
