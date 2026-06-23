@@ -1332,6 +1332,10 @@
         const place = places[0];
         const lat = Number(place.lat);
         const lon = Number(place.lon);
+        if (!pointInSwissBounds([lat, lon])) {
+          setStatus("No Swiss result found");
+          return;
+        }
         map.setView([lat, lon], Math.max(map.getZoom(), 13));
         L.marker([lat, lon]).addTo(map).bindPopup(escapeHtml(place.display_name)).openPopup();
         setStatus(place.display_name);
@@ -1390,20 +1394,28 @@ ${segments}
 
     async function importFile(file) {
       const text = await file.text();
+      let added = 0;
+      let skipped = 0;
       if (file.name.toLowerCase().endsWith(".json")) {
         const imported = JSON.parse(text);
         const routeArray = Array.isArray(imported) ? imported : imported.routes;
         if (!Array.isArray(routeArray)) throw new Error("JSON must contain a route array or backup package");
         const existingIds = new Set(state.routes.map(route => route.id));
         const normalized = routeArray.map(normalizeRoute).filter(Boolean);
+        skipped = routeArray.length - normalized.length;
         const merged = normalized.map(route => existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route);
         state.routes = [...state.routes, ...merged];
+        added = merged.length;
       } else {
-        state.routes = [...state.routes, ...parseGpx(text)];
+        const parsed = parseGpx(text);
+        const valid = parsed.filter(route => routeInSwissBounds(route.points) && routeInSwissBounds(route.waypoints));
+        skipped = parsed.length - valid.length;
+        state.routes = [...state.routes, ...valid];
+        added = valid.length;
       }
       saveRoutes();
       renderRoutes();
-      setStatus("Import complete");
+      setStatus(`${added} route${added === 1 ? "" : "s"} imported${skipped ? `; ${skipped} skipped outside Switzerland` : ""}`);
     }
 
     function normalizeSavedRoute(route) {
@@ -1433,6 +1445,7 @@ ${segments}
         })
         .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
       if (points.length < 2 || waypoints.length < 2) return null;
+      if (!routeInSwissBounds(points) || !routeInSwissBounds(waypoints)) return null;
       const durationHours = numericValue(route.durationHours);
       const elevationGainM = numericValue(route.elevationGainM);
       const elevationLossM = numericValue(route.elevationLossM);
@@ -1530,6 +1543,7 @@ ${segments}
       const tracks = parseGpxTracks(await file.text());
       if (!tracks.length) throw new Error("No GPX track points found");
       const track = tracks[0];
+      if (!routeInSwissBounds(track.points)) throw new Error("GPX draft is outside Switzerland");
       state.draft = sampleWaypoints(track.points);
       state.draftRoute = track.points.map(point => [...point]);
       state.draftSource = "gpx";
@@ -1560,6 +1574,16 @@ ${segments}
 
     function xmlEscape(value) {
       return escapeHtml(value);
+    }
+
+    function pointInSwissBounds(point) {
+      return Number.isFinite(point?.[0]) &&
+        Number.isFinite(point?.[1]) &&
+        SWISS_BOUNDS.contains(L.latLng(point[0], point[1]));
+    }
+
+    function routeInSwissBounds(points) {
+      return Array.isArray(points) && points.length >= 2 && points.every(pointInSwissBounds);
     }
 
     map.on("click", event => {
