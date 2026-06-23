@@ -39,7 +39,7 @@ The overview page reads the same saved route data as the map page and displays:
 - cumulative dated progress chart for hiking and train distance within the active filter/timeframe
 - clickable daily activity calendars by year, with hike/train/mixed-day colors for the active filter/timeframe
 - selected-route elevation profiles when GPX imports or clicked hike elevation lookups provide elevation samples
-- route photo thumbnails and selected-route photo galleries
+- route photo thumbnails and selected-route photo galleries with full-size photo links
 - yearly and monthly distance summaries
 - route cards with name, caption, tags, duration, pace/speed, elevation, notes, distance, photos, and clicked waypoint coordinates
 - sorting by date, recent updates, name, distance, or elevation

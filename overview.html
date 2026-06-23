@@ -726,6 +726,18 @@
       margin-top: 10px;
     }
 
+    .detail-photos a {
+      display: block;
+      border-radius: 8px;
+      outline-offset: 3px;
+    }
+
+    .detail-photos a:hover img,
+    .detail-photos a:focus-visible img {
+      box-shadow: 0 0 0 3px rgba(47, 118, 84, 0.18);
+      transform: translateY(-1px);
+    }
+
     .detail-photos img {
       width: 100%;
       aspect-ratio: 4 / 3;
@@ -733,6 +745,8 @@
       border-radius: 8px;
       border: 1px solid var(--line);
       background: #eef2ee;
+      display: block;
+      transition: transform 150ms ease, box-shadow 150ms ease;
     }
 
     .profile-head {
@@ -2389,7 +2403,11 @@
       el.detailCaption.textContent = route.caption || route.notes || "No caption yet.";
       renderElevationProfile(route);
       el.detailPhotos.innerHTML = route.photos?.length
-        ? route.photos.map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")
+        ? route.photos.map(photo => `
+          <a href="${photo.dataUrl}" target="_blank" rel="noopener" title="Open ${escapeHtml(photo.name)} full size">
+            <img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />
+          </a>
+        `).join("")
         : "";
       el.detailCoords.textContent = route.waypoints.map(point => `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`).join(" | ");
     }
