@@ -1353,6 +1353,7 @@
               <button type="button" title="Zoom" data-action="zoom" data-id="${route.id}">⌖</button>
               <button type="button" title="Edit" data-action="edit" data-id="${route.id}">✎</button>
               <button type="button" title="Duplicate" data-action="duplicate" data-id="${route.id}">⧉</button>
+              <button type="button" title="Export JSON" data-action="json" data-id="${route.id}">JSON</button>
               <button type="button" title="Export GPX" data-action="gpx" data-id="${route.id}">GPX</button>
               <button type="button" title="Delete" data-action="delete" data-id="${route.id}">×</button>
             </div>
@@ -1607,14 +1608,14 @@
       }
     }
 
-    function jsonBackupPackage() {
+    function jsonBackupPackage(routes = state.routes) {
       return {
         format: "swiss-trail-rail-log",
         version: 1,
         exportedAt: new Date().toISOString(),
-        routeCount: state.routes.length,
+        routeCount: routes.length,
         savedAt: latestSavedAt(),
-        routes: state.routes
+        routes
       };
     }
 
@@ -1627,6 +1628,13 @@
     function exportGpx() {
       const gpx = routesToGpx(state.routes);
       download(`swiss-trail-rail-log-${exportDateStamp()}.gpx`, gpx, "application/gpx+xml");
+    }
+
+    function exportRouteJson(id) {
+      const route = state.routes.find(item => item.id === id);
+      if (!route) return;
+      download(`${safeFilename(route.name)}-${exportDateStamp()}.json`, JSON.stringify(jsonBackupPackage([route]), null, 2), "application/json");
+      setStatus("Route JSON exported");
     }
 
     function exportRouteGpx(id) {
@@ -1950,6 +1958,7 @@ ${points}
         if (action === "zoom") selectRoute(id, true);
         if (action === "edit") editRoute(id);
         if (action === "duplicate") duplicateRoute(id);
+        if (action === "json") exportRouteJson(id);
         if (action === "gpx") exportRouteGpx(id);
         if (action === "delete") deleteRoute(id);
         return;
