@@ -1619,20 +1619,20 @@
     }
 
     function exportJson() {
-      download("swiss-trail-rail-log.json", JSON.stringify(jsonBackupPackage(), null, 2), "application/json");
+      download(`swiss-trail-rail-log-${exportDateStamp()}.json`, JSON.stringify(jsonBackupPackage(), null, 2), "application/json");
       rememberBackup();
       setStatus("JSON backup exported");
     }
 
     function exportGpx() {
       const gpx = routesToGpx(state.routes);
-      download("swiss-trail-rail-log.gpx", gpx, "application/gpx+xml");
+      download(`swiss-trail-rail-log-${exportDateStamp()}.gpx`, gpx, "application/gpx+xml");
     }
 
     function exportRouteGpx(id) {
       const route = state.routes.find(item => item.id === id);
       if (!route) return;
-      download(`${safeFilename(route.name)}.gpx`, routesToGpx([route]), "application/gpx+xml");
+      download(`${safeFilename(route.name)}-${exportDateStamp()}.gpx`, routesToGpx([route]), "application/gpx+xml");
       setStatus("Route GPX exported");
     }
 
@@ -1675,6 +1675,10 @@ ${points}
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "")
         .slice(0, 80) || "route";
+    }
+
+    function exportDateStamp(date = new Date()) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     }
 
     function download(filename, content, mime) {

@@ -1615,7 +1615,7 @@
     }
 
     function exportJson() {
-      download("swiss-trail-rail-log.json", JSON.stringify(jsonBackupPackage(), null, 2), "application/json");
+      download(`swiss-trail-rail-log-${exportDateStamp()}.json`, JSON.stringify(jsonBackupPackage(), null, 2), "application/json");
       rememberBackup();
       renderStats();
       el.storageNote.textContent = `${state.routes.length} route${state.routes.length === 1 ? "" : "s"} exported as a JSON backup.`;
@@ -1663,9 +1663,13 @@
         route.id || ""
       ]);
       const csv = [headers, ...rows].map(row => row.map(csvValue).join(",")).join("\r\n");
-      download("swiss-trail-rail-log.csv", csv, "text/csv");
+      download(`swiss-trail-rail-log-${exportDateStamp()}.csv`, csv, "text/csv");
       el.storageNote.classList.remove("warning");
       el.storageNote.textContent = `${rows.length} visible route${rows.length === 1 ? "" : "s"} exported as CSV.`;
+    }
+
+    function exportDateStamp(date = new Date()) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     }
 
     async function importJson(file) {
