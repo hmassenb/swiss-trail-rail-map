@@ -568,34 +568,29 @@
 
     .detail-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(130px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
       gap: 10px;
     }
 
-    .comment-box {
-      display: grid;
-      gap: 8px;
-      border-top: 1px solid var(--line);
-      padding-top: 10px;
-    }
-
-    .comment-list {
+    .elevation-profile {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8faf8;
+      padding: 10px;
       display: grid;
       gap: 7px;
     }
 
-    .comment {
-      background: #f7f8f6;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 8px;
-      font-size: 13px;
-      line-height: 1.35;
+    .elevation-profile svg {
+      width: 100%;
+      min-height: 150px;
+      display: block;
     }
 
-    .comment strong {
-      display: block;
-      margin-bottom: 3px;
+    .profile-note {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
     }
 
     .photo-strip {
@@ -889,6 +884,7 @@
         </div>
         <div class="meta" id="detailTags"></div>
         <div class="notes" id="detailCaption"></div>
+        <div class="elevation-profile" id="detailElevationProfile"></div>
         <div class="detail-photos" id="detailPhotos"></div>
         <div class="points" id="detailCoords"></div>
       </section>
@@ -1019,6 +1015,7 @@
       detailPhotoCount: document.getElementById("detailPhotoCount"),
       detailTags: document.getElementById("detailTags"),
       detailCaption: document.getElementById("detailCaption"),
+      detailElevationProfile: document.getElementById("detailElevationProfile"),
       detailPhotos: document.getElementById("detailPhotos"),
       detailCoords: document.getElementById("detailCoords"),
       entryLog: document.getElementById("entryLog")
@@ -1124,6 +1121,61 @@
         waypointCount: waypoints.length,
         pointCount: points.length
       };
+    }
+
+    function elevationSamples(route) {
+      const points = Array.isArray(route.points) ? route.points : [];
+      const samples = [];
+      let km = 0;
+      points.forEach((point, index) => {
+        if (index > 0) {
+          km += L.latLng(points[index - 1][0], points[index - 1][1]).distanceTo(L.latLng(point[0], point[1])) / 1000;
+        }
+        const elevation = Number(point[2]);
+        if (Number.isFinite(elevation)) samples.push({ km, elevation });
+      });
+      return samples;
+    }
+
+    function renderElevationProfile(route) {
+      const samples = elevationSamples(route);
+      if (samples.length < 2) {
+        el.detailElevationProfile.innerHTML = `<div class="profile-note">No elevation profile samples saved for this route yet. GPX imports with elevation will show a profile here.</div>`;
+        return;
+      }
+
+      const width = 760;
+      const height = 180;
+      const pad = { left: 52, right: 22, top: 20, bottom: 36 };
+      const chartWidth = width - pad.left - pad.right;
+      const chartHeight = height - pad.top - pad.bottom;
+      const minElevation = Math.min(...samples.map(sample => sample.elevation));
+      const maxElevation = Math.max(...samples.map(sample => sample.elevation));
+      const maxKm = Math.max(0.1, samples[samples.length - 1].km);
+      const elevationSpan = Math.max(1, maxElevation - minElevation);
+      const xFor = sample => pad.left + (sample.km / maxKm) * chartWidth;
+      const yFor = sample => pad.top + chartHeight - ((sample.elevation - minElevation) / elevationSpan) * chartHeight;
+      const line = samples.map(sample => `${xFor(sample).toFixed(1)},${yFor(sample).toFixed(1)}`).join(" ");
+      const area = `${pad.left},${height - pad.bottom} ${line} ${width - pad.right},${height - pad.bottom}`;
+      const ticks = [minElevation, minElevation + elevationSpan / 2, maxElevation].map(value => {
+        const y = pad.top + chartHeight - ((value - minElevation) / elevationSpan) * chartHeight;
+        return `<line x1="${pad.left}" y1="${y.toFixed(1)}" x2="${width - pad.right}" y2="${y.toFixed(1)}" stroke="#dce5df" />
+          <text x="${pad.left - 8}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#5a666d">${Math.round(value)} m</text>`;
+      }).join("");
+
+      el.detailElevationProfile.innerHTML = `
+        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Elevation profile for ${escapeHtml(route.name)}">
+          <rect x="0" y="0" width="${width}" height="${height}" rx="8" fill="#f8faf8" />
+          ${ticks}
+          <polygon points="${area}" fill="#d8e8dc" opacity="0.9" />
+          <polyline points="${line}" fill="none" stroke="#2f7654" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+          <line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="#cbd4cf" />
+          <text x="${pad.left}" y="${height - 12}" font-size="12" fill="#5a666d">0 km</text>
+          <text x="${width - pad.right}" y="${height - 12}" text-anchor="end" font-size="12" fill="#5a666d">${escapeHtml(formatKm(maxKm))}</text>
+          <text x="${width - pad.right}" y="16" text-anchor="end" font-size="12" fill="#344249">${Math.round(minElevation)}-${Math.round(maxElevation)} m</text>
+        </svg>
+        <div class="profile-note">${samples.length} elevation samples · ${Math.round(minElevation)} m min · ${Math.round(maxElevation)} m max</div>
+      `;
     }
 
     function loadRoutes() {
@@ -1947,6 +1999,7 @@
         ? route.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")
         : `<span class="pill">No tags</span>`;
       el.detailCaption.textContent = route.caption || route.notes || "No caption yet.";
+      renderElevationProfile(route);
       el.detailPhotos.innerHTML = route.photos?.length
         ? route.photos.map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")
         : "";
