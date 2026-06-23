@@ -42,7 +42,7 @@ The overview page reads the same saved route data as the map page and displays:
 - selected-route elevation profiles when GPX imports or clicked hike elevation lookups provide elevation samples
 - route photo thumbnails and selected-route photo galleries with full-size photo links
 - yearly distance, yearly elevation gain, and monthly distance summaries
-- route cards with name, caption, tags, duration, pace/speed, elevation, notes, distance, photos, and clicked waypoint coordinates
+- route cards with name, caption, tags, duration, pace/speed, elevation, completeness badges, notes, distance, photos, and clicked waypoint coordinates
 - sorting by date, recent updates, name, distance, or elevation
 - filter-aware highlights for longest route, biggest climb, and most photos
 - archive-health and trending-tag summaries for the current filter/timeframe

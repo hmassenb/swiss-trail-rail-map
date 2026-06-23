@@ -618,6 +618,22 @@
       padding: 4px 8px;
     }
 
+    .quality-badge {
+      border-radius: 999px;
+      padding: 4px 8px;
+      border: 1px solid #cfd8d5;
+      background: #f5f8f6;
+      color: #405047;
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .quality-badge.missing {
+      color: #7a3b2f;
+      border-color: #d2aaa2;
+      background: #fff7f5;
+    }
+
     .notes {
       color: #344249;
       font-size: 13px;
@@ -1193,7 +1209,7 @@
 
     const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
       maxZoom: 17,
-      attribution: "Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap"
+      attribution: "Map data: (c) OpenStreetMap contributors, SRTM | Map style: (c) OpenTopoMap"
     });
     const overviewMap = L.map("overviewMap", {
       layers: [topo],
@@ -1344,7 +1360,7 @@
           <text x="${width - pad.right}" y="${height - 12}" text-anchor="end" font-size="12" fill="#5a666d">${escapeHtml(formatKm(maxKm))}</text>
           <text x="${width - pad.right}" y="16" text-anchor="end" font-size="12" fill="#344249">${Math.round(minElevation)}-${Math.round(maxElevation)} m</text>
         </svg>
-        <div class="profile-note">${samples.length} elevation samples · ${Math.round(minElevation)} m min · ${Math.round(maxElevation)} m max</div>
+        <div class="profile-note">${samples.length} elevation samples - ${Math.round(minElevation)} m min - ${Math.round(maxElevation)} m max</div>
       `;
     }
 
@@ -1830,6 +1846,12 @@ ${points}
       if (route.type === "hike" && !Number(route.elevationGainM)) missing.push("elevation");
       if (!route.photos?.length) missing.push("photos");
       return missing;
+    }
+
+    function routeQualityBadges(route) {
+      const missing = missingRouteFields(route);
+      if (!missing.length) return `<span class="quality-badge">Complete</span>`;
+      return missing.map(item => `<span class="quality-badge missing">Missing ${escapeHtml(item)}</span>`).join("");
     }
 
     function backfillLabel(key) {
@@ -2347,7 +2369,7 @@ ${points}
       if (!rows.length) return `<div class="summary-row"><span>${emptyText}</span><strong></strong></div>`;
       return rows.map(([label, totals]) => `
         <div class="summary-row">
-          <span>${escapeHtml(label)} · ${totals.count} entr${totals.count === 1 ? "y" : "ies"}</span>
+          <span>${escapeHtml(label)} - ${totals.count} entr${totals.count === 1 ? "y" : "ies"}</span>
           <strong>${formatKm(totals.hike + totals.train)}</strong>
         </div>
       `).join("");
@@ -2360,7 +2382,7 @@ ${points}
       if (!rows.length) return `<div class="summary-row"><span>${emptyText}</span><strong></strong></div>`;
       return rows.map(([label, totals]) => `
         <div class="summary-row">
-          <span>${escapeHtml(label)} · ${totals.count} hike${totals.count === 1 ? "" : "s"}</span>
+          <span>${escapeHtml(label)} - ${totals.count} hike${totals.count === 1 ? "" : "s"}</span>
           <strong>${Math.round(totals.gain)} m</strong>
         </div>
       `).join("");
@@ -2424,7 +2446,7 @@ ${points}
       if (!rows.length) return `<div class="summary-row"><span>No tags yet.</span><strong></strong></div>`;
       return rows.map(([tag, data]) => `
         <div class="summary-row">
-          <span>${escapeHtml(tag)} · ${data.count} route${data.count === 1 ? "" : "s"}</span>
+          <span>${escapeHtml(tag)} - ${data.count} route${data.count === 1 ? "" : "s"}</span>
           <strong>${formatKm(data.km)}</strong>
         </div>
       `).join("");
@@ -2476,7 +2498,7 @@ ${points}
       const coverage = `<div class="summary-row"><span>Estimated cantons visited</span><strong>${total} / ${CANTONS.length}</strong></div>`;
       const topRows = rows.slice(0, 7).map(([code, data]) => `
         <div class="summary-row">
-          <span>${escapeHtml(data.name)} (${escapeHtml(code)}) · ${data.count} route${data.count === 1 ? "" : "s"}</span>
+          <span>${escapeHtml(data.name)} (${escapeHtml(code)}) - ${data.count} route${data.count === 1 ? "" : "s"}</span>
           <strong>${formatKm(data.km)}</strong>
         </div>
       `).join("");
@@ -2487,7 +2509,7 @@ ${points}
       if (!route) return "";
       return `
         <div class="summary-row action" data-route-highlight="${escapeHtml(route.id)}">
-          <span>${escapeHtml(label)} · ${escapeHtml(route.name)}</span>
+          <span>${escapeHtml(label)} - ${escapeHtml(route.name)}</span>
           <strong>${escapeHtml(value)}</strong>
         </div>
       `;
@@ -2624,12 +2646,13 @@ ${points}
           ? `<div class="photo-strip">${route.photos.slice(0, 8).map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")}</div>`
           : "";
         const pace = formatPace(route);
+        const qualityBadges = routeQualityBadges(route);
         entry.innerHTML = `
           <div>
             <div class="feed-head">
               <div>
                 <h2>${index + 1}. ${escapeHtml(route.name)}</h2>
-                <div class="author">Saved · ${escapeHtml(activityLabel(route))}</div>
+                <div class="author">Saved - ${escapeHtml(activityLabel(route))}</div>
               </div>
               <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
                 ${route.photos?.length ? `<span class="like-button">${route.photos.length} photo${route.photos.length === 1 ? "" : "s"}</span>` : ""}
@@ -2646,6 +2669,7 @@ ${points}
               ${route.elevationGainM ? `<span class="pill">+${escapeHtml(route.elevationGainM)} m</span>` : ""}
               ${route.elevationLossM ? `<span class="pill">-${escapeHtml(route.elevationLossM)} m</span>` : ""}
             </div>
+            <div class="meta" style="margin-top: 8px;">${qualityBadges}</div>
             ${route.tags?.length ? `<div class="meta" style="margin-top: 8px;">${route.tags.map(tag => `<span class="pill">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
             ${route.caption ? `<div class="notes">${escapeHtml(route.caption)}</div>` : ""}
             ${route.notes ? `<div class="notes">${escapeHtml(route.notes)}</div>` : ""}
