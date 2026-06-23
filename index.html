@@ -321,6 +321,38 @@
       gap: 8px;
     }
 
+    .route-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .route-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid #d7dfda;
+      background: #f3f6f3;
+      color: #4e5b55;
+      font-size: 11px;
+      font-weight: 680;
+      line-height: 1.1;
+    }
+
+    .route-badge.done {
+      border-color: #bfd2c4;
+      background: #e9f1eb;
+      color: #2f7654;
+    }
+
+    .route-badge.missing {
+      border-color: #e1cdbf;
+      background: #f7eee8;
+      color: #8a5135;
+    }
+
     .photo-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
@@ -1119,6 +1151,7 @@
         const photoStrip = route.photos?.length
           ? `<div class="photo-strip">${route.photos.slice(0, 6).map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")}</div>`
           : "";
+        const badges = routeCompletenessBadges(route);
         card.innerHTML = `
           <div class="route-head">
             <div>
@@ -1138,6 +1171,7 @@
               <button type="button" title="Delete" data-action="delete" data-id="${route.id}">×</button>
             </div>
           </div>
+          <div class="route-badges">${badges}</div>
           ${route.tags?.length ? `<div class="route-meta">${route.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
           ${route.caption ? `<div class="route-meta">${escapeHtml(route.caption)}</div>` : ""}
           ${route.notes ? `<div class="route-meta">${escapeHtml(route.notes)}</div>` : ""}
@@ -1145,6 +1179,16 @@
         `;
         el.routeList.appendChild(card);
       });
+    }
+
+    function routeCompletenessBadges(route) {
+      const missing = [];
+      if (!route.date) missing.push("date");
+      if (!Number(route.durationHours)) missing.push("duration");
+      if (route.type === "hike" && !Number(route.elevationGainM)) missing.push("elevation");
+      if (!route.photos?.length) missing.push("photos");
+      if (!missing.length) return `<span class="route-badge done">Complete</span>`;
+      return missing.map(item => `<span class="route-badge missing">Missing ${escapeHtml(item)}</span>`).join("");
     }
 
     function renderStats() {

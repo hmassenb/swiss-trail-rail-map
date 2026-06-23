@@ -74,7 +74,7 @@ Routes are entered directly in the browser:
 - Add an optional caption and route photos.
 - Save the route.
 
-The map page includes a `Quick post` checklist that updates while you fill in the route name, date, and clicked map points.
+The map page includes a `Quick post` checklist that updates while you fill in the route name, date, and clicked map points. Saved route cards also show completeness badges for missing date, duration, elevation, and photos.
 
 Each route can store its own optional hiker name. There is no separate user profile setup.
 
