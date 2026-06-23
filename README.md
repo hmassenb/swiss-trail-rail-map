@@ -33,6 +33,7 @@ The overview page reads the same saved route data as the map page and displays:
 - total entries, hiking distance, train distance, and elevation gain
 - complete-route and archive-health counts for backfilling older entries
 - average route distance, best day distance, active days, and current metric window
+- JSON backup status, backed-up route count, last export time, and entries changed since export
 - previous-period comparison for hiking distance, hike count, and elevation gain when a bounded timeframe is selected
 - adjustable hiking goals for the current filter/timeframe, with progress for distance, hike count, and elevation gain
 - cumulative dated progress chart for hiking and train distance within the active filter/timeframe

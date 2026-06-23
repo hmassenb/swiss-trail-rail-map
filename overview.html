@@ -750,6 +750,12 @@
         <div class="stat"><strong id="activeDays">0</strong><span>Active days</span></div>
         <div class="stat"><strong id="periodLabel">All time</strong><span>Metric window</span></div>
       </div>
+      <div class="stats">
+        <div class="stat"><strong id="backupStatus">No entries</strong><span>JSON backup</span></div>
+        <div class="stat"><strong id="backupRoutes">--</strong><span>Backed up routes</span></div>
+        <div class="stat"><strong id="backupAge">Never</strong><span>Last export</span></div>
+        <div class="stat"><strong id="backupChangeCount">0</strong><span>Entries since export</span></div>
+      </div>
       <section class="summary-panel" aria-label="Previous period comparison">
         <div class="progress-head">
           <div>
@@ -957,6 +963,10 @@
       bestDayDistance: document.getElementById("bestDayDistance"),
       activeDays: document.getElementById("activeDays"),
       periodLabel: document.getElementById("periodLabel"),
+      backupStatus: document.getElementById("backupStatus"),
+      backupRoutes: document.getElementById("backupRoutes"),
+      backupAge: document.getElementById("backupAge"),
+      backupChangeCount: document.getElementById("backupChangeCount"),
       comparisonScope: document.getElementById("comparisonScope"),
       comparisonDistance: document.getElementById("comparisonDistance"),
       comparisonRoutes: document.getElementById("comparisonRoutes"),
@@ -1206,6 +1216,26 @@
       } catch {
         return null;
       }
+    }
+
+    function backupSnapshot() {
+      const backup = backupInfo();
+      const count = state.routes.length;
+      const backedUpCount = Number.isFinite(Number(backup?.routeCount)) ? Number(backup.routeCount) : 0;
+      const latestSave = latestSavedAt();
+      const hasChanges = count > 0 && (!backup || backedUpCount !== count || backup.savedAt !== latestSave);
+      if (!count) {
+        return { status: "No entries", routes: "--", age: "Never", changed: 0 };
+      }
+      if (!backup) {
+        return { status: "Export due", routes: "0", age: "Never", changed: count };
+      }
+      return {
+        status: hasChanges ? "Export due" : "Current",
+        routes: String(backedUpCount),
+        age: formatDateTime(backup.exportedAt),
+        changed: Math.max(0, count - backedUpCount)
+      };
     }
 
     function formatDateTime(value) {
@@ -1669,6 +1699,7 @@
     function renderStats() {
       const totals = filteredTotals();
       const bestDay = Object.values(totals.byDay).reduce((max, value) => Math.max(max, value), 0);
+      const backup = backupSnapshot();
       el.entryCount.textContent = state.routes.length;
       el.hikeKm.textContent = formatKm(totals.hike);
       el.trainKm.textContent = formatKm(totals.train);
@@ -1681,6 +1712,10 @@
       el.bestDayDistance.textContent = formatKm(bestDay);
       el.activeDays.textContent = Object.keys(totals.byDay).length;
       el.periodLabel.textContent = timeframeLabel();
+      el.backupStatus.textContent = backup.status;
+      el.backupRoutes.textContent = backup.routes;
+      el.backupAge.textContent = backup.age;
+      el.backupChangeCount.textContent = backup.changed;
     }
 
     function signedValue(value, suffix = "") {
