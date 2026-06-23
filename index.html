@@ -1351,6 +1351,7 @@
             </div>
             <div class="route-actions">
               <button type="button" title="Zoom" data-action="zoom" data-id="${route.id}">⌖</button>
+              <button type="button" title="Open in overview" data-action="overview" data-id="${route.id}">View</button>
               <button type="button" title="Edit" data-action="edit" data-id="${route.id}">✎</button>
               <button type="button" title="Duplicate" data-action="duplicate" data-id="${route.id}">⧉</button>
               <button type="button" title="Export JSON" data-action="json" data-id="${route.id}">JSON</button>
@@ -1403,6 +1404,11 @@
       const layer = state.layers.get(id);
       if (layer) layer.openPopup();
       if (zoom && route?.points?.length > 1) map.fitBounds(boundsFor(route.points).pad(0.18));
+    }
+
+    function openRouteOverview(id) {
+      if (!state.routes.some(route => route.id === id)) return;
+      window.location.href = `overview.html#route=${encodeURIComponent(id)}`;
     }
 
     function activateType(type) {
@@ -1956,6 +1962,7 @@ ${points}
       if (button) {
         const { action, id } = button.dataset;
         if (action === "zoom") selectRoute(id, true);
+        if (action === "overview") openRouteOverview(id);
         if (action === "edit") editRoute(id);
         if (action === "duplicate") duplicateRoute(id);
         if (action === "json") exportRouteJson(id);
