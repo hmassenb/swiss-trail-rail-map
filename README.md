@@ -38,7 +38,7 @@ The overview page reads the same saved route data as the map page and displays:
 - cumulative dated progress chart for hiking and train distance within the active filter/timeframe
 - route photo thumbnails and selected-route photo galleries
 - yearly and monthly distance summaries
-- route cards with name, caption, tags, duration, elevation, notes, distance, photos, and clicked waypoint coordinates
+- route cards with name, caption, tags, duration, pace/speed, elevation, notes, distance, photos, and clicked waypoint coordinates
 - sorting by date, recent updates, name, distance, or elevation
 - filter-aware highlights for longest route, biggest climb, and most photos
 - archive-health and trending-tag summaries for the current filter/timeframe
@@ -85,6 +85,7 @@ The app stores:
 - `date`: optional completion date
 - `tags`: optional route categories
 - `durationHours`: optional duration in hours
+- `pace/speed`: calculated from route distance and duration in the app
 - `elevationGainM`: optional elevation gain in meters
 - `elevationLossM`: optional elevation loss in meters
 - `notes`: optional free text

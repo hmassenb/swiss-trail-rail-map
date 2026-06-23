@@ -883,6 +883,7 @@
         <div class="detail-grid">
           <div class="stat"><strong id="detailDistance">0 km</strong><span>Distance</span></div>
           <div class="stat"><strong id="detailDuration">0 h</strong><span>Duration</span></div>
+          <div class="stat"><strong id="detailPace">n/a</strong><span>Pace / speed</span></div>
           <div class="stat"><strong id="detailGain">0 m</strong><span>Elevation gain</span></div>
           <div class="stat"><strong id="detailPhotoCount">0</strong><span>Photos</span></div>
         </div>
@@ -1013,6 +1014,7 @@
       clearDetailBtn: document.getElementById("clearDetailBtn"),
       detailDistance: document.getElementById("detailDistance"),
       detailDuration: document.getElementById("detailDuration"),
+      detailPace: document.getElementById("detailPace"),
       detailGain: document.getElementById("detailGain"),
       detailPhotoCount: document.getElementById("detailPhotoCount"),
       detailTags: document.getElementById("detailTags"),
@@ -1043,6 +1045,17 @@
     function formatKm(value) {
       if (!Number.isFinite(value)) return "0 km";
       return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} km`;
+    }
+
+    function formatPace(route) {
+      const km = distanceKm(route.points || []);
+      const hours = Number(route.durationHours);
+      if (!Number.isFinite(km) || km <= 0 || !Number.isFinite(hours) || hours <= 0) return "";
+      if (route.type === "train") return `${(km / hours).toFixed(0)} km/h`;
+      const minutesPerKm = (hours * 60) / km;
+      const minutes = Math.floor(minutesPerKm);
+      const seconds = Math.round((minutesPerKm - minutes) * 60);
+      return `${minutes}:${String(seconds).padStart(2, "0")} min/km`;
     }
 
     function distanceKm(points) {
@@ -1927,6 +1940,7 @@
       el.editRouteLink.href = routeEditUrl(route);
       el.detailDistance.textContent = formatKm(distanceKm(route.points));
       el.detailDuration.textContent = route.durationHours ? `${route.durationHours} h` : "n/a";
+      el.detailPace.textContent = formatPace(route) || "n/a";
       el.detailGain.textContent = route.elevationGainM ? `${route.elevationGainM} m` : "n/a";
       el.detailPhotoCount.textContent = route.photos?.length || 0;
       el.detailTags.innerHTML = route.tags?.length
@@ -2030,6 +2044,7 @@
         const photoStrip = route.photos?.length
           ? `<div class="photo-strip">${route.photos.slice(0, 8).map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")}</div>`
           : "";
+        const pace = formatPace(route);
         entry.innerHTML = `
           <div>
             <div class="feed-head">
@@ -2048,6 +2063,7 @@
               <span class="pill">${route.waypoints.length} waypoints</span>
               ${route.date ? `<span class="pill">${escapeHtml(route.date)}</span>` : ""}
               ${route.durationHours ? `<span class="pill">${escapeHtml(route.durationHours)} h</span>` : ""}
+              ${pace ? `<span class="pill">${escapeHtml(pace)}</span>` : ""}
               ${route.elevationGainM ? `<span class="pill">+${escapeHtml(route.elevationGainM)} m</span>` : ""}
               ${route.elevationLossM ? `<span class="pill">-${escapeHtml(route.elevationLossM)} m</span>` : ""}
             </div>

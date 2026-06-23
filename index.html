@@ -930,6 +930,17 @@
       return `${value >= 10 ? value.toFixed(0) : value.toFixed(1)} km`;
     }
 
+    function formatPace(route) {
+      const km = distanceKm(route.points || []);
+      const hours = Number(route.durationHours);
+      if (!Number.isFinite(km) || km <= 0 || !Number.isFinite(hours) || hours <= 0) return "";
+      if (route.type === "train") return `${(km / hours).toFixed(0)} km/h`;
+      const minutesPerKm = (hours * 60) / km;
+      const minutes = Math.floor(minutesPerKm);
+      const seconds = Math.round((minutesPerKm - minutes) * 60);
+      return `${minutes}:${String(seconds).padStart(2, "0")} min/km`;
+    }
+
     function distanceKm(points) {
       let total = 0;
       for (let i = 1; i < points.length; i++) {
@@ -1148,6 +1159,7 @@
           ? `<div class="photo-strip">${route.photos.slice(0, 6).map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")}</div>`
           : "";
         const badges = routeCompletenessBadges(route);
+        const pace = formatPace(route);
         card.innerHTML = `
           <div class="route-head">
             <div>
@@ -1157,6 +1169,7 @@
                 <span>${formatKm(distanceKm(route.points))}</span>
                 ${route.date ? `<span>${escapeHtml(route.date)}</span>` : ""}
                 ${route.durationHours ? `<span>${escapeHtml(route.durationHours)} h</span>` : ""}
+                ${pace ? `<span>${escapeHtml(pace)}</span>` : ""}
                 ${route.elevationGainM ? `<span>+${escapeHtml(route.elevationGainM)} m</span>` : ""}
               </div>
             </div>
