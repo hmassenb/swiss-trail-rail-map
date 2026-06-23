@@ -371,6 +371,30 @@
       color: #8a5135;
     }
 
+    .tag-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 7px;
+    }
+
+    .tag-chip {
+      border: 1px solid #d7dfda;
+      background: #f7f8f6;
+      color: #344249;
+      border-radius: 999px;
+      min-height: 26px;
+      padding: 4px 9px;
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .tag-chip:hover {
+      background: #edf3ee;
+      border-color: #bfd2c4;
+    }
+
     .photo-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
@@ -570,6 +594,7 @@
             Tags
             <input id="routeTags" placeholder="summer, lake, friends, Valais" />
           </label>
+          <div class="tag-suggestions" id="tagSuggestions" aria-label="Saved tag suggestions"></div>
           <div class="field-row">
             <label>
               Duration
@@ -683,6 +708,7 @@
       routeDate: document.getElementById("routeDate"),
       routeType: document.getElementById("routeType"),
       routeTags: document.getElementById("routeTags"),
+      tagSuggestions: document.getElementById("tagSuggestions"),
       routeDuration: document.getElementById("routeDuration"),
       routeGain: document.getElementById("routeGain"),
       routeLoss: document.getElementById("routeLoss"),
@@ -997,6 +1023,38 @@
 
     function formatTags(tags) {
       return (Array.isArray(tags) ? tags : []).join(", ");
+    }
+
+    function savedTags(limit = 18) {
+      const counts = new Map();
+      state.routes.forEach(route => {
+        (route.tags || []).forEach(tag => {
+          const key = tag.trim();
+          if (!key) return;
+          const canonical = key.toLowerCase();
+          const current = counts.get(canonical) || { tag: key, count: 0 };
+          current.count += 1;
+          counts.set(canonical, current);
+        });
+      });
+      return [...counts.values()]
+        .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+        .slice(0, limit)
+        .map(item => item.tag);
+    }
+
+    function renderTagSuggestions() {
+      const tags = savedTags();
+      el.tagSuggestions.innerHTML = tags.length
+        ? tags.map(tag => `<button class="tag-chip" type="button" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}</button>`).join("")
+        : `<span class="hint">Saved tags will appear here after you add routes.</span>`;
+    }
+
+    function appendTag(tag) {
+      const tags = parseTags(el.routeTags.value);
+      if (!tags.some(item => item.toLowerCase() === tag.toLowerCase())) tags.push(tag);
+      el.routeTags.value = formatTags(tags);
+      el.routeTags.focus();
     }
 
     function routeSearchText(route) {
@@ -1394,6 +1452,7 @@
       state.routes = state.routes.filter(item => item.id !== id);
       if (state.selectedId === id) state.selectedId = null;
       saveRoutes();
+      renderTagSuggestions();
       renderRoutes();
       setStatus("Route deleted from this browser");
     }
@@ -1466,6 +1525,7 @@
       }
       state.activeType = route.type;
       saveRoutes();
+      renderTagSuggestions();
       resetForm();
       activateType(route.type);
       selectRoute(route.id, true);
@@ -1573,6 +1633,7 @@ ${segments}
         added = valid.length;
       }
       saveRoutes();
+      renderTagSuggestions();
       renderRoutes();
       setStatus(`${added} route${added === 1 ? "" : "s"} imported${skipped ? `; ${skipped} skipped outside Switzerland` : ""}`);
     }
@@ -1764,6 +1825,11 @@ ${segments}
     el.exportGpxBtn.addEventListener("click", exportGpx);
     el.routeFilter.addEventListener("input", renderList);
     el.routeSort.addEventListener("change", renderList);
+    el.tagSuggestions.addEventListener("click", event => {
+      const button = event.target.closest("button[data-tag]");
+      if (!button) return;
+      appendTag(button.dataset.tag);
+    });
     el.importFile.addEventListener("change", async event => {
       const file = event.target.files[0];
       if (!file) return;
@@ -1810,6 +1876,7 @@ ${segments}
     loadRoutes();
     renderDraft();
     renderPhotoPreview();
+    renderTagSuggestions();
     renderRoutes();
     if (requestedEditRouteId()) {
       editRoute(requestedEditRouteId());

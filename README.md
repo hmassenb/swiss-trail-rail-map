@@ -73,6 +73,7 @@ Routes are entered directly in the browser:
 - Searches, clicked points, GPX drafts, and imported routes are kept inside the Switzerland map bounds; imports outside Switzerland are skipped.
 - Add a route name, optional date, and optional notes.
 - Add optional tags and duration. Elevation gain/loss is calculated automatically for hikes: GPX elevation is used locally when available, and clicked routes use an external elevation lookup.
+- Reuse saved tag chips while entering routes to keep route categories consistent.
 - Add an optional caption and route photos.
 - Save the route.
 
