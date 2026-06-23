@@ -2496,6 +2496,10 @@ ${points}
         .sort(([, a], [, b]) => b.count - a.count || b.km - a.km || a.name.localeCompare(b.name));
       if (!rows.length) return `<div class="summary-row"><span>No canton coverage yet.</span><strong></strong></div>`;
       const total = rows.length;
+      const visitedCodes = new Set(rows.map(([code]) => code));
+      const missing = CANTONS
+        .filter(canton => !visitedCodes.has(canton.code))
+        .sort((a, b) => a.name.localeCompare(b.name));
       const coverage = `<div class="summary-row"><span>Estimated cantons visited</span><strong>${total} / ${CANTONS.length}</strong></div>`;
       const topRows = rows.slice(0, 7).map(([code, data]) => `
         <div class="summary-row">
@@ -2503,7 +2507,10 @@ ${points}
           <strong>${formatKm(data.km)}</strong>
         </div>
       `).join("");
-      return `${coverage}${topRows}<div class="summary-row"><span>Estimated from nearest canton centers.</span><strong></strong></div>`;
+      const missingRows = missing.length
+        ? `<div class="summary-row"><span>Next uncovered cantons</span><strong>${missing.slice(0, 6).map(canton => escapeHtml(canton.code)).join(", ")}${missing.length > 6 ? "..." : ""}</strong></div>`
+        : `<div class="summary-row"><span>All cantons have at least one estimated route touch.</span><strong></strong></div>`;
+      return `${coverage}${topRows}${missingRows}<div class="summary-row"><span>Estimated from nearest canton centers.</span><strong></strong></div>`;
     }
 
     function routeHighlight(label, route, value) {

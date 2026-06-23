@@ -47,7 +47,7 @@ The overview page reads the same saved route data as the map page and displays:
 - filter-aware highlights for longest route, biggest climb, and most photos
 - archive-health and trending-tag summaries for the current filter/timeframe
 - estimated local archive size and photo payload size for the current filter/timeframe
-- estimated canton coverage for the current filter/timeframe
+- estimated canton coverage and next uncovered cantons for the current filter/timeframe
 - feed-card route focusing on the cumulative map
 - selected-route detail cards with metrics, tags, caption, coordinates, photo count, route-level JSON/GPX export, and name filtering
 - route-level share links using `overview.html#route=...`
