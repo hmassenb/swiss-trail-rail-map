@@ -288,6 +288,24 @@
       gap: 8px;
     }
 
+    .route-tools {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0 8px;
+    }
+
+    .route-tools-row {
+      display: grid;
+      grid-template-columns: 1fr minmax(132px, 0.55fr);
+      gap: 8px;
+    }
+
+    .route-list-note {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 680;
+    }
+
     .route-card {
       background: #fff;
       border: 1px solid var(--line);
@@ -475,6 +493,9 @@
         height: 48vh;
         min-height: 390px;
       }
+      .route-tools-row {
+        grid-template-columns: 1fr;
+      }
       aside {
         grid-row: 2;
         min-height: 52vh;
@@ -604,6 +625,20 @@
           </div>
         </form>
 
+        <section class="route-tools" aria-label="Saved route filters">
+          <div class="route-tools-row">
+            <input id="routeFilter" type="search" placeholder="Filter saved routes" />
+            <select id="routeSort" aria-label="Sort saved routes">
+              <option value="date-desc">Newest</option>
+              <option value="updated-desc">Recently edited</option>
+              <option value="name-asc">Name A-Z</option>
+              <option value="distance-desc">Longest</option>
+              <option value="gain-desc">Most elevation</option>
+            </select>
+          </div>
+          <div class="route-list-note" id="routeListNote">Showing saved routes.</div>
+        </section>
+
         <div class="route-list" id="routeList"></div>
       </div>
     </aside>
@@ -663,6 +698,9 @@
       importFile: document.getElementById("importFile"),
       exportJsonBtn: document.getElementById("exportJsonBtn"),
       exportGpxBtn: document.getElementById("exportGpxBtn"),
+      routeFilter: document.getElementById("routeFilter"),
+      routeSort: document.getElementById("routeSort"),
+      routeListNote: document.getElementById("routeListNote"),
       routeList: document.getElementById("routeList"),
       hikeKm: document.getElementById("hikeKm"),
       trainKm: document.getElementById("trainKm"),
@@ -961,6 +999,28 @@
       return (Array.isArray(tags) ? tags : []).join(", ");
     }
 
+    function routeSearchText(route) {
+      return [
+        route.name,
+        route.type,
+        route.date,
+        formatTags(route.tags),
+        route.caption,
+        route.notes
+      ].join(" ").toLowerCase();
+    }
+
+    function sortRoutes(routes) {
+      const mode = el.routeSort.value;
+      return [...routes].sort((a, b) => {
+        if (mode === "name-asc") return a.name.localeCompare(b.name);
+        if (mode === "distance-desc") return distanceKm(b.points) - distanceKm(a.points);
+        if (mode === "gain-desc") return (Number(b.elevationGainM) || 0) - (Number(a.elevationGainM) || 0);
+        if (mode === "updated-desc") return (b.updatedAt || "").localeCompare(a.updatedAt || "");
+        return (b.date || "").localeCompare(a.date || "");
+      });
+    }
+
     function numericValue(value) {
       const number = Number(value);
       return Number.isFinite(number) && number > 0 ? number : "";
@@ -1144,11 +1204,16 @@
     }
 
     function renderList() {
-      const filtered = state.routes
-        .filter(route => route.type === state.activeType)
-        .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+      const query = el.routeFilter.value.trim().toLowerCase();
+      const typeRoutes = state.routes.filter(route => route.type === state.activeType);
+      const filtered = sortRoutes(typeRoutes.filter(route => !query || routeSearchText(route).includes(query)));
+      el.routeListNote.textContent = query
+        ? `Showing ${filtered.length} of ${typeRoutes.length} ${state.activeType === "train" ? "train rides" : "hikes"} matching "${query}".`
+        : `Showing ${filtered.length} ${state.activeType === "train" ? "train ride" : "hike"}${filtered.length === 1 ? "" : "s"}.`;
       if (!filtered.length) {
-        el.routeList.innerHTML = `<div class="empty">No ${state.activeType === "train" ? "train rides" : "hikes"} saved yet.</div>`;
+        el.routeList.innerHTML = query
+          ? `<div class="empty">No saved ${state.activeType === "train" ? "train rides" : "hikes"} match this filter.</div>`
+          : `<div class="empty">No ${state.activeType === "train" ? "train rides" : "hikes"} saved yet.</div>`;
         return;
       }
       el.routeList.innerHTML = "";
@@ -1659,6 +1724,8 @@ ${segments}
     });
     el.exportJsonBtn.addEventListener("click", exportJson);
     el.exportGpxBtn.addEventListener("click", exportGpx);
+    el.routeFilter.addEventListener("input", renderList);
+    el.routeSort.addEventListener("change", renderList);
     el.importFile.addEventListener("change", async event => {
       const file = event.target.files[0];
       if (!file) return;
