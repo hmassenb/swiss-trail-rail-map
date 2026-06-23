@@ -36,7 +36,7 @@ The overview page reads the same saved route data as the map page and displays:
 - previous-period comparison for hiking distance, hike count, and elevation gain when a bounded timeframe is selected
 - adjustable hiking goals for the current filter/timeframe, with progress for distance, hike count, and elevation gain
 - cumulative dated progress chart for hiking and train distance within the active filter/timeframe
-- selected-route elevation profiles when saved GPX/route points include elevation samples
+- selected-route elevation profiles when GPX imports or clicked hike elevation lookups provide elevation samples
 - route photo thumbnails and selected-route photo galleries
 - yearly and monthly distance summaries
 - route cards with name, caption, tags, duration, pace/speed, elevation, notes, distance, photos, and clicked waypoint coordinates
@@ -106,7 +106,7 @@ Photos are compressed before saving, then stored inside the route JSON as data U
 
 After a JSON export, the app records the backup time and route count in browser storage. The map and overview pages warn you when the current browser data has changed since the last export.
 
-For manually clicked hike routes, the app sends sampled route coordinates to Open-Elevation during save to estimate elevation gain and loss. If that lookup fails, manually entered elevation values are used instead.
+For manually clicked hike routes, the app sends sampled route coordinates to Open-Elevation during save to estimate elevation gain/loss and store profile samples for the overview. If that lookup fails, manually entered elevation values are used instead.
 
 ## Map Services
 

@@ -1056,18 +1056,33 @@
     }
 
     function sampleElevationPoints(points, target = 90) {
-      if (points.length <= target) return points.map(point => [point[0], point[1]]);
+      if (points.length <= target) return points.map((point, index) => ({ index, lat: point[0], lng: point[1] }));
       const sampled = [];
       for (let i = 0; i < target; i++) {
         const index = Math.round((i / (target - 1)) * (points.length - 1));
-        sampled.push([points[index][0], points[index][1]]);
+        sampled.push({ index, lat: points[index][0], lng: points[index][1] });
       }
       return sampled;
     }
 
-    async function fetchElevationTotals(points) {
+    function pointsWithElevationSamples(points, samples, elevations) {
+      const next = points.map(point => [...point]);
+      samples.forEach((sample, index) => {
+        const elevation = Number(elevations[index]);
+        if (Number.isFinite(elevation) && next[sample.index]) {
+          next[sample.index] = [
+            Number(next[sample.index][0]),
+            Number(next[sample.index][1]),
+            Number(elevation.toFixed(1))
+          ];
+        }
+      });
+      return next;
+    }
+
+    async function fetchElevationProfile(points) {
       const sampled = sampleElevationPoints(points);
-      const locations = sampled.map(point => `${point[0]},${point[1]}`).join("|");
+      const locations = sampled.map(point => `${point.lat},${point.lng}`).join("|");
       const url = `https://api.open-elevation.com/api/v1/lookup?locations=${encodeURIComponent(locations)}`;
       const response = await fetch(url, { headers: { "Accept": "application/json" } });
       if (!response.ok) throw new Error("Elevation lookup failed");
@@ -1076,14 +1091,17 @@
         .map(result => Number(result.elevation))
         .filter(Number.isFinite);
       if (elevations.length < 2) throw new Error("No elevation profile returned");
-      return elevationTotals(elevations);
+      return {
+        ...elevationTotals(elevations),
+        points: pointsWithElevationSamples(points, sampled, elevations)
+      };
     }
 
     async function automaticElevation(points, type) {
       if (type !== "hike" || points.length < 2) return null;
       const localTotals = pointElevationTotals(points);
-      if (localTotals) return localTotals;
-      return fetchElevationTotals(points);
+      if (localTotals) return { ...localTotals, points };
+      return fetchElevationProfile(points);
     }
 
     function boundsFor(points) {
@@ -1382,7 +1400,7 @@
         }
       }
       const waypoints = state.draft.map(point => [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))]);
-      const points = routedPoints.map(point => {
+      let points = routedPoints.map(point => {
         const savedPoint = [Number(point[0].toFixed(6)), Number(point[1].toFixed(6))];
         if (Number.isFinite(Number(point[2]))) savedPoint.push(Number(Number(point[2]).toFixed(1)));
         return savedPoint;
@@ -1399,6 +1417,9 @@
           const elevation = await automaticElevation(points, el.routeType.value);
           automaticGain = elevation?.gain || "";
           automaticLoss = elevation?.loss || "";
+          if (Array.isArray(elevation?.points) && elevation.points.length === points.length) {
+            points = elevation.points;
+          }
         } catch {
           setStatus("Elevation lookup failed; using entered values");
         }
