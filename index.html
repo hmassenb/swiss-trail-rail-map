@@ -233,14 +233,35 @@
       background: #fff7f5;
     }
 
-    .profile-settings {
-      background: #fff;
-      border: 1px solid var(--line);
+    .auto-elevation {
+      border: 1px solid #cdd7da;
       border-radius: 8px;
       padding: 10px;
+      background: #f7faf9;
       display: grid;
-      gap: 9px;
-      margin-bottom: 14px;
+      gap: 8px;
+    }
+
+    .auto-elevation strong {
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .manual-elevation {
+      border-top: 1px solid var(--line);
+      padding-top: 8px;
+    }
+
+    .manual-elevation summary {
+      cursor: pointer;
+      color: #405057;
+      font-size: 12px;
+      font-weight: 720;
+      list-style-position: inside;
+    }
+
+    .manual-elevation .field-row {
+      margin-top: 8px;
     }
 
     .quick-post {
@@ -614,16 +635,25 @@
               Duration
               <input id="routeDuration" type="number" min="0" step="0.25" placeholder="hours" />
             </label>
-            <label>
-              Elevation gain
-              <input id="routeGain" type="number" min="0" step="10" placeholder="meters" />
-            </label>
           </div>
-          <label>
-            Elevation loss
-            <input id="routeLoss" type="number" min="0" step="10" placeholder="meters" />
-          </label>
-          <p class="hint">For hikes, elevation gain/loss is calculated automatically on save. GPX elevation is used locally when available; clicked routes use an external elevation lookup.</p>
+          <div class="auto-elevation">
+            <strong>Elevation is calculated automatically for hikes</strong>
+            <p class="hint">GPX elevation is used locally when available. Clicked hike routes use an elevation lookup on save; train routes skip elevation by default.</p>
+            <details class="manual-elevation">
+              <summary>Manual elevation override for old routes</summary>
+              <div class="field-row">
+                <label>
+                  Elevation gain
+                  <input id="routeGain" type="number" min="0" step="10" placeholder="meters" />
+                </label>
+                <label>
+                  Elevation loss
+                  <input id="routeLoss" type="number" min="0" step="10" placeholder="meters" />
+                </label>
+              </div>
+              <p class="hint">Only fill this in when you are backfilling an old hike or the automatic lookup cannot reach the elevation service.</p>
+            </details>
+          </div>
           <label>
             Notes
             <textarea id="routeNotes" placeholder="Weather, companions, line number, favorite section"></textarea>
@@ -1548,7 +1578,8 @@
             points = elevation.points;
           }
         } catch {
-          setStatus("Elevation lookup failed; using entered values");
+          const hasManualElevation = manualGain || manualLoss;
+          setStatus(hasManualElevation ? "Elevation lookup failed; using manual override" : "Elevation lookup failed; saved without elevation");
         }
       }
       const route = {

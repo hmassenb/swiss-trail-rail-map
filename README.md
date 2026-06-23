@@ -117,7 +117,7 @@ Photos are compressed before saving, then stored inside the route JSON as data U
 
 After a JSON export, the app records the backup time and route count in browser storage. The map and overview pages warn you when the current browser data has changed since the last export.
 
-For manually clicked hike routes, the app sends sampled route coordinates to Open-Elevation during save to estimate elevation gain/loss and store profile samples for the overview. If that lookup fails, manually entered elevation values are used instead.
+For manually clicked hike routes, the app sends sampled route coordinates to Open-Elevation during save to estimate elevation gain/loss and store profile samples for the overview. GPX elevation is used locally when present. Manual elevation fields are kept as an advanced override for old backfilled hikes or failed lookups.
 
 ## Map Services
 
