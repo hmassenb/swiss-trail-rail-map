@@ -1024,6 +1024,8 @@
           <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
             <a class="button" id="editRouteLink" href="index.html">Edit on map</a>
             <button class="button" id="shareRouteBtn" type="button">Share route</button>
+            <button class="button" id="exportRouteJsonBtn" type="button">Export JSON</button>
+            <button class="button" id="exportRouteGpxBtn" type="button">Export GPX</button>
             <button class="button" id="clearDetailBtn" type="button">Close</button>
           </div>
         </div>
@@ -1173,6 +1175,8 @@
       detailMeta: document.getElementById("detailMeta"),
       editRouteLink: document.getElementById("editRouteLink"),
       shareRouteBtn: document.getElementById("shareRouteBtn"),
+      exportRouteJsonBtn: document.getElementById("exportRouteJsonBtn"),
+      exportRouteGpxBtn: document.getElementById("exportRouteGpxBtn"),
       clearDetailBtn: document.getElementById("clearDetailBtn"),
       detailDistance: document.getElementById("detailDistance"),
       detailDuration: document.getElementById("detailDuration"),
@@ -1610,14 +1614,14 @@
       URL.revokeObjectURL(link.href);
     }
 
-    function jsonBackupPackage() {
+    function jsonBackupPackage(routes = state.routes) {
       return {
         format: "swiss-trail-rail-log",
         version: 1,
         exportedAt: new Date().toISOString(),
-        routeCount: state.routes.length,
+        routeCount: routes.length,
         savedAt: latestSavedAt(),
-        routes: state.routes
+        routes
       };
     }
 
@@ -1673,6 +1677,71 @@
       download(`swiss-trail-rail-log-${exportDateStamp()}.csv`, csv, "text/csv");
       el.storageNote.classList.remove("warning");
       el.storageNote.textContent = `${rows.length} visible route${rows.length === 1 ? "" : "s"} exported as CSV.`;
+    }
+
+    function selectedRoute() {
+      return state.routes.find(item => item.id === state.selectedRouteId) || null;
+    }
+
+    function exportSelectedRouteJson() {
+      const route = selectedRoute();
+      if (!route) return;
+      download(`${safeFilename(route.name)}-${exportDateStamp()}.json`, JSON.stringify(jsonBackupPackage([route]), null, 2), "application/json");
+      el.storageNote.classList.remove("warning");
+      el.storageNote.textContent = `${route.name} exported as a route JSON backup.`;
+    }
+
+    function exportSelectedRouteGpx() {
+      const route = selectedRoute();
+      if (!route) return;
+      download(`${safeFilename(route.name)}-${exportDateStamp()}.gpx`, routesToGpx([route]), "application/gpx+xml");
+      el.storageNote.classList.remove("warning");
+      el.storageNote.textContent = `${route.name} exported as GPX.`;
+    }
+
+    function routesToGpx(routes) {
+      const segments = routes.map(routeToGpxTrack).join("\n");
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Swiss Trail & Rail Log" xmlns="http://www.topografix.com/GPX/1/1">
+${segments}
+</gpx>`;
+    }
+
+    function routeToGpxTrack(route) {
+      const points = route.points.map(point => {
+        const elevation = Number.isFinite(Number(point[2])) ? `<ele>${Number(point[2]).toFixed(1)}</ele>` : "";
+        return `      <trkpt lat="${point[0]}" lon="${point[1]}">${elevation}</trkpt>`;
+      }).join("\n");
+      const type = route.type === "train" ? "train" : "hike";
+      const descParts = [
+        route.notes,
+        route.tags?.length ? `Tags: ${formatTags(route.tags)}` : "",
+        route.durationHours ? `Duration: ${route.durationHours} h` : "",
+        route.elevationGainM ? `Elevation gain: ${route.elevationGainM} m` : "",
+        route.elevationLossM ? `Elevation loss: ${route.elevationLossM} m` : ""
+      ].filter(Boolean);
+      return `  <trk>
+    <name>${xmlEscape(route.name)}</name>
+    <type>${type}</type>
+    ${route.date ? `<time>${xmlEscape(route.date)}</time>` : ""}
+    ${descParts.length ? `<desc>${xmlEscape(descParts.join(" | "))}</desc>` : ""}
+    <trkseg>
+${points}
+    </trkseg>
+  </trk>`;
+    }
+
+    function safeFilename(value) {
+      return String(value || "route")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 80) || "route";
+    }
+
+    function xmlEscape(value) {
+      return escapeHtml(value);
     }
 
     function exportDateStamp(date = new Date()) {
@@ -2661,6 +2730,8 @@
       el.focusNote.textContent = "Click a feed card to focus its route on the map.";
     });
     el.shareRouteBtn.addEventListener("click", shareSelectedRoute);
+    el.exportRouteJsonBtn.addEventListener("click", exportSelectedRouteJson);
+    el.exportRouteGpxBtn.addEventListener("click", exportSelectedRouteGpx);
     el.highlightSummary.addEventListener("click", event => {
       const routeRow = event.target.closest("[data-route-highlight]");
       if (!routeRow) return;
