@@ -1589,8 +1589,19 @@
       URL.revokeObjectURL(link.href);
     }
 
+    function jsonBackupPackage() {
+      return {
+        format: "swiss-trail-rail-log",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        routeCount: state.routes.length,
+        savedAt: latestSavedAt(),
+        routes: state.routes
+      };
+    }
+
     function exportJson() {
-      download("swiss-trail-rail-log.json", JSON.stringify(state.routes, null, 2), "application/json");
+      download("swiss-trail-rail-log.json", JSON.stringify(jsonBackupPackage(), null, 2), "application/json");
       rememberBackup();
       renderStats();
       el.storageNote.textContent = `${state.routes.length} route${state.routes.length === 1 ? "" : "s"} exported as a JSON backup.`;

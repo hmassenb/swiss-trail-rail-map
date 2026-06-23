@@ -110,7 +110,7 @@ The app stores:
 
 Routes are saved in the browser's local storage. Data is therefore local to the browser and URL where the app is opened.
 
-Use `Export JSON` on the map page or `Export JSON backup` on the overview page for backups or to move routes to another browser/device. Use `Import GPX / JSON` on the map page, or `Import JSON` on the overview page, to restore or add routes. Use `Export CSV log` on the overview page when you want the currently filtered log in a spreadsheet.
+Use `Export JSON` on the map page or `Export JSON backup` on the overview page for backups or to move routes to another browser/device. New JSON exports are versioned backup packages with export time, route count, saved timestamp, and the `routes` array; older raw route-array backups still import. Use `Import GPX / JSON` on the map page, or `Import JSON` on the overview page, to restore or add routes. Use `Export CSV log` on the overview page when you want the currently filtered log in a spreadsheet.
 
 Photos are compressed before saving, then stored inside the route JSON as data URLs. This keeps the app static and GitHub Pages friendly, but browser storage is finite. Export JSON regularly if you attach many photos or backfill many years of hikes.
 
