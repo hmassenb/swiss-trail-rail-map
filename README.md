@@ -52,6 +52,7 @@ The overview page reads the same saved route data as the map page and displays:
 - selected-route detail cards with metrics, tags, caption, coordinates, photo count, route-level JSON/GPX export, and name filtering
 - route-level share links using `overview.html#route=...`
 - direct edit links from overview entries to `index.html?edit=...`
+- map-page backfill mode that keeps date, type, and tags after saving a new route
 - a backfill checklist for missing dates, duration, hike elevation, and photos
 - overview-page JSON export/import controls for backups and moving the private archive between browsers
 - overview-page CSV export for the currently visible route log

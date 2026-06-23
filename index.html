@@ -197,6 +197,22 @@
       font-weight: 680;
     }
 
+    .checkbox-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      color: #405057;
+      font-size: 12px;
+      font-weight: 680;
+      line-height: 1.35;
+    }
+
+    .checkbox-line input {
+      width: auto;
+      margin-top: 2px;
+      flex: 0 0 auto;
+    }
+
     .coords {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 12px;
@@ -676,6 +692,10 @@
             <div class="coords" id="coordPreview">No route points selected</div>
             <p class="hint">Click the map to add waypoints. The preview shows distance, point counts, and the latest point while fitting to mapped paths or rail lines when routing is available.</p>
           </div>
+          <label class="checkbox-line">
+            <input id="backfillMode" type="checkbox" />
+            <span>Backfill mode: after saving, keep date, type, and tags for the next old route.</span>
+          </label>
           <div class="button-row">
             <button id="saveRouteBtn" class="primary" type="submit">Save route</button>
             <button id="undoPointBtn" type="button">Undo</button>
@@ -762,6 +782,7 @@
       photoPreview: document.getElementById("photoPreview"),
       coordPreview: document.getElementById("coordPreview"),
       draftGpxFile: document.getElementById("draftGpxFile"),
+      backfillMode: document.getElementById("backfillMode"),
       saveRouteBtn: document.getElementById("saveRouteBtn"),
       undoPointBtn: document.getElementById("undoPointBtn"),
       clearDraftBtn: document.getElementById("clearDraftBtn"),
@@ -1454,9 +1475,21 @@
       renderRoutes();
     }
 
-    function resetForm() {
+    function resetForm(options = {}) {
+      const preserveBackfill = Boolean(options.preserveBackfill);
+      const preserved = preserveBackfill ? {
+        date: el.routeDate.value,
+        type: el.routeType.value,
+        tags: el.routeTags.value,
+        backfillMode: el.backfillMode.checked
+      } : null;
       el.routeForm.reset();
-      el.routeType.value = state.activeType;
+      el.routeType.value = preserved?.type || state.activeType;
+      if (preserved) {
+        el.routeDate.value = preserved.date;
+        el.routeTags.value = preserved.tags;
+        el.backfillMode.checked = preserved.backfillMode;
+      }
       state.draft = [];
       state.draftRoute = [];
       state.draftSource = "";
@@ -1465,7 +1498,7 @@
       state.selectedId = null;
       state.routingRequestId++;
       window.clearTimeout(setStatus.timer);
-      el.mapStatus.textContent = "Ready";
+      el.mapStatus.textContent = options.statusText || "Ready";
       delete el.routeForm.dataset.editId;
       renderDraft();
       renderPhotoPreview();
@@ -1564,6 +1597,7 @@
       });
       const editId = el.routeForm.dataset.editId;
       const previousRoute = editId ? state.routes.find(item => item.id === editId) : null;
+      const preserveBackfill = !editId && el.backfillMode.checked;
       const manualGain = numericValue(el.routeGain.value);
       const manualLoss = numericValue(el.routeLoss.value);
       let automaticGain = "";
@@ -1608,10 +1642,10 @@
       state.activeType = route.type;
       saveRoutes();
       renderTagSuggestions();
-      resetForm();
+      resetForm({ preserveBackfill });
       activateType(route.type);
       selectRoute(route.id, true);
-      setStatus("Route saved");
+      setStatus(preserveBackfill ? "Route saved; date, type, and tags kept for backfilling" : "Route saved");
     }
 
     async function searchPlace() {
