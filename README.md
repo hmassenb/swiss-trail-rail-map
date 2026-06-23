@@ -78,6 +78,8 @@ Routes are entered directly in the browser:
 
 The map page includes a `Quick post` checklist that updates while you fill in the route name, date, and clicked map points. Saved route cards and the top stats show completeness for missing date, duration, elevation, and photos. The saved-route list can be filtered by route text and sorted by date, recent edits, name, distance, or elevation.
 
+While a route is being drawn or loaded from GPX, the draft preview shows estimated distance, waypoint count, geometry point count, the latest clicked point, and GPX elevation gain when available.
+
 The app stores:
 
 - `name`: route title

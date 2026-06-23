@@ -605,7 +605,7 @@
           </label>
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
-            <p class="hint">Click the map to add waypoints. The preview will fit them to mapped paths or rail lines when routing is available.</p>
+            <p class="hint">Click the map to add waypoints. The preview shows distance, point counts, and the latest point while fitting to mapped paths or rail lines when routing is available.</p>
           </div>
           <div class="button-row">
             <button id="saveRouteBtn" class="primary" type="submit">Save route</button>
@@ -1035,6 +1035,25 @@
       };
     }
 
+    function draftSummary() {
+      if (!state.draft.length) return "No route points selected";
+      const geometry = state.draftRoute.length > 1 ? state.draftRoute : state.draft;
+      const source = state.draftSource === "gpx" ? "GPX draft" : "Map draft";
+      const parts = [
+        source,
+        formatKm(distanceKm(geometry)),
+        `${state.draft.length} waypoint${state.draft.length === 1 ? "" : "s"}`,
+        `${geometry.length} geometry point${geometry.length === 1 ? "" : "s"}`
+      ];
+      const elevation = pointElevationTotals(geometry);
+      if (elevation?.gain) parts.push(`${elevation.gain} m gain`);
+      if (state.draft.length) {
+        const last = state.draft[state.draft.length - 1];
+        parts.push(`last ${last[0].toFixed(5)}, ${last[1].toFixed(5)}`);
+      }
+      return parts.join(" · ");
+    }
+
     function elevationTotals(elevations) {
       let gain = 0;
       let loss = 0;
@@ -1177,9 +1196,7 @@
           dashArray: "7 7"
         }).addTo(draftGroup);
       }
-      el.coordPreview.textContent = state.draft.length
-        ? `${state.draftSource === "gpx" ? "GPX draft" : "Draft"}: ${state.draft.map(p => `${p[0].toFixed(5)}, ${p[1].toFixed(5)}`).join("  |  ")}`
-        : "No route points selected";
+      el.coordPreview.textContent = draftSummary();
       el.saveRouteBtn.disabled = state.draft.length < 2;
       el.undoPointBtn.disabled = state.draft.length === 0;
       el.clearDraftBtn.disabled = state.draft.length === 0;
