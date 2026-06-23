@@ -2218,17 +2218,46 @@
       `).join("");
     }
 
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+      const units = ["B", "KB", "MB", "GB"];
+      let value = bytes;
+      let index = 0;
+      while (value >= 1024 && index < units.length - 1) {
+        value /= 1024;
+        index += 1;
+      }
+      return `${value.toFixed(value >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
+    }
+
+    function estimatedRouteStorageBytes(routes) {
+      return JSON.stringify(routes).length * 2;
+    }
+
+    function estimatedPhotoBytes(routes) {
+      return routes.reduce((sum, route) => {
+        return sum + (route.photos || []).reduce((photoSum, photo) => {
+          const payload = String(photo.dataUrl || "").split(",")[1] || "";
+          return photoSum + Math.round(payload.length * 0.75);
+        }, 0);
+      }, 0);
+    }
+
     function archiveHealthRows(routes) {
       if (!routes.length) return `<div class="summary-row"><span>No routes in this filter.</span><strong></strong></div>`;
       const complete = routes.filter(route => !missingRouteFields(route).length);
       const dated = routes.filter(route => route.date);
       const withDuration = routes.filter(route => Number(route.durationHours));
       const withPhotos = routes.filter(route => route.photos?.length);
+      const archiveBytes = estimatedRouteStorageBytes(routes);
+      const photoBytes = estimatedPhotoBytes(routes);
       return [
         `<div class="summary-row"><span>Complete routes</span><strong>${complete.length}</strong></div>`,
         `<div class="summary-row"><span>Dated routes</span><strong>${dated.length}</strong></div>`,
         `<div class="summary-row"><span>Routes with duration</span><strong>${withDuration.length}</strong></div>`,
-        `<div class="summary-row"><span>Routes with photos</span><strong>${withPhotos.length}</strong></div>`
+        `<div class="summary-row"><span>Routes with photos</span><strong>${withPhotos.length}</strong></div>`,
+        `<div class="summary-row"><span>Estimated archive size</span><strong>${formatBytes(archiveBytes)}</strong></div>`,
+        `<div class="summary-row"><span>Estimated photo payload</span><strong>${formatBytes(photoBytes)}</strong></div>`
       ].join("");
     }
 
