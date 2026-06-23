@@ -1353,6 +1353,7 @@
               <button type="button" title="Zoom" data-action="zoom" data-id="${route.id}">⌖</button>
               <button type="button" title="Edit" data-action="edit" data-id="${route.id}">✎</button>
               <button type="button" title="Duplicate" data-action="duplicate" data-id="${route.id}">⧉</button>
+              <button type="button" title="Export GPX" data-action="gpx" data-id="${route.id}">GPX</button>
               <button type="button" title="Delete" data-action="delete" data-id="${route.id}">×</button>
             </div>
           </div>
@@ -1613,20 +1614,39 @@
     }
 
     function exportGpx() {
-      const segments = state.routes.map(route => {
-        const points = route.points.map(point => {
-          const ele = Number.isFinite(Number(point[2])) ? `<ele>${Number(point[2]).toFixed(1)}</ele>` : "";
-          return `      <trkpt lat="${point[0]}" lon="${point[1]}">${ele}</trkpt>`;
-        }).join("\n");
-        const type = route.type === "train" ? "train" : "hike";
-        const descParts = [
-          route.notes,
-          route.tags?.length ? `Tags: ${formatTags(route.tags)}` : "",
-          route.durationHours ? `Duration: ${route.durationHours} h` : "",
-          route.elevationGainM ? `Elevation gain: ${route.elevationGainM} m` : "",
-          route.elevationLossM ? `Elevation loss: ${route.elevationLossM} m` : ""
-        ].filter(Boolean);
-        return `  <trk>
+      const gpx = routesToGpx(state.routes);
+      download("swiss-trail-rail-log.gpx", gpx, "application/gpx+xml");
+    }
+
+    function exportRouteGpx(id) {
+      const route = state.routes.find(item => item.id === id);
+      if (!route) return;
+      download(`${safeFilename(route.name)}.gpx`, routesToGpx([route]), "application/gpx+xml");
+      setStatus("Route GPX exported");
+    }
+
+    function routesToGpx(routes) {
+      const segments = routes.map(routeToGpxTrack).join("\n");
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Swiss Trail & Rail Log" xmlns="http://www.topografix.com/GPX/1/1">
+${segments}
+</gpx>`;
+    }
+
+    function routeToGpxTrack(route) {
+      const points = route.points.map(point => {
+        const ele = Number.isFinite(Number(point[2])) ? `<ele>${Number(point[2]).toFixed(1)}</ele>` : "";
+        return `      <trkpt lat="${point[0]}" lon="${point[1]}">${ele}</trkpt>`;
+      }).join("\n");
+      const type = route.type === "train" ? "train" : "hike";
+      const descParts = [
+        route.notes,
+        route.tags?.length ? `Tags: ${formatTags(route.tags)}` : "",
+        route.durationHours ? `Duration: ${route.durationHours} h` : "",
+        route.elevationGainM ? `Elevation gain: ${route.elevationGainM} m` : "",
+        route.elevationLossM ? `Elevation loss: ${route.elevationLossM} m` : ""
+      ].filter(Boolean);
+      return `  <trk>
     <name>${xmlEscape(route.name)}</name>
     <type>${type}</type>
     ${route.date ? `<time>${xmlEscape(route.date)}</time>` : ""}
@@ -1635,12 +1655,15 @@
 ${points}
     </trkseg>
   </trk>`;
-      }).join("\n");
-      const gpx = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Swiss Trail & Rail Log" xmlns="http://www.topografix.com/GPX/1/1">
-${segments}
-</gpx>`;
-      download("swiss-trail-rail-log.gpx", gpx, "application/gpx+xml");
+    }
+
+    function safeFilename(value) {
+      return String(value || "route")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 80) || "route";
     }
 
     function download(filename, content, mime) {
@@ -1912,6 +1935,7 @@ ${segments}
         if (action === "zoom") selectRoute(id, true);
         if (action === "edit") editRoute(id);
         if (action === "duplicate") duplicateRoute(id);
+        if (action === "gpx") exportRouteGpx(id);
         if (action === "delete") deleteRoute(id);
         return;
       }
