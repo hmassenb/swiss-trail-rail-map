@@ -73,7 +73,7 @@ Routes are entered directly in the browser:
 - Choose `Hike` or `Train`.
 - Click the map to add waypoints.
 - Or load a GPX track as a draft, then review its geometry and add metadata before saving.
-- Searches, clicked points, GPX drafts, and imported routes are kept inside the Switzerland map bounds; imports outside Switzerland are skipped.
+- Searches, clicked points, GPX drafts, and imported routes are kept inside the Switzerland map bounds; imports outside Switzerland are skipped on both the map and overview pages.
 - Add a route name, optional date, and optional notes.
 - Add optional tags and duration. Elevation gain/loss is calculated automatically for hikes: GPX elevation is used locally when available, and clicked routes use an external elevation lookup.
 - Reuse saved tag chips while entering routes to keep route categories consistent.

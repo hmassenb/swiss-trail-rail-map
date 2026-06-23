@@ -1446,6 +1446,7 @@
         })
         .filter(point => Number.isFinite(point[0]) && Number.isFinite(point[1]));
       if (points.length < 2 || waypoints.length < 2) return null;
+      if (!routeInSwissBounds(points) || !routeInSwissBounds(waypoints)) return null;
       const durationHours = numericValue(route.durationHours);
       const elevationGainM = numericValue(route.elevationGainM);
       const elevationLossM = numericValue(route.elevationLossM);
@@ -1478,6 +1479,16 @@
         dataUrl: String(photo.dataUrl),
         createdAt: photo.createdAt || new Date().toISOString()
       };
+    }
+
+    function pointInSwissBounds(point) {
+      return Number.isFinite(point?.[0]) &&
+        Number.isFinite(point?.[1]) &&
+        SWISS_BOUNDS.contains(L.latLng(point[0], point[1]));
+    }
+
+    function routeInSwissBounds(points) {
+      return Array.isArray(points) && points.length >= 2 && points.every(pointInSwissBounds);
     }
 
     function demoRoutes() {
@@ -1598,7 +1609,7 @@
       renderTagOptions();
       applyFilters();
       el.storageNote.classList.toggle("warning", skipped > 0);
-      el.storageNote.textContent = `${merged.length} route${merged.length === 1 ? "" : "s"} imported${skipped ? `; ${skipped} invalid entr${skipped === 1 ? "y" : "ies"} skipped.` : "."}`;
+      el.storageNote.textContent = `${merged.length} route${merged.length === 1 ? "" : "s"} imported${skipped ? `; ${skipped} invalid or outside-Switzerland entr${skipped === 1 ? "y" : "ies"} skipped.` : "."}`;
     }
 
     function updateStorageNote(ok) {
