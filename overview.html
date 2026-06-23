@@ -954,6 +954,9 @@
       <div class="storage-note" id="storageNote">Loading saved entries...</div>
       <div class="dashboard-note" id="dashboardNote">Metrics reflect the current filters.</div>
       <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="button" id="exportJsonBtn" type="button">Export JSON backup</button>
+        <label class="button" for="importJsonFile">Import JSON</label>
+        <input id="importJsonFile" type="file" accept=".json,application/json" style="display: none;" />
         <button class="button" id="seedDemoBtn" type="button">Load demo routes</button>
         <button class="button" id="clearDemoBtn" type="button">Remove demo routes</button>
       </div>
@@ -1123,6 +1126,8 @@
       storageNote: document.getElementById("storageNote"),
       dashboardNote: document.getElementById("dashboardNote"),
       feedScope: document.getElementById("feedScope"),
+      exportJsonBtn: document.getElementById("exportJsonBtn"),
+      importJsonFile: document.getElementById("importJsonFile"),
       seedDemoBtn: document.getElementById("seedDemoBtn"),
       clearDemoBtn: document.getElementById("clearDemoBtn"),
       showHikes: document.getElementById("showHikes"),
@@ -1331,6 +1336,19 @@
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.routes));
       localStorage.setItem(`${STORAGE_KEY}:savedAt`, new Date().toISOString());
       updateStorageNote(true);
+    }
+
+    function rememberBackup() {
+      try {
+        localStorage.setItem(BACKUP_KEY, JSON.stringify({
+          exportedAt: new Date().toISOString(),
+          routeCount: state.routes.length,
+          savedAt: latestSavedAt()
+        }));
+        updateStorageNote(true);
+      } catch {
+        updateStorageNote(false);
+      }
     }
 
     function latestSavedAt() {
@@ -1558,21 +1576,46 @@
       URL.revokeObjectURL(link.href);
     }
 
+    function exportJson() {
+      download("swiss-trail-rail-log.json", JSON.stringify(state.routes, null, 2), "application/json");
+      rememberBackup();
+      renderStats();
+      el.storageNote.textContent = `${state.routes.length} route${state.routes.length === 1 ? "" : "s"} exported as a JSON backup.`;
+      el.storageNote.classList.remove("warning");
+    }
+
+    async function importJson(file) {
+      const text = await file.text();
+      const imported = JSON.parse(text);
+      const routeArray = Array.isArray(imported) ? imported : imported.routes;
+      if (!Array.isArray(routeArray)) throw new Error("JSON must contain a route array or backup package.");
+      const existingIds = new Set(state.routes.map(route => route.id));
+      const normalized = routeArray.map(normalizeRoute).filter(Boolean);
+      const skipped = routeArray.length - normalized.length;
+      const merged = normalized.map(route => existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route);
+      state.routes = [...state.routes, ...merged];
+      saveRoutes();
+      renderTagOptions();
+      applyFilters();
+      el.storageNote.classList.toggle("warning", skipped > 0);
+      el.storageNote.textContent = `${merged.length} route${merged.length === 1 ? "" : "s"} imported${skipped ? `; ${skipped} invalid entr${skipped === 1 ? "y" : "ies"} skipped.` : "."}`;
+    }
+
     function updateStorageNote(ok) {
       const backup = backupInfo();
       const count = state.routes.length;
       const hasChanges = count > 0 && (!backup || backup.routeCount !== count || backup.savedAt !== latestSavedAt());
       el.storageNote.classList.toggle("warning", !ok || hasChanges);
       if (!ok) {
-        el.storageNote.textContent = "Browser storage could not be read. Open the map page and export JSON if your entries are stored elsewhere.";
+        el.storageNote.textContent = "Browser storage could not be read. Import a JSON backup here if your entries are stored elsewhere.";
         return;
       }
       if (!count) {
-        el.storageNote.textContent = "No saved entries in this browser yet. Add hikes on the map page, then export JSON as your backup.";
+        el.storageNote.textContent = "No saved entries in this browser yet. Add hikes on the map page or import a JSON backup.";
         return;
       }
       el.storageNote.textContent = hasChanges
-        ? `${count} saved entr${count === 1 ? "y" : "ies"} loaded. Export JSON on the map page to back up the latest changes${backup ? `; last backup was ${formatDateTime(backup.exportedAt)}.` : "."}`
+        ? `${count} saved entr${count === 1 ? "y" : "ies"} loaded. Export JSON here to back up the latest changes${backup ? `; last backup was ${formatDateTime(backup.exportedAt)}.` : "."}`
         : `${count} saved entr${count === 1 ? "y" : "ies"} loaded. Last JSON backup: ${formatDateTime(backup.exportedAt)}.`;
     }
 
@@ -2425,6 +2468,19 @@
     el.showHikes.addEventListener("change", renderMap);
     el.showTrains.addEventListener("change", renderMap);
     el.showPrivate.addEventListener("change", renderMap);
+    el.exportJsonBtn.addEventListener("click", exportJson);
+    el.importJsonFile.addEventListener("change", async event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        await importJson(file);
+      } catch (error) {
+        el.storageNote.classList.add("warning");
+        el.storageNote.textContent = error.message || "Could not import JSON backup.";
+      } finally {
+        event.target.value = "";
+      }
+    });
     el.seedDemoBtn.addEventListener("click", seedDemoRoutes);
     el.clearDemoBtn.addEventListener("click", clearDemoRoutes);
     el.clearDetailBtn.addEventListener("click", () => {

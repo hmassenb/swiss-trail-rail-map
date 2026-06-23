@@ -51,6 +51,7 @@ The overview page reads the same saved route data as the map page and displays:
 - route-level share links using `overview.html#route=...`
 - direct edit links from overview entries to `index.html?edit=...`
 - a backfill checklist for missing dates, duration, hike elevation, and photos
+- overview-page JSON export/import controls for backups and moving the private archive between browsers
 - quick timeframe presets for 30 days, 90 days, this year, and all time
 - custom timeframe metrics that update the route log, map, name summaries, tags, and dashboard cards together
 - optional demo routes to preview the tracker before adding real entries
@@ -107,7 +108,7 @@ The app stores:
 
 Routes are saved in the browser's local storage. Data is therefore local to the browser and URL where the app is opened.
 
-Use `Export JSON` for backups or to move routes to another browser/device. Use `Import GPX / JSON` to restore or add routes.
+Use `Export JSON` on the map page or `Export JSON backup` on the overview page for backups or to move routes to another browser/device. Use `Import GPX / JSON` on the map page, or `Import JSON` on the overview page, to restore or add routes.
 
 Photos are compressed before saving, then stored inside the route JSON as data URLs. This keeps the app static and GitHub Pages friendly, but browser storage is finite. Export JSON regularly if you attach many photos or backfill many years of hikes.
 
