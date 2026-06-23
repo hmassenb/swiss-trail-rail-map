@@ -314,9 +314,23 @@
       padding: 10px;
       display: grid;
       gap: 8px;
+      cursor: pointer;
+      transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
     }
 
     .route-card.train { border-left-color: var(--blue); }
+
+    .route-card:hover, .route-card:focus-visible {
+      border-color: #b7c5bd;
+      box-shadow: 0 10px 22px rgba(42, 55, 49, 0.10);
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    .route-card.selected {
+      border-color: #9fbea9;
+      box-shadow: 0 0 0 2px rgba(47, 118, 84, 0.14);
+    }
 
     .route-head {
       display: grid;
@@ -1312,7 +1326,11 @@
       el.routeList.innerHTML = "";
       filtered.forEach(route => {
         const card = document.createElement("article");
-        card.className = `route-card ${route.type}`;
+        card.className = `route-card ${route.type}${state.selectedId === route.id ? " selected" : ""}`;
+        card.dataset.id = route.id;
+        card.tabIndex = 0;
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", `Focus ${route.name} on the map`);
         const photoStrip = route.photos?.length
           ? `<div class="photo-strip">${route.photos.slice(0, 6).map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")}</div>`
           : "";
@@ -1864,11 +1882,22 @@ ${segments}
     });
     el.routeList.addEventListener("click", event => {
       const button = event.target.closest("button[data-action]");
-      if (!button) return;
-      const { action, id } = button.dataset;
-      if (action === "zoom") selectRoute(id, true);
-      if (action === "edit") editRoute(id);
-      if (action === "delete") deleteRoute(id);
+      if (button) {
+        const { action, id } = button.dataset;
+        if (action === "zoom") selectRoute(id, true);
+        if (action === "edit") editRoute(id);
+        if (action === "delete") deleteRoute(id);
+        return;
+      }
+      const card = event.target.closest(".route-card[data-id]");
+      if (card) selectRoute(card.dataset.id, true);
+    });
+    el.routeList.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const card = event.target.closest(".route-card[data-id]");
+      if (!card || event.target.closest("button[data-action]")) return;
+      event.preventDefault();
+      selectRoute(card.dataset.id, true);
     });
     window.addEventListener("beforeunload", () => saveRoutes(true));
 
