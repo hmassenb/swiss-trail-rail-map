@@ -1352,6 +1352,7 @@
             <div class="route-actions">
               <button type="button" title="Zoom" data-action="zoom" data-id="${route.id}">⌖</button>
               <button type="button" title="Edit" data-action="edit" data-id="${route.id}">✎</button>
+              <button type="button" title="Duplicate" data-action="duplicate" data-id="${route.id}">⧉</button>
               <button type="button" title="Delete" data-action="delete" data-id="${route.id}">×</button>
             </div>
           </div>
@@ -1473,6 +1474,30 @@
       renderTagSuggestions();
       renderRoutes();
       setStatus("Route deleted from this browser");
+    }
+
+    function duplicateRoute(id) {
+      const route = state.routes.find(item => item.id === id);
+      if (!route) return;
+      const copy = normalizeRoute({
+        ...route,
+        id: crypto.randomUUID(),
+        name: `${route.name} copy`,
+        date: "",
+        photos: Array.isArray(route.photos) ? route.photos.map(photo => ({ ...photo, id: crypto.randomUUID() })) : [],
+        updatedAt: new Date().toISOString()
+      });
+      if (!copy) {
+        setStatus("Could not duplicate route");
+        return;
+      }
+      state.routes.push(copy);
+      state.activeType = copy.type;
+      saveRoutes();
+      renderTagSuggestions();
+      activateType(copy.type);
+      editRoute(copy.id);
+      setStatus("Duplicated route; adjust the copy and save");
     }
 
     async function saveRoute(event) {
@@ -1886,6 +1911,7 @@ ${segments}
         const { action, id } = button.dataset;
         if (action === "zoom") selectRoute(id, true);
         if (action === "edit") editRoute(id);
+        if (action === "duplicate") duplicateRoute(id);
         if (action === "delete") deleteRoute(id);
         return;
       }
