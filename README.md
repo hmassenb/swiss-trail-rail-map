@@ -28,6 +28,7 @@ The overview page reads the same saved route data as the map page and displays:
 - a searchable route log
 - filters for hikes, trains, tags, and timeframes
 - exact custom date ranges with `From` and `To` controls
+- one-click overview filter reset for search, type, tag, time, sort, selected route, and backfill views
 - cumulative map controls for hikes, trains, and saved routes
 - live map legend with filtered hike, train, private, and currently drawn route counts
 - total entries, hiking distance, train distance, and elevation gain

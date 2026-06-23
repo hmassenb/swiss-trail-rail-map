@@ -825,6 +825,7 @@
         <button class="button" type="button" data-time-preset="90">90 days</button>
         <button class="button" type="button" data-time-preset="year">This year</button>
         <button class="button" type="button" data-time-preset="all">All time</button>
+        <button class="button" id="resetFiltersBtn" type="button">Reset filters</button>
       </div>
       <div class="date-range">
         <label>
@@ -1093,6 +1094,7 @@
       timeFilter: document.getElementById("timeFilter"),
       sortBy: document.getElementById("sortBy"),
       timePresets: document.getElementById("timePresets"),
+      resetFiltersBtn: document.getElementById("resetFiltersBtn"),
       dateFrom: document.getElementById("dateFrom"),
       dateTo: document.getElementById("dateTo"),
       clearDateRangeBtn: document.getElementById("clearDateRangeBtn"),
@@ -1913,6 +1915,21 @@
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     }
 
+    function resetFilters(message = "Showing the full saved archive.") {
+      el.searchInput.value = "";
+      el.typeFilter.value = "all";
+      el.tagFilter.value = "all";
+      el.timeFilter.value = "all";
+      el.dateFrom.value = "";
+      el.dateTo.value = "";
+      el.sortBy.value = "date-desc";
+      state.activeBackfill = "";
+      state.selectedRouteId = "";
+      window.history.replaceState(null, "", window.location.pathname);
+      applyFilters();
+      el.focusNote.textContent = message;
+    }
+
     function routesForMap() {
       return state.filtered.filter(route => {
         if (route.type === "hike" && !el.showHikes.checked) return false;
@@ -2471,11 +2488,8 @@
       const route = state.routes.find(item => item.id === id);
       if (!route) return false;
       state.selectedRouteId = route.id;
-      el.typeFilter.value = "all";
-      el.tagFilter.value = "all";
-      el.timeFilter.value = "all";
-      el.dateFrom.value = "";
-      el.dateTo.value = "";
+      resetFilters("Linked route opened from the full saved archive.");
+      state.selectedRouteId = route.id;
       applyFilters();
       selectRoute(route);
       return true;
@@ -2611,6 +2625,7 @@
       applyFilters();
     });
     el.sortBy.addEventListener("change", applyFilters);
+    el.resetFiltersBtn.addEventListener("click", () => resetFilters());
     el.saveGoalsBtn.addEventListener("click", saveGoals);
     el.timePresets.addEventListener("click", event => {
       const button = event.target.closest("button[data-time-preset]");
