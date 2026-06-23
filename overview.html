@@ -289,6 +289,115 @@
       padding: 12px 2px 0;
     }
 
+    .activity-years {
+      display: grid;
+      gap: 12px;
+    }
+
+    .activity-year {
+      display: grid;
+      gap: 10px;
+      border-top: 1px solid #edf0ee;
+      padding-top: 10px;
+    }
+
+    .activity-year:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .activity-year h3 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    .activity-months {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+      gap: 10px;
+    }
+
+    .activity-month {
+      border: 1px solid #edf0ee;
+      border-radius: 8px;
+      padding: 9px;
+      background: #f8faf8;
+      display: grid;
+      gap: 7px;
+    }
+
+    .activity-month-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .activity-month-head strong {
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .activity-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 3px;
+    }
+
+    .activity-weekday,
+    .activity-day {
+      min-height: 20px;
+      border-radius: 5px;
+      font-size: 10px;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    .activity-weekday {
+      color: var(--muted);
+      font-weight: 720;
+    }
+
+    .activity-day {
+      border: 1px solid #e1e7e3;
+      background: #fff;
+      color: #617077;
+      font: inherit;
+      font-size: 10px;
+      padding: 0;
+    }
+
+    button.activity-day {
+      cursor: pointer;
+    }
+
+    button.activity-day:hover,
+    button.activity-day:focus-visible {
+      outline: 2px solid rgba(47, 118, 84, 0.28);
+      outline-offset: 1px;
+    }
+
+    .activity-day.active {
+      color: #fff;
+      border-color: transparent;
+      font-weight: 760;
+    }
+
+    .activity-day.hike { background: #6d9b7e; }
+    .activity-day.train { background: #6f95ad; }
+    .activity-day.mixed { background: #857b64; }
+    .activity-day.level-2 { filter: saturate(1.08) brightness(0.92); }
+    .activity-day.level-3 { filter: saturate(1.14) brightness(0.82); }
+
+    .activity-day.blank {
+      background: transparent;
+      border-color: transparent;
+    }
+
     .storage-note {
       color: #405057;
       background: rgba(255, 255, 255, 0.78);
@@ -828,6 +937,20 @@
         <svg class="progress-chart" id="progressChart" viewBox="0 0 760 220" role="img" aria-label="Cumulative distance chart"></svg>
         <div class="progress-empty" id="progressEmpty">Add dated routes to see distance progress over time.</div>
       </section>
+      <section class="progress-panel" aria-label="Activity calendar">
+        <div class="progress-head">
+          <div>
+            <h2>Activity Calendar</h2>
+            <div class="dashboard-note" id="activityScope">Dated entries appear by day for the current filters.</div>
+          </div>
+          <div class="progress-totals">
+            <span class="progress-pill" id="activityDayTotal">0 active days</span>
+            <span class="progress-pill" id="activityBusiestDay">No busiest day</span>
+          </div>
+        </div>
+        <div class="activity-years" id="activityCalendar"></div>
+        <div class="progress-empty" id="activityEmpty">Add dates to your saved routes to build the activity calendar.</div>
+      </section>
       <div class="storage-note" id="storageNote">Loading saved entries...</div>
       <div class="dashboard-note" id="dashboardNote">Metrics reflect the current filters.</div>
       <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -992,6 +1115,11 @@
       progressDateCount: document.getElementById("progressDateCount"),
       progressChart: document.getElementById("progressChart"),
       progressEmpty: document.getElementById("progressEmpty"),
+      activityScope: document.getElementById("activityScope"),
+      activityDayTotal: document.getElementById("activityDayTotal"),
+      activityBusiestDay: document.getElementById("activityBusiestDay"),
+      activityCalendar: document.getElementById("activityCalendar"),
+      activityEmpty: document.getElementById("activityEmpty"),
       storageNote: document.getElementById("storageNote"),
       dashboardNote: document.getElementById("dashboardNote"),
       feedScope: document.getElementById("feedScope"),
@@ -1663,6 +1791,7 @@
       renderComparison();
       renderGoals();
       renderProgress();
+      renderActivityCalendar();
       renderSummaries();
       renderDetail();
       renderMap();
@@ -1867,6 +1996,88 @@
         <text x="${width - pad.right}" y="${height - 14}" text-anchor="end" font-size="12" fill="#5a666d">${escapeHtml(lastDate)}</text>
         <text x="${width - pad.right}" y="18" text-anchor="end" font-size="12" fill="#344249">hike / train cumulative km</text>
       `;
+    }
+
+    function activityRows() {
+      const byDate = new Map();
+      state.filtered.forEach(route => {
+        if (!route.date || !parseRouteDate(route.date)) return;
+        if (!byDate.has(route.date)) {
+          byDate.set(route.date, { date: route.date, hike: 0, train: 0, count: 0, distance: 0 });
+        }
+        const row = byDate.get(route.date);
+        const distance = distanceKm(route.points);
+        row[route.type] += distance;
+        row.distance += distance;
+        row.count += 1;
+      });
+      return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+    }
+
+    function activityType(row) {
+      if (row.hike > 0 && row.train > 0) return "mixed";
+      return row.train > 0 ? "train" : "hike";
+    }
+
+    function activityLevel(row) {
+      if (row.count >= 3 || row.distance >= 25) return "level-3";
+      if (row.count >= 2 || row.distance >= 10) return "level-2";
+      return "level-1";
+    }
+
+    function renderActivityMonth(year, month, byDate) {
+      const monthName = new Date(year, month, 1).toLocaleString(undefined, { month: "short" });
+      const firstWeekday = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const weekdayLabels = ["S", "M", "T", "W", "T", "F", "S"]
+        .map(label => `<span class="activity-weekday">${label}</span>`)
+        .join("");
+      const blanks = Array.from({ length: firstWeekday }, () => `<span class="activity-day blank" aria-hidden="true"></span>`);
+      const dayCells = Array.from({ length: daysInMonth }, (_, index) => {
+        const day = index + 1;
+        const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const row = byDate.get(date);
+        if (!row) return `<span class="activity-day">${day}</span>`;
+        const type = activityType(row);
+        const title = `${date}: ${row.count} entr${row.count === 1 ? "y" : "ies"}, ${formatKm(row.distance)}`;
+        return `<button class="activity-day active ${type} ${activityLevel(row)}" type="button" data-calendar-date="${date}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">${day}</button>`;
+      });
+      const monthRows = Array.from(byDate.values()).filter(row => row.date.startsWith(`${year}-${String(month + 1).padStart(2, "0")}-`));
+      const monthCount = monthRows.reduce((sum, row) => sum + row.count, 0);
+      return `
+        <div class="activity-month">
+          <div class="activity-month-head"><strong>${escapeHtml(monthName)}</strong><span>${monthCount || ""}</span></div>
+          <div class="activity-grid">${weekdayLabels}${blanks.join("")}${dayCells.join("")}</div>
+        </div>
+      `;
+    }
+
+    function renderActivityCalendar() {
+      const rows = activityRows();
+      const byDate = new Map(rows.map(row => [row.date, row]));
+      const years = [...new Set(rows.map(row => row.date.slice(0, 4)))]
+        .sort((a, b) => b.localeCompare(a));
+      const busiest = rows.reduce((best, row) => {
+        if (!best) return row;
+        if (row.count !== best.count) return row.count > best.count ? row : best;
+        return row.distance > best.distance ? row : best;
+      }, null);
+      el.activityDayTotal.textContent = `${rows.length} active day${rows.length === 1 ? "" : "s"}`;
+      el.activityBusiestDay.textContent = busiest ? `${busiest.date} (${busiest.count})` : "No busiest day";
+      el.activityScope.textContent = `Daily activity calendar for ${scopeLabel()}. Click a filled day to focus it.`;
+      el.activityEmpty.hidden = rows.length > 0;
+      if (!rows.length) {
+        el.activityCalendar.innerHTML = "";
+        return;
+      }
+      el.activityCalendar.innerHTML = years.map(year => `
+        <section class="activity-year" aria-label="${escapeHtml(year)} activity">
+          <h3>${escapeHtml(year)}</h3>
+          <div class="activity-months">
+            ${Array.from({ length: 12 }, (_, month) => renderActivityMonth(Number(year), month, byDate)).join("")}
+          </div>
+        </section>
+      `).join("");
     }
 
     function renderSummaries() {
@@ -2236,6 +2447,17 @@
       event.preventDefault();
       window.history.replaceState(null, "", `overview.html?backfill=${encodeURIComponent(row.dataset.backfill)}`);
       focusBackfill(row.dataset.backfill);
+    });
+    el.activityCalendar.addEventListener("click", event => {
+      const day = event.target.closest("[data-calendar-date]");
+      if (!day) return;
+      el.dateFrom.value = day.dataset.calendarDate;
+      el.dateTo.value = day.dataset.calendarDate;
+      el.timeFilter.value = "custom";
+      state.activeBackfill = "";
+      clearRouteHash();
+      applyFilters();
+      el.focusNote.textContent = `Showing entries from ${day.dataset.calendarDate}. Clear the date range to return to the full log.`;
     });
     el.entryLog.addEventListener("click", event => {
       if (event.target.closest("a[data-edit-link]")) {

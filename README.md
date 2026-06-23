@@ -37,6 +37,7 @@ The overview page reads the same saved route data as the map page and displays:
 - previous-period comparison for hiking distance, hike count, and elevation gain when a bounded timeframe is selected
 - adjustable hiking goals for the current filter/timeframe, with progress for distance, hike count, and elevation gain
 - cumulative dated progress chart for hiking and train distance within the active filter/timeframe
+- clickable daily activity calendars by year, with hike/train/mixed-day colors for the active filter/timeframe
 - selected-route elevation profiles when GPX imports or clicked hike elevation lookups provide elevation samples
 - route photo thumbnails and selected-route photo galleries
 - yearly and monthly distance summaries
