@@ -1213,7 +1213,8 @@
     });
     const overviewMap = L.map("overviewMap", {
       layers: [topo],
-      maxBounds: SWISS_BOUNDS
+      maxBounds: SWISS_BOUNDS,
+      maxBoundsViscosity: 1.0
     }).fitBounds(SWISS_BOUNDS);
     const routeGroup = L.featureGroup().addTo(overviewMap);
 

@@ -803,11 +803,11 @@
 
     const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
       maxZoom: 17,
-      attribution: "Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap"
+      attribution: "Map data: (c) OpenStreetMap contributors, SRTM | Map style: (c) OpenTopoMap"
     });
     const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
-      attribution: "© OpenStreetMap contributors"
+      attribution: "(c) OpenStreetMap contributors"
     });
     const hikingOverlay = L.tileLayer("https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png", {
       maxZoom: 18,
@@ -823,6 +823,7 @@
     const map = L.map("map", {
       layers: [topo, hikingOverlay, railOverlay],
       maxBounds: SWISS_BOUNDS,
+      maxBoundsViscosity: 1.0,
       doubleClickZoom: false
     }).fitBounds(SWISS_BOUNDS);
 
