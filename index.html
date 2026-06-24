@@ -133,6 +133,13 @@
       line-height: 1;
     }
 
+    .fit-saved-button {
+      width: 56px;
+      min-width: 56px;
+      font-size: 12px;
+      font-weight: 720;
+    }
+
     .tabs {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -655,6 +662,7 @@
         <div class="search-row">
           <input id="searchInput" type="search" placeholder="Search village, lake, pass, peak" />
           <button class="icon-button" id="searchBtn" type="button" title="Search">Go</button>
+          <button class="icon-button fit-saved-button" id="fitSavedBtn" type="button" title="Fit saved routes">Done</button>
           <button class="icon-button" id="fitSwissBtn" type="button" title="Switzerland">CH</button>
         </div>
       </header>
@@ -823,6 +831,7 @@
     const el = {
       searchInput: document.getElementById("searchInput"),
       searchBtn: document.getElementById("searchBtn"),
+      fitSavedBtn: document.getElementById("fitSavedBtn"),
       fitSwissBtn: document.getElementById("fitSwissBtn"),
       tabHike: document.getElementById("tabHike"),
       tabTrain: document.getElementById("tabTrain"),
@@ -1317,6 +1326,17 @@
       });
     }
 
+    function currentSavedRouteMatches(route) {
+      const query = el.routeFilter.value.trim().toLowerCase();
+      return route.type === state.activeType &&
+        route.points?.length > 1 &&
+        (!query || routeSearchText(route).includes(query));
+    }
+
+    function currentSavedRoutes() {
+      return state.routes.filter(currentSavedRouteMatches);
+    }
+
     function numericValue(value) {
       const number = Number(value);
       return Number.isFinite(number) && number > 0 ? number : "";
@@ -1431,6 +1451,25 @@
 
     function boundsFor(points) {
       return L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
+    }
+
+    function fitSavedRoutes() {
+      clearSearchMarker();
+      const routes = currentSavedRoutes();
+      if (!routes.length) {
+        setStatus(`No saved ${state.activeType === "train" ? "train rides" : "hikes"} match this view`);
+        return;
+      }
+      const bounds = L.latLngBounds([]);
+      routes.forEach(route => {
+        route.points.forEach(point => bounds.extend(L.latLng(point[0], point[1])));
+      });
+      if (!bounds.isValid()) {
+        setStatus("No saved route geometry to show");
+        return;
+      }
+      map.fitBounds(bounds.pad(0.18));
+      setStatus(`Showing ${routes.length} saved ${state.activeType === "train" ? "train ride" : "hike"}${routes.length === 1 ? "" : "s"}`);
     }
 
     function routingProfile(type) {
@@ -2257,6 +2296,7 @@ ${points}
       map.fitBounds(SWISS_BOUNDS);
       setStatus("Showing Switzerland");
     });
+    el.fitSavedBtn.addEventListener("click", fitSavedRoutes);
     el.searchBtn.addEventListener("click", searchPlace);
     el.searchInput.addEventListener("keydown", event => {
       if (event.key === "Enter") searchPlace();
