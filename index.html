@@ -242,6 +242,69 @@
       border-left: 4px solid var(--blue);
     }
 
+    .selected-summary {
+      border: 1px solid var(--line);
+      border-left: 5px solid #9a8d74;
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 0 0 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .selected-summary h2 {
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .selected-summary-title {
+      font-size: 14px;
+      font-weight: 760;
+      line-height: 1.25;
+    }
+
+    .selected-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .selected-summary-metric {
+      border: 1px solid #e0e5e3;
+      border-radius: 6px;
+      padding: 7px;
+      background: #f8faf8;
+    }
+
+    .selected-summary-metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 720;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .selected-summary-metric strong {
+      display: block;
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .selected-summary-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+    }
+
+    .selected-summary-actions button {
+      min-height: 32px;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-weight: 720;
+    }
+
     form {
       display: grid;
       gap: 10px;
@@ -778,6 +841,10 @@
           <h2>Latest saved</h2>
           <div class="recent-routes" id="latestRoutes"></div>
         </section>
+        <section class="selected-summary" aria-label="Selected route details">
+          <h2>Selected route</h2>
+          <div id="selectedRouteDetail"></div>
+        </section>
 
         <section class="quick-post" aria-label="Route posting checklist">
           <h2>Quick post</h2>
@@ -970,6 +1037,7 @@
       incompleteRoutes: document.getElementById("incompleteRoutes"),
       storageNote: document.getElementById("storageNote"),
       latestRoutes: document.getElementById("latestRoutes"),
+      selectedRouteDetail: document.getElementById("selectedRouteDetail"),
       mapStatus: document.getElementById("mapStatus")
     };
 
@@ -1696,19 +1764,19 @@
       const trains = typeTotals("train");
       const draftKm = state.draftRoute.length > 1 ? distanceKm(state.draftRoute) : distanceKm(state.draft);
       const draftText = state.draft.length
-        ? `${state.draft.length} pt${state.draft.length === 1 ? "" : "s"} · ${formatKm(draftKm)}`
+        ? `${state.draft.length} pt${state.draft.length === 1 ? "" : "s"} / ${formatKm(draftKm)}`
         : "No active draft";
       legendElement.innerHTML = `
         <strong>Saved in Switzerland</strong>
         <div class="main-map-legend-row">
           <span class="main-map-legend-line"></span>
           <span>Hikes</span>
-          <span>${hikes.count} · ${formatKm(hikes.km)}</span>
+          <span>${hikes.count} / ${formatKm(hikes.km)}</span>
         </div>
         <div class="main-map-legend-row">
           <span class="main-map-legend-line train"></span>
           <span>Trains</span>
-          <span>${trains.count} · ${formatKm(trains.km)}</span>
+          <span>${trains.count} / ${formatKm(trains.km)}</span>
         </div>
         <div class="main-map-legend-row main-map-legend-muted">
           <span class="main-map-legend-line draft"></span>
@@ -1752,6 +1820,7 @@
       renderList();
       renderStats();
       renderLatestRoutes();
+      renderSelectedRouteDetail();
       renderMapLegend();
     }
 
@@ -1766,7 +1835,7 @@
           route.type === "train" ? "Train" : "Hike",
           route.date,
           formatKm(distanceKm(route.points))
-        ].filter(Boolean).join(" · ");
+        ].filter(Boolean).join(" / ");
         return `
           <button class="recent-route ${route.type}" type="button" data-latest-route="${escapeHtml(route.id)}">
             <span>
@@ -1777,6 +1846,48 @@
           </button>
         `;
       }).join("");
+    }
+
+    function selectedRoute() {
+      return state.routes.find(route => route.id === state.selectedId) || null;
+    }
+
+    function renderSelectedRouteDetail() {
+      const route = selectedRoute();
+      if (!route) {
+        el.selectedRouteDetail.innerHTML = `<div class="hint">Select a route on the map or in the list to inspect it here.</div>`;
+        return;
+      }
+      const pace = formatPace(route);
+      const metrics = [
+        ["Type", route.type === "train" ? "Train" : "Hike"],
+        ["Distance", formatKm(distanceKm(route.points))],
+        ["Date", route.date || "Missing"],
+        ["Duration", route.durationHours ? `${route.durationHours} h` : "Missing"],
+        ["Elevation", route.type === "hike" ? (route.elevationGainM ? `+${route.elevationGainM} m` : "Missing") : "Not used"],
+        ["Pace", pace || "Missing"]
+      ];
+      const tags = route.tags?.length ? `<div class="route-meta">${route.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : "";
+      const photos = route.photos?.length ? `<div class="route-meta"><span>${route.photos.length} photo${route.photos.length === 1 ? "" : "s"}</span></div>` : "";
+      el.selectedRouteDetail.innerHTML = `
+        <div class="selected-summary-title">${escapeHtml(route.name)}</div>
+        <div class="selected-summary-grid">
+          ${metrics.map(([label, value]) => `
+            <div class="selected-summary-metric">
+              <span>${escapeHtml(label)}</span>
+              <strong>${escapeHtml(value)}</strong>
+            </div>
+          `).join("")}
+        </div>
+        ${tags}
+        ${route.caption ? `<div class="route-meta">${escapeHtml(route.caption)}</div>` : ""}
+        ${photos}
+        <div class="selected-summary-actions">
+          <button type="button" data-selected-action="zoom">Zoom</button>
+          <button type="button" data-selected-action="overview">Overview</button>
+          <button type="button" data-selected-action="edit">Edit</button>
+        </div>
+      `;
     }
 
     function renderList() {
@@ -2551,6 +2662,14 @@ ${points}
       const button = event.target.closest("button[data-latest-route]");
       if (!button) return;
       selectRoute(button.dataset.latestRoute, true);
+    });
+    el.selectedRouteDetail.addEventListener("click", event => {
+      const button = event.target.closest("button[data-selected-action]");
+      const route = selectedRoute();
+      if (!button || !route) return;
+      if (button.dataset.selectedAction === "zoom") selectRoute(route.id, true);
+      if (button.dataset.selectedAction === "overview") openRouteOverview(route.id);
+      if (button.dataset.selectedAction === "edit") editRoute(route.id);
     });
     window.addEventListener("beforeunload", event => {
       saveRoutes(true);
