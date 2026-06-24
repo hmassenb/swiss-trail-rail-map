@@ -310,6 +310,71 @@
       height: 48px;
     }
 
+    .selected-photo-button {
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: zoom-in;
+    }
+
+    .selected-photo-button:hover {
+      background: transparent;
+    }
+
+    .photo-viewer {
+      position: fixed;
+      inset: 0;
+      z-index: 1200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      background: rgba(19, 27, 31, 0.72);
+    }
+
+    .photo-viewer.open {
+      display: flex;
+    }
+
+    .photo-viewer-panel {
+      width: min(880px, 100%);
+      max-height: calc(100vh - 56px);
+      display: grid;
+      gap: 10px;
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .photo-viewer-panel img {
+      width: 100%;
+      max-height: calc(100vh - 168px);
+      object-fit: contain;
+      border-radius: 6px;
+      background: #eef2ee;
+    }
+
+    .photo-viewer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .photo-viewer-head strong {
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .photo-viewer-head button {
+      min-height: 32px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 720;
+    }
+
     form {
       display: grid;
       gap: 10px;
@@ -976,6 +1041,15 @@
   </div>
 
   <div class="map-status" id="mapStatus">Ready</div>
+  <div class="photo-viewer" id="photoViewer" aria-hidden="true">
+    <div class="photo-viewer-panel" role="dialog" aria-modal="true" aria-label="Route photo viewer">
+      <div class="photo-viewer-head">
+        <strong id="photoViewerTitle">Route photo</strong>
+        <button id="photoViewerClose" type="button">Close</button>
+      </div>
+      <img id="photoViewerImage" alt="" />
+    </div>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -1043,6 +1117,10 @@
       storageNote: document.getElementById("storageNote"),
       latestRoutes: document.getElementById("latestRoutes"),
       selectedRouteDetail: document.getElementById("selectedRouteDetail"),
+      photoViewer: document.getElementById("photoViewer"),
+      photoViewerTitle: document.getElementById("photoViewerTitle"),
+      photoViewerImage: document.getElementById("photoViewerImage"),
+      photoViewerClose: document.getElementById("photoViewerClose"),
       mapStatus: document.getElementById("mapStatus")
     };
 
@@ -1876,7 +1954,11 @@
       const photos = route.photos?.length
         ? `
           <div class="photo-strip">
-            ${route.photos.slice(0, 5).map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")}
+            ${route.photos.slice(0, 5).map(photo => `
+              <button class="selected-photo-button" type="button" data-selected-photo="${escapeHtml(photo.id)}" title="Open photo">
+                <img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />
+              </button>
+            `).join("")}
           </div>
           <div class="route-meta"><span>${route.photos.length} photo${route.photos.length === 1 ? "" : "s"} saved with this route</span></div>
         `
@@ -1900,6 +1982,23 @@
           <button type="button" data-selected-action="edit">Edit</button>
         </div>
       `;
+    }
+
+    function openPhotoViewer(photo) {
+      if (!photo) return;
+      el.photoViewerImage.src = photo.dataUrl;
+      el.photoViewerImage.alt = photo.name || "Route photo";
+      el.photoViewerTitle.textContent = photo.name || "Route photo";
+      el.photoViewer.classList.add("open");
+      el.photoViewer.setAttribute("aria-hidden", "false");
+      el.photoViewerClose.focus();
+    }
+
+    function closePhotoViewer() {
+      el.photoViewer.classList.remove("open");
+      el.photoViewer.setAttribute("aria-hidden", "true");
+      el.photoViewerImage.removeAttribute("src");
+      el.photoViewerImage.alt = "";
     }
 
     function renderList() {
@@ -2676,12 +2775,25 @@ ${points}
       selectRoute(button.dataset.latestRoute, true);
     });
     el.selectedRouteDetail.addEventListener("click", event => {
-      const button = event.target.closest("button[data-selected-action]");
+      const photoButton = event.target.closest("button[data-selected-photo]");
       const route = selectedRoute();
+      if (photoButton && route) {
+        const photo = (route.photos || []).find(item => item.id === photoButton.dataset.selectedPhoto);
+        openPhotoViewer(photo);
+        return;
+      }
+      const button = event.target.closest("button[data-selected-action]");
       if (!button || !route) return;
       if (button.dataset.selectedAction === "zoom") selectRoute(route.id, true);
       if (button.dataset.selectedAction === "overview") openRouteOverview(route.id);
       if (button.dataset.selectedAction === "edit") editRoute(route.id);
+    });
+    el.photoViewerClose.addEventListener("click", closePhotoViewer);
+    el.photoViewer.addEventListener("click", event => {
+      if (event.target === el.photoViewer) closePhotoViewer();
+    });
+    window.addEventListener("keydown", event => {
+      if (event.key === "Escape" && el.photoViewer.classList.contains("open")) closePhotoViewer();
     });
     window.addEventListener("beforeunload", event => {
       saveRoutes(true);
