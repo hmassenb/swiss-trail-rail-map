@@ -923,6 +923,10 @@
       const count = state.routes.length;
       const backup = backupInfo();
       const hasChanges = count > 0 && (!backup || backup.routeCount !== count || backup.savedAt !== latestSavedAt());
+      const photoCount = state.routes.reduce((sum, route) => sum + (Array.isArray(route.photos) ? route.photos.length : 0), 0);
+      const archiveSize = formatBytes(estimatedRouteStorageBytes(state.routes));
+      const photoSize = formatBytes(estimatedPhotoBytes(state.routes));
+      const sizeNote = ` Archive: about ${archiveSize}${photoCount ? `, including ${photoCount} photo${photoCount === 1 ? "" : "s"} / ${photoSize}.` : "."}`;
       el.storageNote.classList.toggle("warning", !ok || hasChanges);
       if (!ok) {
         el.storageNote.textContent = "Browser storage is blocked. Routes stay visible for now, but export JSON to avoid losing them.";
@@ -933,8 +937,8 @@
         return;
       }
       el.storageNote.textContent = hasChanges
-        ? `${count} saved route${count === 1 ? "" : "s"} in this browser. Export JSON now to back up the latest changes${backup ? `; last backup was ${formatDateTime(backup.exportedAt)}.` : "."}`
-        : `${count} saved route${count === 1 ? "" : "s"} in this browser. Last JSON backup: ${formatDateTime(backup.exportedAt)}.`;
+        ? `${count} saved route${count === 1 ? "" : "s"} in this browser. Export JSON now to back up the latest changes${backup ? `; last backup was ${formatDateTime(backup.exportedAt)}.` : "."}${sizeNote}`
+        : `${count} saved route${count === 1 ? "" : "s"} in this browser. Last JSON backup: ${formatDateTime(backup.exportedAt)}.${sizeNote}`;
     }
 
     function latestSavedAt() {
@@ -964,6 +968,31 @@
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return "unknown";
       return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+      const units = ["B", "KB", "MB", "GB"];
+      let value = bytes;
+      let index = 0;
+      while (value >= 1024 && index < units.length - 1) {
+        value /= 1024;
+        index += 1;
+      }
+      return `${value.toFixed(value >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
+    }
+
+    function estimatedRouteStorageBytes(routes) {
+      return JSON.stringify(routes).length * 2;
+    }
+
+    function estimatedPhotoBytes(routes) {
+      return routes.reduce((sum, route) => {
+        return sum + (route.photos || []).reduce((photoSum, photo) => {
+          const payload = String(photo.dataUrl || "").split(",")[1] || "";
+          return photoSum + Math.round(payload.length * 0.75);
+        }, 0);
+      }, 0);
     }
 
     function loadRoutes() {
