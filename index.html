@@ -564,8 +564,12 @@
 
     .route-tools-row {
       display: grid;
-      grid-template-columns: 1fr minmax(132px, 0.55fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
+    }
+
+    .route-tools-row input {
+      grid-column: 1 / -1;
     }
 
     .route-list-note {
@@ -1022,6 +1026,13 @@
         <section class="route-tools" aria-label="Saved route filters">
           <div class="route-tools-row">
             <input id="routeFilter" type="search" placeholder="Filter saved routes" />
+            <select id="routeStatus" aria-label="Filter by route status">
+              <option value="all">All</option>
+              <option value="needs-info">Needs info</option>
+              <option value="complete">Complete</option>
+              <option value="with-photos">With photos</option>
+              <option value="missing-photos">No photos</option>
+            </select>
             <select id="routeSort" aria-label="Sort saved routes">
               <option value="date-desc">Newest</option>
               <option value="updated-desc">Recently edited</option>
@@ -1107,6 +1118,7 @@
       exportJsonBtn: document.getElementById("exportJsonBtn"),
       exportGpxBtn: document.getElementById("exportGpxBtn"),
       routeFilter: document.getElementById("routeFilter"),
+      routeStatus: document.getElementById("routeStatus"),
       routeSort: document.getElementById("routeSort"),
       routeListNote: document.getElementById("routeListNote"),
       routeList: document.getElementById("routeList"),
@@ -1589,11 +1601,32 @@
       const query = el.routeFilter.value.trim().toLowerCase();
       return route.type === state.activeType &&
         route.points?.length > 1 &&
+        routeStatusMatches(route) &&
         (!query || routeSearchText(route).includes(query));
     }
 
     function currentSavedRoutes() {
       return state.routes.filter(currentSavedRouteMatches);
+    }
+
+    function routeStatusMatches(route) {
+      const mode = el.routeStatus.value;
+      if (mode === "needs-info") return missingRouteFields(route).length > 0;
+      if (mode === "complete") return missingRouteFields(route).length === 0;
+      if (mode === "with-photos") return Boolean(route.photos?.length);
+      if (mode === "missing-photos") return !route.photos?.length;
+      return true;
+    }
+
+    function routeStatusLabel() {
+      const labels = {
+        all: "all saved",
+        "needs-info": "routes needing info",
+        complete: "complete routes",
+        "with-photos": "routes with photos",
+        "missing-photos": "routes without photos"
+      };
+      return labels[el.routeStatus.value] || labels.all;
     }
 
     function latestSavedRoutes(limit = 3) {
@@ -2004,14 +2037,17 @@
     function renderList() {
       const query = el.routeFilter.value.trim().toLowerCase();
       const typeRoutes = state.routes.filter(route => route.type === state.activeType);
-      const filtered = sortRoutes(typeRoutes.filter(route => !query || routeSearchText(route).includes(query)));
+      const statusRoutes = typeRoutes.filter(routeStatusMatches);
+      const filtered = sortRoutes(statusRoutes.filter(route => !query || routeSearchText(route).includes(query)));
+      const routeNoun = state.activeType === "train" ? "train rides" : "hikes";
+      const scope = routeStatusLabel();
       el.routeListNote.textContent = query
-        ? `Showing ${filtered.length} of ${typeRoutes.length} ${state.activeType === "train" ? "train rides" : "hikes"} matching "${query}".`
-        : `Showing ${filtered.length} ${state.activeType === "train" ? "train ride" : "hike"}${filtered.length === 1 ? "" : "s"}.`;
+        ? `Showing ${filtered.length} of ${statusRoutes.length} ${scope} ${routeNoun} matching "${query}".`
+        : `Showing ${filtered.length} ${scope} ${routeNoun}.`;
       if (!filtered.length) {
         el.routeList.innerHTML = query
-          ? `<div class="empty">No saved ${state.activeType === "train" ? "train rides" : "hikes"} match this filter.</div>`
-          : `<div class="empty">No ${state.activeType === "train" ? "train rides" : "hikes"} saved yet.</div>`;
+          ? `<div class="empty">No ${scope} ${routeNoun} match this filter.</div>`
+          : `<div class="empty">No ${scope} ${routeNoun} in this view.</div>`;
         return;
       }
       el.routeList.innerHTML = "";
@@ -2708,6 +2744,7 @@ ${points}
     el.exportJsonBtn.addEventListener("click", exportJson);
     el.exportGpxBtn.addEventListener("click", exportGpx);
     el.routeFilter.addEventListener("input", renderList);
+    el.routeStatus.addEventListener("change", renderList);
     el.routeSort.addEventListener("change", renderList);
     el.tagSuggestions.addEventListener("click", event => {
       const button = event.target.closest("button[data-tag]");

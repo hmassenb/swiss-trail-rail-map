@@ -63,6 +63,7 @@ The overview page reads the same saved route data as the map page and displays:
 - scrollable logging sidebar and click-to-remove draft points while drawing routes
 - live draft metrics for routed distance, direct waypoint distance, point counts, elevation status, and last clicked coordinate
 - saved-route action key and accessible per-route controls for zoom, overview, edit, copy, export, and delete
+- map-page saved-route status filter for all, needs-info, complete, with-photos, and no-photo entries
 - map-page storage note with estimated archive size, photo count, and photo payload size
 - local autosave and restore for unsaved map-page route drafts
 - unsaved-draft warnings before leaving the map page or clearing a route draft
