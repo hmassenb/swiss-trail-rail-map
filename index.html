@@ -572,6 +572,14 @@
       grid-column: 1 / -1;
     }
 
+    .route-tools-row .filter-reset {
+      grid-column: 1 / -1;
+      min-height: 32px;
+      padding: 6px 9px;
+      font-size: 12px;
+      font-weight: 720;
+    }
+
     .route-list-note {
       color: var(--muted);
       font-size: 12px;
@@ -1040,6 +1048,7 @@
               <option value="distance-desc">Longest</option>
               <option value="gain-desc">Most elevation</option>
             </select>
+            <button class="filter-reset" id="resetRouteFiltersBtn" type="button">Reset saved-route filters</button>
           </div>
           <div class="route-list-note" id="routeListNote">Showing saved routes.</div>
           <div class="route-action-key">Actions: Z zoom, V overview, E edit, C copy, J JSON, G GPX, X delete.</div>
@@ -1120,6 +1129,7 @@
       routeFilter: document.getElementById("routeFilter"),
       routeStatus: document.getElementById("routeStatus"),
       routeSort: document.getElementById("routeSort"),
+      resetRouteFiltersBtn: document.getElementById("resetRouteFiltersBtn"),
       routeListNote: document.getElementById("routeListNote"),
       routeList: document.getElementById("routeList"),
       hikeKm: document.getElementById("hikeKm"),
@@ -2096,6 +2106,14 @@
       });
     }
 
+    function resetRouteFilters() {
+      el.routeFilter.value = "";
+      el.routeStatus.value = "all";
+      el.routeSort.value = "date-desc";
+      renderList();
+      setStatus("Saved-route filters reset");
+    }
+
     function routeCompletenessBadges(route) {
       const missing = missingRouteFields(route);
       if (!missing.length) return `<span class="route-badge done">Complete</span>`;
@@ -2746,6 +2764,7 @@ ${points}
     el.routeFilter.addEventListener("input", renderList);
     el.routeStatus.addEventListener("change", renderList);
     el.routeSort.addEventListener("change", renderList);
+    el.resetRouteFiltersBtn.addEventListener("click", resetRouteFilters);
     el.tagSuggestions.addEventListener("click", event => {
       const button = event.target.closest("button[data-tag]");
       if (!button) return;
