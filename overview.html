@@ -827,6 +827,11 @@
           <option value="30">Last 30 days</option>
           <option value="custom">Custom range</option>
         </select>
+        <select id="qualityFilter">
+          <option value="all">All quality</option>
+          <option value="incomplete">Needs backfill</option>
+          <option value="complete">Complete entries</option>
+        </select>
         <select id="sortBy">
           <option value="date-desc">Newest first</option>
           <option value="active-desc">Recently active</option>
@@ -1110,6 +1115,7 @@
       typeFilter: document.getElementById("typeFilter"),
       tagFilter: document.getElementById("tagFilter"),
       timeFilter: document.getElementById("timeFilter"),
+      qualityFilter: document.getElementById("qualityFilter"),
       sortBy: document.getElementById("sortBy"),
       timePresets: document.getElementById("timePresets"),
       resetFiltersBtn: document.getElementById("resetFiltersBtn"),
@@ -1855,6 +1861,13 @@ ${points}
       return missing.map(item => `<span class="quality-badge missing">Missing ${escapeHtml(item)}</span>`).join("");
     }
 
+    function routeMatchesQuality(route) {
+      const mode = el.qualityFilter.value;
+      if (mode === "complete") return !missingRouteFields(route).length;
+      if (mode === "incomplete") return Boolean(missingRouteFields(route).length);
+      return true;
+    }
+
     function backfillLabel(key) {
       return {
         missingDate: "missing dates",
@@ -1870,6 +1883,7 @@ ${points}
       state.filtered = state.routes.filter(route => {
         if (!routeMatchesActiveScope(route)) return false;
         if (activeCheck && !activeCheck(route)) return false;
+        if (!routeMatchesQuality(route)) return false;
         return dateInRange(route.date, range);
       });
       sortRoutes();
@@ -1972,7 +1986,11 @@ ${points}
       const time = timeframeLabel();
       const type = el.typeFilter.options[el.typeFilter.selectedIndex].textContent.toLowerCase();
       const tag = el.tagFilter.value === "all" ? "" : ` tagged ${el.tagFilter.value}`;
-      return `${type}${tag} for ${time}`;
+      const quality = {
+        incomplete: " needing backfill",
+        complete: " complete"
+      }[el.qualityFilter.value] || "";
+      return `${type}${quality}${tag} for ${time}`;
     }
 
     function routeHash(id) {
@@ -2012,6 +2030,7 @@ ${points}
       el.typeFilter.value = "all";
       el.tagFilter.value = "all";
       el.timeFilter.value = "all";
+      el.qualityFilter.value = "all";
       el.dateFrom.value = "";
       el.dateTo.value = "";
       el.sortBy.value = "date-desc";
@@ -2709,6 +2728,7 @@ ${points}
     el.searchInput.addEventListener("input", applyFilters);
     el.typeFilter.addEventListener("change", applyFilters);
     el.tagFilter.addEventListener("change", applyFilters);
+    el.qualityFilter.addEventListener("change", applyFilters);
     el.timeFilter.addEventListener("change", () => {
       syncDateInputsToPreset();
       applyFilters();
