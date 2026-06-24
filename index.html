@@ -899,6 +899,7 @@
     const routeGroup = L.featureGroup().addTo(map);
     const draftGroup = L.featureGroup().addTo(map);
     let draftLine = null;
+    let searchMarker = null;
 
     function setStatus(text) {
       el.mapStatus.textContent = text;
@@ -1842,12 +1843,20 @@
           setStatus("No Swiss result found");
           return;
         }
+        clearSearchMarker();
         map.setView([lat, lon], Math.max(map.getZoom(), 13));
-        L.marker([lat, lon]).addTo(map).bindPopup(escapeHtml(place.display_name)).openPopup();
+        searchMarker = L.marker([lat, lon]).addTo(map).bindPopup(escapeHtml(place.display_name));
+        searchMarker.openPopup();
         setStatus(place.display_name);
       } catch {
         setStatus("Search failed");
       }
+    }
+
+    function clearSearchMarker() {
+      if (!searchMarker) return;
+      searchMarker.remove();
+      searchMarker = null;
     }
 
     function jsonBackupPackage(routes = state.routes) {
@@ -2147,7 +2156,11 @@ ${points}
     el.routeType.addEventListener("change", event => activateType(event.target.value));
     el.tabHike.addEventListener("click", () => activateType("hike"));
     el.tabTrain.addEventListener("click", () => activateType("train"));
-    el.fitSwissBtn.addEventListener("click", () => map.fitBounds(SWISS_BOUNDS));
+    el.fitSwissBtn.addEventListener("click", () => {
+      clearSearchMarker();
+      map.fitBounds(SWISS_BOUNDS);
+      setStatus("Showing Switzerland");
+    });
     el.searchBtn.addEventListener("click", searchPlace);
     el.searchInput.addEventListener("keydown", event => {
       if (event.key === "Enter") searchPlace();

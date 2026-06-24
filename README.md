@@ -54,6 +54,7 @@ The overview page reads the same saved route data as the map page and displays:
 - route-level share links using `overview.html#route=...`
 - map-page route deep links using `index.html#route=...`
 - direct edit links from overview entries to `index.html?edit=...`
+- single active place-search marker that clears when refitting to Switzerland
 - map-page backfill mode that keeps date, type, and tags after saving a new route
 - scrollable logging sidebar and click-to-remove draft points while drawing routes
 - live draft metrics for routed distance, direct waypoint distance, point counts, elevation status, and last clicked coordinate
