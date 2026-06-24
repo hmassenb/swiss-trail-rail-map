@@ -520,6 +520,53 @@
       color: #2f7654;
     }
 
+    .main-map-legend {
+      display: grid;
+      gap: 6px;
+      min-width: 190px;
+      padding: 10px 11px;
+      border: 1px solid rgba(30, 42, 45, 0.14);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 10px 24px rgba(20, 30, 34, 0.16);
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .main-map-legend strong {
+      font-size: 12px;
+    }
+
+    .main-map-legend-row {
+      display: grid;
+      grid-template-columns: 16px 1fr auto;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .main-map-legend-line {
+      width: 16px;
+      height: 4px;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .main-map-legend-line.train {
+      background: var(--blue);
+    }
+
+    .main-map-legend-line.draft {
+      border: 1px dashed #7a877f;
+      background: transparent;
+      height: 8px;
+    }
+
+    .main-map-legend-muted {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
     .route-badge.missing {
       border-color: #e1cdbf;
       background: #f7eee8;
@@ -960,8 +1007,17 @@
 
     const routeGroup = L.featureGroup().addTo(map);
     const draftGroup = L.featureGroup().addTo(map);
+    const legendControl = L.control({ position: "bottomleft" });
+    let legendElement = null;
     let draftLine = null;
     let searchMarker = null;
+
+    legendControl.onAdd = () => {
+      legendElement = L.DomUtil.create("div", "main-map-legend");
+      L.DomEvent.disableClickPropagation(legendElement);
+      return legendElement;
+    };
+    legendControl.addTo(map);
 
     function setStatus(text) {
       el.mapStatus.textContent = text;
@@ -1623,6 +1679,43 @@
       el.clearDraftBtn.disabled = state.draft.length === 0;
       updateQuickPost();
       persistDraftState();
+      renderMapLegend();
+    }
+
+    function typeTotals(type) {
+      const routes = state.routes.filter(route => route.type === type && route.points?.length > 1);
+      return {
+        count: routes.length,
+        km: routes.reduce((sum, route) => sum + distanceKm(route.points), 0)
+      };
+    }
+
+    function renderMapLegend() {
+      if (!legendElement) return;
+      const hikes = typeTotals("hike");
+      const trains = typeTotals("train");
+      const draftKm = state.draftRoute.length > 1 ? distanceKm(state.draftRoute) : distanceKm(state.draft);
+      const draftText = state.draft.length
+        ? `${state.draft.length} pt${state.draft.length === 1 ? "" : "s"} · ${formatKm(draftKm)}`
+        : "No active draft";
+      legendElement.innerHTML = `
+        <strong>Saved in Switzerland</strong>
+        <div class="main-map-legend-row">
+          <span class="main-map-legend-line"></span>
+          <span>Hikes</span>
+          <span>${hikes.count} · ${formatKm(hikes.km)}</span>
+        </div>
+        <div class="main-map-legend-row">
+          <span class="main-map-legend-line train"></span>
+          <span>Trains</span>
+          <span>${trains.count} · ${formatKm(trains.km)}</span>
+        </div>
+        <div class="main-map-legend-row main-map-legend-muted">
+          <span class="main-map-legend-line draft"></span>
+          <span>Draft</span>
+          <span>${draftText}</span>
+        </div>
+      `;
     }
 
     function popupHtml(route) {
@@ -1659,6 +1752,7 @@
       renderList();
       renderStats();
       renderLatestRoutes();
+      renderMapLegend();
     }
 
     function renderLatestRoutes() {

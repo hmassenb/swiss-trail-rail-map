@@ -55,6 +55,7 @@ The overview page reads the same saved route data as the map page and displays:
 - map-page route deep links using `index.html#route=...`
 - direct edit links from overview entries to `index.html?edit=...`
 - single active place-search marker that clears when refitting to Switzerland
+- main-map legend with saved hike/train counts, distances, and current draft distance
 - map-page `Done` control to fit the map to saved routes in the active hike/train view
 - map-page latest-saved snapshot with one-click zoom to recent entries
 - map-page backfill mode that keeps date, type, and tags after saving a new route
