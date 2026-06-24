@@ -2160,14 +2160,25 @@
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
     }
 
+    function syncActiveTypeControls(type) {
+      state.activeType = type;
+      el.routeType.value = type;
+      el.tabHike.classList.toggle("active", type === "hike");
+      el.tabTrain.classList.toggle("active", type === "train");
+    }
+
     function selectRoute(id, zoom = false, updateHash = true) {
-      state.selectedId = id;
       const route = state.routes.find(item => item.id === id);
+      if (!route) return;
+      state.selectedId = id;
+      if (!state.draft.length && route.type !== state.activeType) {
+        syncActiveTypeControls(route.type);
+      }
       renderRoutes();
       const layer = state.layers.get(id);
       if (layer) layer.openPopup();
       if (zoom && route?.points?.length > 1) map.fitBounds(boundsFor(route.points).pad(0.18));
-      if (route && updateHash) updateSelectedRouteHash(route.id);
+      if (updateHash) updateSelectedRouteHash(route.id);
     }
 
     function openRouteOverview(id) {
@@ -2176,10 +2187,7 @@
     }
 
     function activateType(type) {
-      state.activeType = type;
-      el.routeType.value = type;
-      el.tabHike.classList.toggle("active", type === "hike");
-      el.tabTrain.classList.toggle("active", type === "train");
+      syncActiveTypeControls(type);
       if (state.draft.length > 1) {
         updateDraftRoute();
       } else {
