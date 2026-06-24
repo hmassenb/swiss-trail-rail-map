@@ -305,6 +305,11 @@
       font-weight: 720;
     }
 
+    .selected-summary .photo-strip img {
+      width: 62px;
+      height: 48px;
+    }
+
     form {
       display: grid;
       gap: 10px;
@@ -1868,7 +1873,14 @@
         ["Pace", pace || "Missing"]
       ];
       const tags = route.tags?.length ? `<div class="route-meta">${route.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : "";
-      const photos = route.photos?.length ? `<div class="route-meta"><span>${route.photos.length} photo${route.photos.length === 1 ? "" : "s"}</span></div>` : "";
+      const photos = route.photos?.length
+        ? `
+          <div class="photo-strip">
+            ${route.photos.slice(0, 5).map(photo => `<img src="${photo.dataUrl}" alt="${escapeHtml(photo.name)}" />`).join("")}
+          </div>
+          <div class="route-meta"><span>${route.photos.length} photo${route.photos.length === 1 ? "" : "s"} saved with this route</span></div>
+        `
+        : "";
       el.selectedRouteDetail.innerHTML = `
         <div class="selected-summary-title">${escapeHtml(route.name)}</div>
         <div class="selected-summary-grid">
