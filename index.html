@@ -195,6 +195,53 @@
       font-size: 12px;
     }
 
+    .recent-snapshot {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 0 0 12px;
+    }
+
+    .recent-snapshot h2 {
+      font-size: 13px;
+      margin: 0 0 8px;
+    }
+
+    .recent-routes {
+      display: grid;
+      gap: 7px;
+    }
+
+    .recent-route {
+      width: 100%;
+      min-height: 0;
+      border-color: #d8dddc;
+      justify-content: space-between;
+      padding: 8px;
+      text-align: left;
+      white-space: normal;
+    }
+
+    .recent-route strong {
+      display: block;
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .recent-route span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .recent-route.hike {
+      border-left: 4px solid var(--green);
+    }
+
+    .recent-route.train {
+      border-left: 4px solid var(--blue);
+    }
+
     form {
       display: grid;
       gap: 10px;
@@ -680,6 +727,10 @@
           <div class="stat"><strong id="incompleteRoutes">0</strong><span>Needs info</span></div>
         </div>
         <div class="storage-note" id="storageNote">Checking browser storage...</div>
+        <section class="recent-snapshot" aria-label="Recently saved routes">
+          <h2>Latest saved</h2>
+          <div class="recent-routes" id="latestRoutes"></div>
+        </section>
 
         <section class="quick-post" aria-label="Route posting checklist">
           <h2>Quick post</h2>
@@ -871,6 +922,7 @@
       completeRoutes: document.getElementById("completeRoutes"),
       incompleteRoutes: document.getElementById("incompleteRoutes"),
       storageNote: document.getElementById("storageNote"),
+      latestRoutes: document.getElementById("latestRoutes"),
       mapStatus: document.getElementById("mapStatus")
     };
 
@@ -1337,6 +1389,17 @@
       return state.routes.filter(currentSavedRouteMatches);
     }
 
+    function latestSavedRoutes(limit = 3) {
+      return [...state.routes]
+        .filter(route => route.points?.length > 1)
+        .sort((a, b) => {
+          const aDate = a.updatedAt || a.date || "";
+          const bDate = b.updatedAt || b.date || "";
+          return bDate.localeCompare(aDate);
+        })
+        .slice(0, limit);
+    }
+
     function numericValue(value) {
       const number = Number(value);
       return Number.isFinite(number) && number > 0 ? number : "";
@@ -1595,6 +1658,31 @@
       });
       renderList();
       renderStats();
+      renderLatestRoutes();
+    }
+
+    function renderLatestRoutes() {
+      const routes = latestSavedRoutes();
+      if (!routes.length) {
+        el.latestRoutes.innerHTML = `<div class="hint">Saved routes will appear here after your first entry.</div>`;
+        return;
+      }
+      el.latestRoutes.innerHTML = routes.map(route => {
+        const meta = [
+          route.type === "train" ? "Train" : "Hike",
+          route.date,
+          formatKm(distanceKm(route.points))
+        ].filter(Boolean).join(" · ");
+        return `
+          <button class="recent-route ${route.type}" type="button" data-latest-route="${escapeHtml(route.id)}">
+            <span>
+              <strong>${escapeHtml(route.name)}</strong>
+              <span>${escapeHtml(meta)}</span>
+            </span>
+            <span>Zoom</span>
+          </button>
+        `;
+      }).join("");
     }
 
     function renderList() {
@@ -2364,6 +2452,11 @@ ${points}
       if (!card || event.target.closest("button[data-action]")) return;
       event.preventDefault();
       selectRoute(card.dataset.id, true);
+    });
+    el.latestRoutes.addEventListener("click", event => {
+      const button = event.target.closest("button[data-latest-route]");
+      if (!button) return;
+      selectRoute(button.dataset.latestRoute, true);
     });
     window.addEventListener("beforeunload", event => {
       saveRoutes(true);
