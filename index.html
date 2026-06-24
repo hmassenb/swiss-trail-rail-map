@@ -1621,6 +1621,25 @@
       renderRoutes();
     }
 
+    function hasUnsavedDraft() {
+      return Boolean(
+        state.draft.length ||
+        state.pendingPhotos.length ||
+        el.routeName.value.trim() ||
+        el.routeNotes.value.trim() ||
+        el.routeCaption.value.trim() ||
+        el.routeDuration.value ||
+        el.routeGain.value ||
+        el.routeLoss.value
+      );
+    }
+
+    function clearDraftWithConfirmation() {
+      if (hasUnsavedDraft() && !confirm("Clear the current unsaved route draft?")) return;
+      resetForm();
+      setStatus("Draft cleared");
+    }
+
     function editRoute(id) {
       const route = state.routes.find(item => item.id === id);
       if (!route) return;
@@ -2088,7 +2107,7 @@ ${points}
       state.draft.pop();
       updateDraftRoute();
     });
-    el.clearDraftBtn.addEventListener("click", resetForm);
+    el.clearDraftBtn.addEventListener("click", clearDraftWithConfirmation);
     el.routeType.addEventListener("change", event => activateType(event.target.value));
     el.tabHike.addEventListener("click", () => activateType("hike"));
     el.tabTrain.addEventListener("click", () => activateType("train"));
@@ -2161,7 +2180,12 @@ ${points}
       event.preventDefault();
       selectRoute(card.dataset.id, true);
     });
-    window.addEventListener("beforeunload", () => saveRoutes(true));
+    window.addEventListener("beforeunload", event => {
+      saveRoutes(true);
+      if (!hasUnsavedDraft()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
 
     loadHiddenCloudRoutes();
     loadRoutes();
