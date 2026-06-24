@@ -232,6 +232,43 @@
       word-break: break-word;
     }
 
+    .draft-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .draft-metric {
+      background: #f7faf9;
+      border: 1px solid #d8e0dd;
+      border-radius: 6px;
+      padding: 7px 8px;
+      min-width: 0;
+    }
+
+    .draft-metric span {
+      display: block;
+      color: #66747a;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 10px;
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      margin-bottom: 2px;
+    }
+
+    .draft-metric strong {
+      display: block;
+      color: #263338;
+      font-size: 12px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+    }
+
+    .draft-metric.wide {
+      grid-column: 1 / -1;
+    }
+
     .hint {
       color: var(--muted);
       font-size: 12px;
@@ -611,8 +648,8 @@
         </div>
         <div class="search-row">
           <input id="searchInput" type="search" placeholder="Search village, lake, pass, peak" />
-          <button class="icon-button" id="searchBtn" type="button" title="Search">⌕</button>
-          <button class="icon-button" id="fitSwissBtn" type="button" title="Switzerland">⌂</button>
+          <button class="icon-button" id="searchBtn" type="button" title="Search">Go</button>
+          <button class="icon-button" id="fitSwissBtn" type="button" title="Switzerland">CH</button>
         </div>
       </header>
 
@@ -633,10 +670,10 @@
         <section class="quick-post" aria-label="Route posting checklist">
           <h2>Quick post</h2>
           <ul class="quick-list">
-            <li id="checkName"><span>○</span><span>Add a route name.</span></li>
-            <li id="checkPoints"><span>○</span><span>Click at least two points on the map.</span></li>
-            <li id="checkDate"><span>○</span><span>Add a completion date for timeframe metrics.</span></li>
-            <li id="checkShare"><span>○</span><span>Keep the entry in your personal route log.</span></li>
+            <li id="checkName"><span>o</span><span>Add a route name.</span></li>
+            <li id="checkPoints"><span>o</span><span>Click at least two points on the map.</span></li>
+            <li id="checkDate"><span>o</span><span>Add a completion date for timeframe metrics.</span></li>
+            <li id="checkShare"><span>o</span><span>Keep the entry in your personal route log.</span></li>
           </ul>
           <div class="hint" id="quickPostNote">Ready to start: name the route, then click the map.</div>
         </section>
@@ -1044,7 +1081,7 @@
 
     function setCheck(item, done) {
       item.classList.toggle("done", done);
-      item.querySelector("span").textContent = done ? "✓" : "○";
+      item.querySelector("span").textContent = done ? "ok" : "o";
     }
 
     function updateQuickPost() {
@@ -1182,19 +1219,29 @@
       if (!state.draft.length) return "No route points selected";
       const geometry = state.draftRoute.length > 1 ? state.draftRoute : state.draft;
       const source = state.draftSource === "gpx" ? "GPX draft" : "Map draft";
-      const parts = [
-        source,
-        formatKm(distanceKm(geometry)),
-        `${state.draft.length} waypoint${state.draft.length === 1 ? "" : "s"}`,
-        `${geometry.length} geometry point${geometry.length === 1 ? "" : "s"}`
-      ];
+      const routedKm = formatKm(distanceKm(geometry));
+      const directKm = state.draft.length > 1 ? formatKm(distanceKm(state.draft)) : "0 km";
       const elevation = pointElevationTotals(geometry);
-      if (elevation?.gain) parts.push(`${elevation.gain} m gain`);
-      if (state.draft.length) {
-        const last = state.draft[state.draft.length - 1];
-        parts.push(`last ${last[0].toFixed(5)}, ${last[1].toFixed(5)}`);
-      }
-      return parts.join(" · ");
+      const elevationText = elevation
+        ? `+${elevation.gain} m / -${elevation.loss} m`
+        : state.activeType === "hike"
+          ? "estimated on save"
+          : "not used for trains";
+      const last = state.draft[state.draft.length - 1];
+      const rows = [
+        ["Source", source],
+        ["Routed distance", routedKm],
+        ["Direct waypoints", directKm],
+        ["Points", `${state.draft.length} waypoint${state.draft.length === 1 ? "" : "s"} / ${geometry.length} geometry point${geometry.length === 1 ? "" : "s"}`],
+        ["Elevation", elevationText],
+        ["Last point", `${last[0].toFixed(5)}, ${last[1].toFixed(5)}`]
+      ];
+      return `<div class="draft-metrics">${rows.map(([label, value], index) => `
+        <div class="draft-metric${index >= 4 ? " wide" : ""}">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </div>
+      `).join("")}</div>`;
     }
 
     function elevationTotals(elevations) {
@@ -1352,7 +1399,7 @@
           dashArray: "7 7"
         }).addTo(draftGroup);
       }
-      el.coordPreview.textContent = draftSummary();
+      el.coordPreview.innerHTML = draftSummary();
       el.saveRouteBtn.disabled = state.draft.length < 2;
       el.undoPointBtn.disabled = state.draft.length === 0;
       el.clearDraftBtn.disabled = state.draft.length === 0;
@@ -1434,13 +1481,13 @@
               </div>
             </div>
             <div class="route-actions">
-              <button type="button" title="Zoom" data-action="zoom" data-id="${route.id}">⌖</button>
-              <button type="button" title="Open in overview" data-action="overview" data-id="${route.id}">View</button>
-              <button type="button" title="Edit" data-action="edit" data-id="${route.id}">✎</button>
-              <button type="button" title="Duplicate" data-action="duplicate" data-id="${route.id}">⧉</button>
-              <button type="button" title="Export JSON" data-action="json" data-id="${route.id}">JSON</button>
-              <button type="button" title="Export GPX" data-action="gpx" data-id="${route.id}">GPX</button>
-              <button type="button" title="Delete" data-action="delete" data-id="${route.id}">×</button>
+              <button type="button" title="Zoom" data-action="zoom" data-id="${route.id}">Z</button>
+              <button type="button" title="Open in overview" data-action="overview" data-id="${route.id}">V</button>
+              <button type="button" title="Edit" data-action="edit" data-id="${route.id}">E</button>
+              <button type="button" title="Duplicate" data-action="duplicate" data-id="${route.id}">C</button>
+              <button type="button" title="Export JSON" data-action="json" data-id="${route.id}">J</button>
+              <button type="button" title="Export GPX" data-action="gpx" data-id="${route.id}">G</button>
+              <button type="button" title="Delete" data-action="delete" data-id="${route.id}">X</button>
             </div>
           </div>
           <div class="route-badges">${badges}</div>
