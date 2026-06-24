@@ -387,6 +387,12 @@
       font-weight: 680;
     }
 
+    .route-action-key {
+      color: #59666b;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
     .route-card {
       background: #fff;
       border: 1px solid var(--line);
@@ -782,6 +788,7 @@
             </select>
           </div>
           <div class="route-list-note" id="routeListNote">Showing saved routes.</div>
+          <div class="route-action-key">Actions: Z zoom, V overview, E edit, C copy, J JSON, G GPX, X delete.</div>
         </section>
 
         <div class="route-list" id="routeList"></div>
@@ -1481,13 +1488,13 @@
               </div>
             </div>
             <div class="route-actions">
-              <button type="button" title="Zoom" data-action="zoom" data-id="${route.id}">Z</button>
-              <button type="button" title="Open in overview" data-action="overview" data-id="${route.id}">V</button>
-              <button type="button" title="Edit" data-action="edit" data-id="${route.id}">E</button>
-              <button type="button" title="Duplicate" data-action="duplicate" data-id="${route.id}">C</button>
-              <button type="button" title="Export JSON" data-action="json" data-id="${route.id}">J</button>
-              <button type="button" title="Export GPX" data-action="gpx" data-id="${route.id}">G</button>
-              <button type="button" title="Delete" data-action="delete" data-id="${route.id}">X</button>
+              <button type="button" title="Zoom" aria-label="Zoom to ${escapeHtml(route.name)}" data-action="zoom" data-id="${route.id}">Z</button>
+              <button type="button" title="Open in overview" aria-label="Open ${escapeHtml(route.name)} in overview" data-action="overview" data-id="${route.id}">V</button>
+              <button type="button" title="Edit" aria-label="Edit ${escapeHtml(route.name)}" data-action="edit" data-id="${route.id}">E</button>
+              <button type="button" title="Duplicate" aria-label="Duplicate ${escapeHtml(route.name)}" data-action="duplicate" data-id="${route.id}">C</button>
+              <button type="button" title="Export JSON" aria-label="Export ${escapeHtml(route.name)} as JSON" data-action="json" data-id="${route.id}">J</button>
+              <button type="button" title="Export GPX" aria-label="Export ${escapeHtml(route.name)} as GPX" data-action="gpx" data-id="${route.id}">G</button>
+              <button type="button" title="Delete" aria-label="Delete ${escapeHtml(route.name)}" data-action="delete" data-id="${route.id}">X</button>
             </div>
           </div>
           <div class="route-badges">${badges}</div>
