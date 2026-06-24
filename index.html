@@ -1564,13 +1564,32 @@
       el.incompleteRoutes.textContent = totals.incomplete;
     }
 
-    function selectRoute(id, zoom = false) {
+    function routeHash(id) {
+      return `route=${encodeURIComponent(id)}`;
+    }
+
+    function selectedHashRouteId() {
+      const hash = window.location.hash.replace(/^#/, "");
+      return new URLSearchParams(hash).get("route") || "";
+    }
+
+    function updateSelectedRouteHash(id) {
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${routeHash(id)}`);
+    }
+
+    function clearSelectedRouteHash() {
+      if (!selectedHashRouteId()) return;
+      window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+    }
+
+    function selectRoute(id, zoom = false, updateHash = true) {
       state.selectedId = id;
       const route = state.routes.find(item => item.id === id);
       renderRoutes();
       const layer = state.layers.get(id);
       if (layer) layer.openPopup();
       if (zoom && route?.points?.length > 1) map.fitBounds(boundsFor(route.points).pad(0.18));
+      if (route && updateHash) updateSelectedRouteHash(route.id);
     }
 
     function openRouteOverview(id) {
@@ -1675,11 +1694,28 @@
       if (!route) return;
       if (!confirm(`Delete "${route.name}"?`)) return;
       state.routes = state.routes.filter(item => item.id !== id);
-      if (state.selectedId === id) state.selectedId = null;
+      if (state.selectedId === id) {
+        state.selectedId = null;
+        clearSelectedRouteHash();
+      }
       saveRoutes();
       renderTagSuggestions();
       renderRoutes();
       setStatus("Route deleted from this browser");
+    }
+
+    function selectRouteFromHash() {
+      const id = selectedHashRouteId();
+      if (!id) return false;
+      const route = state.routes.find(item => item.id === id);
+      if (!route) {
+        setStatus("Linked route is not saved in this browser");
+        return false;
+      }
+      activateType(route.type);
+      selectRoute(route.id, true, false);
+      setStatus(`Focused ${route.name}`);
+      return true;
     }
 
     function duplicateRoute(id) {
@@ -2186,6 +2222,9 @@ ${points}
       event.preventDefault();
       event.returnValue = "";
     });
+    window.addEventListener("hashchange", () => {
+      selectRouteFromHash();
+    });
 
     loadHiddenCloudRoutes();
     loadRoutes();
@@ -2195,6 +2234,8 @@ ${points}
     renderRoutes();
     if (requestedEditRouteId()) {
       editRoute(requestedEditRouteId());
+    } else {
+      selectRouteFromHash();
     }
   </script>
 </body>
