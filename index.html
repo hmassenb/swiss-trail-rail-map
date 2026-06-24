@@ -34,6 +34,7 @@
       grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
       height: 100vh;
       width: 100vw;
+      min-height: 0;
     }
 
     aside {
@@ -42,6 +43,8 @@
       display: flex;
       flex-direction: column;
       min-width: 0;
+      min-height: 0;
+      height: 100vh;
       z-index: 5;
     }
 
@@ -152,7 +155,11 @@
 
     .panel-scroll {
       padding: 14px 18px 18px;
-      overflow: auto;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
     }
 
     .stats {
@@ -540,6 +547,17 @@
       max-width: min(430px, calc(100vw - 32px));
     }
 
+    .draft-point-label {
+      border: 1px solid rgba(31, 43, 47, 0.22);
+      background: rgba(255, 255, 255, 0.92);
+      color: #1f2b2f;
+      border-radius: 999px;
+      box-shadow: 0 2px 7px rgba(31, 43, 47, 0.12);
+      font-size: 11px;
+      font-weight: 760;
+      padding: 2px 6px;
+    }
+
     .empty {
       color: var(--muted);
       border: 1px dashed #b9c3c6;
@@ -573,6 +591,7 @@
       }
       aside {
         grid-row: 2;
+        height: auto;
         min-height: 52vh;
         border-right: 0;
         border-top: 1px solid var(--line);
@@ -690,7 +709,7 @@
           </label>
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
-            <p class="hint">Click the map to add waypoints. The preview shows distance, point counts, and the latest point while fitting to mapped paths or rail lines when routing is available.</p>
+            <p class="hint">Click the map to add waypoints. Click a numbered point to remove it, or use Undo for the latest point. The preview fits to mapped paths or rail lines when routing is available.</p>
           </div>
           <label class="checkbox-line">
             <input id="backfillMode" type="checkbox" />
@@ -1295,20 +1314,33 @@
       }
     }
 
+    function removeDraftPoint(index) {
+      if (index < 0 || index >= state.draft.length) return;
+      state.draftSource = "";
+      state.draft.splice(index, 1);
+      updateDraftRoute();
+      setStatus(`Removed point ${index + 1}`);
+    }
+
     function renderDraft() {
       draftGroup.clearLayers();
       if (draftLine) draftLine.remove();
       state.draft.forEach((point, index) => {
         const marker = L.circleMarker(point, {
-          radius: 5,
+          radius: 7,
           color: "#fff",
           weight: 2,
           fillColor: routeColor(state.activeType),
-          fillOpacity: 1
-        }).bindTooltip(String(index + 1), { permanent: false });
-        marker.on("dblclick", () => {
-          state.draft.splice(index, 1);
-          updateDraftRoute();
+          fillOpacity: 1,
+          bubblingMouseEvents: false
+        }).bindTooltip(String(index + 1), {
+          permanent: true,
+          direction: "top",
+          offset: [0, -8],
+          className: "draft-point-label"
+        });
+        marker.on("click", () => {
+          removeDraftPoint(index);
         });
         draftGroup.addLayer(marker);
       });
