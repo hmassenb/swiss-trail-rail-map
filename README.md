@@ -60,6 +60,7 @@ The overview page reads the same saved route data as the map page and displays:
 - live draft metrics for routed distance, direct waypoint distance, point counts, elevation status, and last clicked coordinate
 - saved-route action key and accessible per-route controls for zoom, overview, edit, copy, export, and delete
 - map-page storage note with estimated archive size, photo count, and photo payload size
+- local autosave and restore for unsaved map-page route drafts
 - unsaved-draft warnings before leaving the map page or clearing a route draft
 - a backfill checklist for missing dates, duration, hike elevation, and photos
 - overview-page JSON export/import controls for backups and moving the private archive between browsers
@@ -96,7 +97,7 @@ The map page includes a `Quick post` checklist that updates while you fill in th
 
 Saved route cards can be clicked or focused with the keyboard to zoom the route on the map. Existing route cards can also be opened in the overview detail view, duplicated, exported as individual JSON or GPX files, or edited, which is useful when backfilling similar hikes or train rides from older years.
 
-While a route is being drawn or loaded from GPX, the draft preview shows estimated distance, waypoint count, geometry point count, the latest clicked point, and GPX elevation gain when available.
+While a route is being drawn or loaded from GPX, the draft preview shows estimated distance, waypoint count, geometry point count, the latest clicked point, and GPX elevation gain when available. Unsaved route drafts are autosaved locally and restored when you reopen the map page, unless you are opening a specific route link or edit link.
 
 The app stores:
 
@@ -119,6 +120,8 @@ The app stores:
 ## Data Storage
 
 Routes are saved in the browser's local storage. Data is therefore local to the browser and URL where the app is opened.
+
+Unsaved route drafts are also saved in local browser storage while you work. They are cleared after you save or clear the route draft.
 
 Use `Export JSON` on the map page or `Export JSON backup` on the overview page for backups or to move routes to another browser/device. New JSON exports are versioned backup packages with export time, route count, saved timestamp, and the `routes` array; filenames include the export date to avoid overwriting older backups. Older raw route-array backups still import. Use `Import GPX / JSON` on the map page, or `Import JSON` on the overview page, to restore or add routes. Use `Export CSV log` on the overview page when you want the currently filtered log in a spreadsheet.
 

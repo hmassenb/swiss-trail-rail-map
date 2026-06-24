@@ -804,6 +804,7 @@
     const SWISS_BOUNDS = L.latLngBounds([45.77, 5.90], [47.84, 10.62]);
     const STORAGE_KEY = "swiss-trail-rail-log:v1";
     const BACKUP_KEY = `${STORAGE_KEY}:lastBackup`;
+    const DRAFT_KEY = `${STORAGE_KEY}:draft`;
     const SYNC_CONFIG_KEY = "swiss-trail-rail-sync:v1";
     const HIDDEN_CLOUD_KEY = "swiss-trail-rail-hidden-cloud:v1";
     const state = {
@@ -964,6 +965,82 @@
       updateStorageNote(true);
     }
 
+    function draftSnapshot() {
+      return {
+        savedAt: new Date().toISOString(),
+        type: el.routeType.value,
+        name: el.routeName.value,
+        date: el.routeDate.value,
+        tags: el.routeTags.value,
+        durationHours: el.routeDuration.value,
+        elevationGainM: el.routeGain.value,
+        elevationLossM: el.routeLoss.value,
+        notes: el.routeNotes.value,
+        caption: el.routeCaption.value,
+        backfillMode: el.backfillMode.checked,
+        draft: state.draft.map(point => [...point]),
+        draftRoute: state.draftRoute.map(point => [...point]),
+        draftSource: state.draftSource,
+        photos: state.pendingPhotos.map(photo => ({ ...photo }))
+      };
+    }
+
+    function persistDraftState() {
+      if (!canUseLocalStorage()) return;
+      try {
+        if (!hasUnsavedDraft()) {
+          localStorage.removeItem(DRAFT_KEY);
+          return;
+        }
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draftSnapshot()));
+      } catch {
+        setStatus("Could not autosave draft");
+      }
+    }
+
+    function clearDraftState() {
+      try {
+        localStorage.removeItem(DRAFT_KEY);
+      } catch {
+        /* Ignore blocked storage while clearing volatile draft state. */
+      }
+    }
+
+    function normalizedDraftPoints(points) {
+      return Array.isArray(points)
+        ? points
+            .map(point => [Number(point?.[0]), Number(point?.[1]), Number(point?.[2])].filter(Number.isFinite))
+            .filter(point => point.length >= 2 && pointInSwissBounds(point))
+        : [];
+    }
+
+    function restoreDraftState() {
+      if (!canUseLocalStorage() || requestedEditRouteId() || selectedHashRouteId()) return false;
+      try {
+        const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || "null");
+        if (!saved || typeof saved !== "object") return false;
+        state.draft = normalizedDraftPoints(saved.draft);
+        state.draftRoute = normalizedDraftPoints(saved.draftRoute);
+        state.draftSource = saved.draftSource === "gpx" ? "gpx" : "";
+        state.pendingPhotos = Array.isArray(saved.photos) ? saved.photos.map(normalizePhoto).filter(Boolean) : [];
+        el.routeName.value = saved.name || "";
+        el.routeDate.value = saved.date || "";
+        el.routeTags.value = saved.tags || "";
+        el.routeDuration.value = saved.durationHours || "";
+        el.routeGain.value = saved.elevationGainM || "";
+        el.routeLoss.value = saved.elevationLossM || "";
+        el.routeNotes.value = saved.notes || "";
+        el.routeCaption.value = saved.caption || "";
+        el.backfillMode.checked = Boolean(saved.backfillMode);
+        activateType(saved.type === "train" ? "train" : "hike");
+        setStatus("Restored unsaved draft");
+        return true;
+      } catch {
+        clearDraftState();
+        return false;
+      }
+    }
+
     function formatDateTime(value) {
       if (!value) return "never";
       const date = new Date(value);
@@ -1056,6 +1133,7 @@
     function renderPhotoPreview() {
       if (!state.pendingPhotos.length) {
         el.photoPreview.innerHTML = `<div class="hint">No photos attached.</div>`;
+        persistDraftState();
         return;
       }
       el.photoPreview.innerHTML = state.pendingPhotos.map(photo => `
@@ -1064,6 +1142,7 @@
           <button type="button" title="Remove photo" data-photo-id="${escapeHtml(photo.id)}">x</button>
         </div>
       `).join("");
+      persistDraftState();
     }
 
     function compressImageFile(file) {
@@ -1441,6 +1520,7 @@
       el.undoPointBtn.disabled = state.draft.length === 0;
       el.clearDraftBtn.disabled = state.draft.length === 0;
       updateQuickPost();
+      persistDraftState();
     }
 
     function popupHtml(route) {
@@ -1609,6 +1689,7 @@
         renderDraft();
       }
       renderRoutes();
+      persistDraftState();
     }
 
     function resetForm(options = {}) {
@@ -1639,6 +1720,7 @@
       renderDraft();
       renderPhotoPreview();
       renderRoutes();
+      clearDraftState();
     }
 
     function hasUnsavedDraft() {
@@ -2147,6 +2229,20 @@ ${points}
       input.addEventListener("input", updateQuickPost);
       input.addEventListener("change", updateQuickPost);
     });
+    [
+      el.routeName,
+      el.routeDate,
+      el.routeTags,
+      el.routeDuration,
+      el.routeGain,
+      el.routeLoss,
+      el.routeNotes,
+      el.routeCaption,
+      el.backfillMode
+    ].forEach(input => {
+      input.addEventListener("input", persistDraftState);
+      input.addEventListener("change", persistDraftState);
+    });
     el.undoPointBtn.addEventListener("click", () => {
       state.draftSource = "";
       state.draft.pop();
@@ -2241,6 +2337,7 @@ ${points}
 
     loadHiddenCloudRoutes();
     loadRoutes();
+    restoreDraftState();
     renderDraft();
     renderPhotoPreview();
     renderTagSuggestions();
