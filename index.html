@@ -2182,6 +2182,7 @@
       if (!state.draft.length && route.type !== state.activeType) {
         syncActiveTypeControls(route.type);
       }
+      clearSearchMarker();
       renderRoutes();
       const layer = state.layers.get(id);
       if (layer) layer.openPopup();
