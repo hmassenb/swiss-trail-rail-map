@@ -1109,6 +1109,7 @@
           <div class="button-row">
             <button id="saveRouteBtn" class="primary" type="submit">Save route</button>
             <button id="undoPointBtn" type="button">Undo</button>
+            <button id="reverseDraftBtn" type="button" title="Reverse route direction">Reverse</button>
             <button id="clearDraftBtn" type="button">Clear</button>
           </div>
         </form>
@@ -1217,6 +1218,7 @@
       backfillMode: document.getElementById("backfillMode"),
       saveRouteBtn: document.getElementById("saveRouteBtn"),
       undoPointBtn: document.getElementById("undoPointBtn"),
+      reverseDraftBtn: document.getElementById("reverseDraftBtn"),
       clearDraftBtn: document.getElementById("clearDraftBtn"),
       importFile: document.getElementById("importFile"),
       exportJsonBtn: document.getElementById("exportJsonBtn"),
@@ -1971,6 +1973,15 @@
       setStatus(`Moved point ${index + 1}`);
     }
 
+    function reverseDraftRoute() {
+      if (state.draft.length < 2) return;
+      state.draftSource = "";
+      state.draft.reverse();
+      state.draftRoute.reverse();
+      updateDraftRoute();
+      setStatus("Reversed draft route direction");
+    }
+
     function renderDraftPointList() {
       if (!state.draft.length) {
         el.draftPointList.innerHTML = "";
@@ -2026,6 +2037,7 @@
       renderDraftPointList();
       el.saveRouteBtn.disabled = state.draft.length < 2;
       el.undoPointBtn.disabled = state.draft.length === 0;
+      el.reverseDraftBtn.disabled = state.draft.length < 2;
       el.clearDraftBtn.disabled = state.draft.length === 0;
       updateQuickPost();
       persistDraftState();
@@ -2932,6 +2944,7 @@ ${points}
       state.draft.pop();
       updateDraftRoute();
     });
+    el.reverseDraftBtn.addEventListener("click", reverseDraftRoute);
     el.draftPointList.addEventListener("click", event => {
       const button = event.target.closest("[data-remove-draft-point]");
       if (!button) return;

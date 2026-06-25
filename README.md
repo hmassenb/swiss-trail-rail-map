@@ -64,7 +64,7 @@ The overview page reads the same saved route data as the map page and displays:
 - map-page latest-saved snapshot with one-click zoom to recent entries
 - map-page selected-route detail panel with completeness badges, key metrics, clickable photo thumbnails, and zoom/overview/edit/clear actions
 - map-page backfill mode that keeps date, type, and tags after saving a new route
-- scrollable logging sidebar with draggable, click-to-remove draft points while drawing routes
+- scrollable logging sidebar with draggable, reversible, click-to-remove draft points while drawing routes
 - live draft metrics for routed distance, direct waypoint distance, point counts, elevation status, and last clicked coordinate
 - saved-route action key and accessible per-route controls for zoom, overview, edit, copy, export, and delete
 - map-page saved-route status filter with live counts for all, needs-info, complete, with-photos, and no-photo entries
@@ -174,7 +174,7 @@ To turn this into a more useful distance-tracking tool, the strongest remaining 
 
 4. Improve route editing
    - Split or merge routes.
-   - Duplicate a route and edit the copy.
+   - Insert a waypoint between two existing draft points.
 
 5. Add geography summaries
    - Cantons visited.
