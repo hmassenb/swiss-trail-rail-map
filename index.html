@@ -45,6 +45,7 @@
       min-width: 0;
       min-height: 0;
       height: 100vh;
+      overflow: hidden;
       z-index: 5;
     }
 
@@ -182,10 +183,12 @@
     .panel-scroll {
       padding: 14px 18px 18px;
       flex: 1 1 auto;
+      height: 100%;
       min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
       overscroll-behavior: contain;
+      scrollbar-gutter: stable;
     }
 
     .stats {
@@ -473,6 +476,54 @@
 
     .draft-metric.wide {
       grid-column: 1 / -1;
+    }
+
+    .draft-point-list {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .draft-point-row {
+      display: grid;
+      grid-template-columns: 26px minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      background: #f7faf9;
+      border: 1px solid #d8e0dd;
+      border-radius: 6px;
+      padding: 6px 7px;
+    }
+
+    .draft-point-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--green);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 780;
+    }
+
+    .draft-point-coords {
+      min-width: 0;
+      color: #405057;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .draft-point-remove {
+      min-height: 28px;
+      padding: 4px 8px;
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 720;
     }
 
     .hint {
@@ -901,10 +952,11 @@
         grid-row: 2;
         height: auto;
         min-height: 52vh;
+        overflow: visible;
         border-right: 0;
         border-top: 1px solid var(--line);
       }
-      .panel-scroll { max-height: none; }
+      .panel-scroll { height: auto; max-height: none; }
       .map-status { bottom: auto; top: 12px; right: 12px; }
     }
   </style>
@@ -1026,6 +1078,7 @@
           </label>
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
+            <div class="draft-point-list" id="draftPointList" aria-label="Selected route points"></div>
             <p class="hint">Click the map to add waypoints. Click a numbered point to remove it, or use Undo for the latest point. The preview fits to mapped paths or rail lines when routing is available.</p>
           </div>
           <label class="checkbox-line">
@@ -1137,6 +1190,7 @@
       routePhotos: document.getElementById("routePhotos"),
       photoPreview: document.getElementById("photoPreview"),
       coordPreview: document.getElementById("coordPreview"),
+      draftPointList: document.getElementById("draftPointList"),
       draftGpxFile: document.getElementById("draftGpxFile"),
       backfillMode: document.getElementById("backfillMode"),
       saveRouteBtn: document.getElementById("saveRouteBtn"),
@@ -1882,6 +1936,20 @@
       setStatus(`Removed point ${index + 1}`);
     }
 
+    function renderDraftPointList() {
+      if (!state.draft.length) {
+        el.draftPointList.innerHTML = "";
+        return;
+      }
+      el.draftPointList.innerHTML = state.draft.map((point, index) => `
+        <div class="draft-point-row">
+          <span class="draft-point-index">${index + 1}</span>
+          <span class="draft-point-coords" title="${point[0].toFixed(6)}, ${point[1].toFixed(6)}">${point[0].toFixed(5)}, ${point[1].toFixed(5)}</span>
+          <button class="draft-point-remove" type="button" data-remove-draft-point="${index}" title="Remove point ${index + 1}">Remove</button>
+        </div>
+      `).join("");
+    }
+
     function renderDraft() {
       draftGroup.clearLayers();
       if (draftLine) draftLine.remove();
@@ -1913,6 +1981,7 @@
         }).addTo(draftGroup);
       }
       el.coordPreview.innerHTML = draftSummary();
+      renderDraftPointList();
       el.saveRouteBtn.disabled = state.draft.length < 2;
       el.undoPointBtn.disabled = state.draft.length === 0;
       el.clearDraftBtn.disabled = state.draft.length === 0;
@@ -2820,6 +2889,11 @@ ${points}
       state.draftSource = "";
       state.draft.pop();
       updateDraftRoute();
+    });
+    el.draftPointList.addEventListener("click", event => {
+      const button = event.target.closest("[data-remove-draft-point]");
+      if (!button) return;
+      removeDraftPoint(Number(button.dataset.removeDraftPoint));
     });
     el.clearDraftBtn.addEventListener("click", clearDraftWithConfirmation);
     el.routeType.addEventListener("change", event => activateType(event.target.value));
