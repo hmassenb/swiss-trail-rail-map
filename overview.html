@@ -1027,6 +1027,10 @@
           <div class="summary-list" id="cantonSummary"></div>
         </div>
         <div class="summary-panel">
+          <h2>Route Envelope</h2>
+          <div class="summary-list" id="routeEnvelopeSummary"></div>
+        </div>
+        <div class="summary-panel">
           <h2>Highlights</h2>
           <div class="summary-list" id="highlightSummary"></div>
         </div>
@@ -1194,6 +1198,7 @@
       archiveSummary: document.getElementById("archiveSummary"),
       tagSummary: document.getElementById("tagSummary"),
       cantonSummary: document.getElementById("cantonSummary"),
+      routeEnvelopeSummary: document.getElementById("routeEnvelopeSummary"),
       highlightSummary: document.getElementById("highlightSummary"),
       backfillSummary: document.getElementById("backfillSummary"),
       focusNote: document.getElementById("focusNote"),
@@ -2361,6 +2366,7 @@ ${points}
       el.archiveSummary.innerHTML = archiveHealthRows(state.filtered);
       el.tagSummary.innerHTML = tagRows(state.filtered);
       el.cantonSummary.innerHTML = cantonRows(state.filtered);
+      el.routeEnvelopeSummary.innerHTML = routeEnvelopeRows(state.filtered);
       el.highlightSummary.innerHTML = highlightRows(state.filtered);
       el.backfillSummary.innerHTML = backfillRows(state.filtered);
     }
@@ -2556,6 +2562,31 @@ ${points}
         ? `<div class="summary-row"><span>Next uncovered cantons</span><strong>${missing.slice(0, 6).map(canton => escapeHtml(canton.code)).join(", ")}${missing.length > 6 ? "..." : ""}</strong></div>`
         : `<div class="summary-row"><span>All cantons have at least one estimated route touch.</span><strong></strong></div>`;
       return `${coverage}${topRows}${missingRows}<div class="summary-row"><span>Estimated from nearest canton centers.</span><strong></strong></div>`;
+    }
+
+    function routeEnvelopeRows(routes) {
+      const points = routes.flatMap(route => route.points || []);
+      if (!points.length) return `<div class="summary-row"><span>No route geometry in this filter.</span><strong></strong></div>`;
+      const lats = points.map(point => Number(point[0])).filter(Number.isFinite);
+      const lngs = points.map(point => Number(point[1])).filter(Number.isFinite);
+      const elevations = points.map(point => Number(point[2])).filter(Number.isFinite);
+      if (!lats.length || !lngs.length) return `<div class="summary-row"><span>No route geometry in this filter.</span><strong></strong></div>`;
+      const north = Math.max(...lats);
+      const south = Math.min(...lats);
+      const east = Math.max(...lngs);
+      const west = Math.min(...lngs);
+      const latKm = L.latLng(south, west).distanceTo(L.latLng(north, west)) / 1000;
+      const lngKm = L.latLng(south, west).distanceTo(L.latLng(south, east)) / 1000;
+      const altitudeRow = elevations.length
+        ? `<div class="summary-row"><span>Altitude sample range</span><strong>${Math.round(Math.min(...elevations))}-${Math.round(Math.max(...elevations))} m</strong></div>`
+        : `<div class="summary-row"><span>Altitude sample range</span><strong>n/a</strong></div>`;
+      return [
+        `<div class="summary-row"><span>North-south span</span><strong>${formatKm(latKm)}</strong></div>`,
+        `<div class="summary-row"><span>West-east span</span><strong>${formatKm(lngKm)}</strong></div>`,
+        `<div class="summary-row"><span>Latitude range</span><strong>${south.toFixed(2)}-${north.toFixed(2)}</strong></div>`,
+        `<div class="summary-row"><span>Longitude range</span><strong>${west.toFixed(2)}-${east.toFixed(2)}</strong></div>`,
+        altitudeRow
+      ].join("");
     }
 
     function routeHighlight(label, route, value) {
