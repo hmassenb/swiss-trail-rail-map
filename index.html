@@ -518,12 +518,25 @@
       white-space: nowrap;
     }
 
-    .draft-point-remove {
+    .draft-point-actions {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .draft-point-action {
       min-height: 28px;
       padding: 4px 8px;
-      color: var(--red);
       font-size: 12px;
       font-weight: 720;
+    }
+
+    .draft-point-insert {
+      color: var(--green);
+    }
+
+    .draft-point-remove {
+      color: var(--red);
     }
 
     .hint {
@@ -1100,7 +1113,7 @@
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
             <div class="draft-point-list" id="draftPointList" aria-label="Selected route points"></div>
-            <p class="hint">Click the map to add waypoints. Drag numbered points to adjust them, click a point or use its Remove button to delete it, or use Undo for the latest point. The preview fits to mapped paths or rail lines when routing is available.</p>
+            <p class="hint">Click the map to add waypoints. Drag numbered points to adjust them, use Insert to add a midpoint before dragging it into place, click a point or use Remove to delete it, or use Undo for the latest point.</p>
           </div>
           <label class="checkbox-line">
             <input id="backfillMode" type="checkbox" />
@@ -1960,6 +1973,20 @@
       setStatus(`Removed point ${index + 1}`);
     }
 
+    function insertDraftPointAfter(index) {
+      if (index < 0 || index >= state.draft.length - 1) return;
+      const current = state.draft[index];
+      const next = state.draft[index + 1];
+      const midpoint = [
+        (current[0] + next[0]) / 2,
+        (current[1] + next[1]) / 2
+      ];
+      state.draftSource = "";
+      state.draft.splice(index + 1, 0, midpoint);
+      updateDraftRoute();
+      setStatus(`Inserted point ${index + 2}`);
+    }
+
     function moveDraftPoint(index, latlng) {
       if (index < 0 || index >= state.draft.length) return;
       if (!SWISS_BOUNDS.contains(latlng)) {
@@ -1991,7 +2018,10 @@
         <div class="draft-point-row">
           <span class="draft-point-index">${index + 1}</span>
           <span class="draft-point-coords" title="${point[0].toFixed(6)}, ${point[1].toFixed(6)}">${point[0].toFixed(5)}, ${point[1].toFixed(5)}</span>
-          <button class="draft-point-remove" type="button" data-remove-draft-point="${index}" title="Remove point ${index + 1}">Remove</button>
+          <span class="draft-point-actions">
+            ${index < state.draft.length - 1 ? `<button class="draft-point-action draft-point-insert" type="button" data-insert-draft-point="${index}" title="Insert a point between ${index + 1} and ${index + 2}">Insert</button>` : ""}
+            <button class="draft-point-action draft-point-remove" type="button" data-remove-draft-point="${index}" title="Remove point ${index + 1}">Remove</button>
+          </span>
         </div>
       `).join("");
     }
@@ -2946,9 +2976,13 @@ ${points}
     });
     el.reverseDraftBtn.addEventListener("click", reverseDraftRoute);
     el.draftPointList.addEventListener("click", event => {
-      const button = event.target.closest("[data-remove-draft-point]");
-      if (!button) return;
-      removeDraftPoint(Number(button.dataset.removeDraftPoint));
+      const insertButton = event.target.closest("[data-insert-draft-point]");
+      if (insertButton) {
+        insertDraftPointAfter(Number(insertButton.dataset.insertDraftPoint));
+        return;
+      }
+      const removeButton = event.target.closest("[data-remove-draft-point]");
+      if (removeButton) removeDraftPoint(Number(removeButton.dataset.removeDraftPoint));
     });
     el.clearDraftBtn.addEventListener("click", clearDraftWithConfirmation);
     el.routeType.addEventListener("change", event => activateType(event.target.value));
