@@ -294,7 +294,7 @@
 
     .selected-summary-actions {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 7px;
     }
 
@@ -2023,8 +2023,16 @@
           <button type="button" data-selected-action="zoom">Zoom</button>
           <button type="button" data-selected-action="overview">Overview</button>
           <button type="button" data-selected-action="edit">Edit</button>
+          <button type="button" data-selected-action="clear">Clear</button>
         </div>
       `;
+    }
+
+    function clearSelectedRoute() {
+      state.selectedId = null;
+      clearSelectedRouteHash();
+      renderRoutes();
+      setStatus("Route selection cleared");
     }
 
     function openPhotoViewer(photo) {
@@ -2851,6 +2859,7 @@ ${points}
       if (button.dataset.selectedAction === "zoom") selectRoute(route.id, true);
       if (button.dataset.selectedAction === "overview") openRouteOverview(route.id);
       if (button.dataset.selectedAction === "edit") editRoute(route.id);
+      if (button.dataset.selectedAction === "clear") clearSelectedRoute();
     });
     el.photoViewerClose.addEventListener("click", closePhotoViewer);
     el.photoViewer.addEventListener("click", event => {
