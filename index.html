@@ -2239,6 +2239,7 @@
       if (layer) layer.openPopup();
       if (zoom && route?.points?.length > 1) map.fitBounds(boundsFor(route.points).pad(0.18));
       if (updateHash) updateSelectedRouteHash(route.id);
+      setStatus(`Selected ${route.name}`);
     }
 
     function openRouteOverview(id) {
