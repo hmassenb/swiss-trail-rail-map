@@ -1113,7 +1113,7 @@
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
             <div class="draft-point-list" id="draftPointList" aria-label="Selected route points"></div>
-            <p class="hint">Click the map to add waypoints. Drag numbered points to adjust them, use Insert to add a midpoint before dragging it into place, click a point or use Remove to delete it, or use Undo for the latest point.</p>
+            <p class="hint">Click the map to add waypoints. Click the dashed preview line to insert a point there, drag numbered points to adjust them, or use Insert, Remove, Undo, and Reverse to correct the draft.</p>
           </div>
           <label class="checkbox-line">
             <input id="backfillMode" type="checkbox" />
@@ -1295,6 +1295,7 @@
     const legendControl = L.control({ position: "bottomleft" });
     let legendElement = null;
     let draftLine = null;
+    let draftHitLine = null;
     let searchMarker = null;
 
     legendControl.onAdd = () => {
@@ -1987,6 +1988,45 @@
       setStatus(`Inserted point ${index + 2}`);
     }
 
+    function pointToSegmentDistance(point, start, end) {
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      if (!dx && !dy) return point.distanceTo(start);
+      const t = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / (dx * dx + dy * dy)));
+      return point.distanceTo(L.point(start.x + t * dx, start.y + t * dy));
+    }
+
+    function nearestDraftSegmentIndex(latlng) {
+      if (state.draft.length < 2) return -1;
+      const clicked = map.latLngToLayerPoint(latlng);
+      let bestIndex = 0;
+      let bestDistance = Infinity;
+      for (let index = 0; index < state.draft.length - 1; index++) {
+        const start = map.latLngToLayerPoint(L.latLng(state.draft[index][0], state.draft[index][1]));
+        const end = map.latLngToLayerPoint(L.latLng(state.draft[index + 1][0], state.draft[index + 1][1]));
+        const distance = pointToSegmentDistance(clicked, start, end);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = index;
+        }
+      }
+      return bestIndex;
+    }
+
+    function insertDraftPointAtLatLng(latlng) {
+      if (state.draft.length < 2) return;
+      if (!SWISS_BOUNDS.contains(latlng)) {
+        setStatus("Point is outside Switzerland");
+        return;
+      }
+      const segmentIndex = nearestDraftSegmentIndex(latlng);
+      if (segmentIndex < 0) return;
+      state.draftSource = "";
+      state.draft.splice(segmentIndex + 1, 0, [latlng.lat, latlng.lng]);
+      updateDraftRoute();
+      setStatus(`Inserted point ${segmentIndex + 2} on draft line`);
+    }
+
     function moveDraftPoint(index, latlng) {
       if (index < 0 || index >= state.draft.length) return;
       if (!SWISS_BOUNDS.contains(latlng)) {
@@ -2029,6 +2069,7 @@
     function renderDraft() {
       draftGroup.clearLayers();
       if (draftLine) draftLine.remove();
+      if (draftHitLine) draftHitLine.remove();
       state.draft.forEach((point, index) => {
         const marker = L.marker(point, {
           draggable: true,
@@ -2060,8 +2101,18 @@
           color: routeColor(state.activeType),
           weight: Math.max(4, routeWeight(state.activeType) - 1),
           opacity: 0.72,
-          dashArray: "7 7"
+          dashArray: "7 7",
+          interactive: false
         }).addTo(draftGroup);
+        draftHitLine = L.polyline(state.draftRoute, {
+          color: routeColor(state.activeType),
+          weight: 18,
+          opacity: 0.01,
+          bubblingMouseEvents: false
+        }).addTo(draftGroup);
+        draftHitLine.on("click", event => {
+          insertDraftPointAtLatLng(event.latlng);
+        });
       }
       el.coordPreview.innerHTML = draftSummary();
       renderDraftPointList();
