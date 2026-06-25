@@ -79,6 +79,7 @@ The overview page reads the same saved route data as the map page and displays:
 - a backfill checklist for missing dates, duration, hike elevation, and photos
 - overview-page JSON export/import controls for backups and moving the private archive between browsers
 - overview-page public JSON export for the current filters, excluding notes, captions, photos, and private visibility
+- read-only public viewer that loads cleaned public JSON exports without touching the private local browser archive
 - overview-page CSV export for the currently visible route log
 - quick timeframe presets for 30 days, 90 days, this year, and all time
 - custom timeframe metrics that update the route log, map, name summaries, tags, and dashboard cards together
@@ -89,6 +90,20 @@ The overview page reads the same saved route data as the map page and displays:
   src="https://hmassenb.github.io/swiss-trail-rail-map/overview.html"
   title="Swiss Trail and Rail Overview"
   style="width: 100%; height: 900px; border: 0;">
+</iframe>
+```
+
+## Public Viewer
+
+[Open the public viewer](https://hmassenb.github.io/swiss-trail-rail-map/public.html)
+
+Use this page for a read-only public or embedded view. It does not load your private browser archive. Instead, export a cleaned subset with `Export public JSON` on the overview page, then load that file into the viewer. If you host the cleaned JSON file next to the app, you can open it directly with a data URL:
+
+```html
+<iframe
+  src="https://hmassenb.github.io/swiss-trail-rail-map/public.html?data=public-routes.json"
+  title="Swiss Trail and Rail Public Viewer"
+  style="width: 100%; height: 800px; border: 0;">
 </iframe>
 ```
 
@@ -140,7 +155,7 @@ Unsaved route drafts are also saved in local browser storage while you work. The
 
 Use `Export JSON` on the map page or `Export JSON backup` on the overview page for private backups or to move routes to another browser/device. New JSON exports are versioned backup packages with export time, route count, saved timestamp, and the full `routes` array, including notes and compressed photos; filenames include the export date to avoid overwriting older backups. Older raw route-array backups still import. Use `Import GPX / JSON` on the map page, or `Import JSON` on the overview page, to restore or add routes. Use `Export CSV log` on the overview page when you want the currently filtered log in a spreadsheet.
 
-Use `Export public JSON` on the overview page when you want a cleaned subset for a future read-only embed or public map. It exports only the currently visible routes and removes personal notes, captions, photos, and private visibility while keeping route geometry, dates, tags, distance metrics, and elevation fields.
+Use `Export public JSON` on the overview page when you want a cleaned subset for a read-only embed or public map. It exports only the currently visible routes and removes personal notes, captions, photos, and private visibility while keeping route geometry, dates, tags, distance metrics, and elevation fields. Load the file in `public.html`, or host it as a static JSON file and open `public.html?data=public-routes.json`.
 
 Photos are compressed before saving, then stored inside the route JSON as data URLs. This keeps the app static and GitHub Pages friendly, but browser storage is finite. Export JSON regularly if you attach many photos or backfill many years of hikes.
 
@@ -187,5 +202,5 @@ To turn this into a more useful distance-tracking tool, the strongest remaining 
 
 6. Add optional publishing modes
    - Keep browser storage as the private working copy.
-   - Build a read-only viewer that can load the cleaned public JSON export for embedding selected routes on a website.
+   - Add a small publishing workflow for replacing the hosted public JSON file from a cleaned export.
    - Add optional hidden notes that are not included in any published export.
