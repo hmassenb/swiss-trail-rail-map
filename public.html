@@ -322,10 +322,11 @@
         <div class="button-row">
           <label class="button" for="publicJsonFile">Load public JSON</label>
           <input class="file-input" id="publicJsonFile" type="file" accept=".json,application/json" />
+          <button id="loadDemoBtn" type="button">Load demo routes</button>
           <button id="fitRoutesBtn" type="button">Fit routes</button>
           <button id="fitSwissBtn" type="button">Fit Switzerland</button>
         </div>
-        <div class="status warning" id="status">Load a cleaned public JSON export from the overview page, or pass a hosted file with <code>?data=public-routes.json</code>.</div>
+        <div class="status warning" id="status">Load a cleaned public JSON export from the overview page, pass a hosted file with <code>?data=public-routes.json</code>, or preview the viewer with demo routes.</div>
         <div class="stats">
           <div class="stat"><strong id="routeCount">0</strong><span>Routes shown</span></div>
           <div class="stat"><strong id="hikeKm">0 km</strong><span>Hiking</span></div>
@@ -361,6 +362,7 @@
 
     const el = {
       publicJsonFile: document.getElementById("publicJsonFile"),
+      loadDemoBtn: document.getElementById("loadDemoBtn"),
       fitRoutesBtn: document.getElementById("fitRoutesBtn"),
       fitSwissBtn: document.getElementById("fitSwissBtn"),
       status: document.getElementById("status"),
@@ -402,6 +404,76 @@
     });
     L.control.layers({ Topographic: topo, Streets: osm }, { "Hiking paths": hikingOverlay, "Rail lines": railOverlay }, { collapsed: true }).addTo(map);
     const routeGroup = L.featureGroup().addTo(map);
+    const DEMO_PUBLIC_ROUTES = {
+      format: "swiss-trail-rail-public-log",
+      version: 1,
+      exportedAt: "2026-06-25T00:00:00.000Z",
+      routeCount: 4,
+      scope: "demo public routes",
+      privacy: "Personal notes, captions, photos, and private visibility are excluded.",
+      routes: [
+        {
+          id: "demo-public-uetliberg",
+          name: "Zurich HB to Uetliberg",
+          type: "hike",
+          date: "2025-05-18",
+          tags: ["Zurich", "after work", "viewpoint"],
+          durationHours: 2.1,
+          elevationGainM: 430,
+          elevationLossM: 90,
+          visibility: "public",
+          waypoints: [[47.3769, 8.5417], [47.3669, 8.5188], [47.3495, 8.4916]],
+          points: [[47.3769, 8.5417, 408], [47.3669, 8.5188, 520], [47.3581, 8.5058, 660], [47.3495, 8.4916, 870]],
+          metrics: { routedKm: 6.8, directKm: 5.4, waypointCount: 3, pointCount: 4 },
+          updatedAt: "2026-06-25T00:00:00.000Z"
+        },
+        {
+          id: "demo-public-rigi",
+          name: "Rigi Kulm Panorama",
+          type: "hike",
+          date: "2024-09-07",
+          tags: ["Central Switzerland", "ridge", "lake view"],
+          durationHours: 3.5,
+          elevationGainM: 620,
+          elevationLossM: 620,
+          visibility: "public",
+          waypoints: [[47.0454, 8.4821], [47.0567, 8.4850], [47.0612, 8.4660]],
+          points: [[47.0454, 8.4821, 1450], [47.0522, 8.4860, 1660], [47.0567, 8.4850, 1798], [47.0612, 8.4660, 1452]],
+          metrics: { routedKm: 8.9, directKm: 3.2, waypointCount: 3, pointCount: 4 },
+          updatedAt: "2026-06-25T00:00:00.000Z"
+        },
+        {
+          id: "demo-public-gornergrat",
+          name: "Zermatt to Gornergrat",
+          type: "hike",
+          date: "2023-08-12",
+          tags: ["Valais", "Matterhorn", "alpine"],
+          durationHours: 5.4,
+          elevationGainM: 1470,
+          elevationLossM: 120,
+          visibility: "public",
+          waypoints: [[46.0207, 7.7491], [45.9901, 7.7708], [45.9833, 7.7833]],
+          points: [[46.0207, 7.7491, 1608], [46.0070, 7.7590, 2050], [45.9901, 7.7708, 2582], [45.9833, 7.7833, 3089]],
+          metrics: { routedKm: 12.4, directKm: 4.7, waypointCount: 3, pointCount: 4 },
+          updatedAt: "2026-06-25T00:00:00.000Z"
+        },
+        {
+          id: "demo-public-gotthard-train",
+          name: "Lucerne to Lugano by Gotthard",
+          type: "train",
+          date: "2024-06-22",
+          tags: ["Gotthard", "Ticino", "rail"],
+          durationHours: 2.6,
+          elevationGainM: "",
+          elevationLossM: "",
+          visibility: "public",
+          waypoints: [[47.0502, 8.3093], [46.8804, 8.6380], [46.0037, 8.9511]],
+          points: [[47.0502, 8.3093], [46.8804, 8.6380], [46.5587, 8.5616], [46.1956, 9.0297], [46.0037, 8.9511]],
+          metrics: { routedKm: 169.2, directKm: 132.7, waypointCount: 3, pointCount: 5 },
+          updatedAt: "2026-06-25T00:00:00.000Z"
+        }
+      ]
+    };
 
     let legendElement = null;
     const legendControl = L.control({ position: "bottomright" });
@@ -655,6 +727,9 @@
       }
     });
 
+    el.loadDemoBtn.addEventListener("click", () => {
+      loadPublicData(DEMO_PUBLIC_ROUTES, "demo routes").catch(error => setStatus(error.message || "Could not load demo routes.", true));
+    });
     el.fitRoutesBtn.addEventListener("click", fitRoutes);
     el.fitSwissBtn.addEventListener("click", () => map.fitBounds(SWISS_BOUNDS));
     el.searchInput.addEventListener("input", applyFilters);
