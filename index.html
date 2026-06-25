@@ -906,6 +906,27 @@
       max-width: min(430px, calc(100vw - 32px));
     }
 
+    .draft-waypoint-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border: 2px solid #fff;
+      border-radius: 999px;
+      background: var(--green);
+      color: #fff;
+      box-shadow: 0 3px 10px rgba(20, 28, 32, 0.26);
+      cursor: grab;
+      font-size: 11px;
+      font-weight: 780;
+      line-height: 1;
+    }
+
+    .leaflet-drag-target .draft-waypoint-icon {
+      cursor: grabbing;
+    }
+
     .draft-point-label {
       border: 1px solid rgba(31, 43, 47, 0.22);
       background: rgba(255, 255, 255, 0.92);
@@ -1079,7 +1100,7 @@
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
             <div class="draft-point-list" id="draftPointList" aria-label="Selected route points"></div>
-            <p class="hint">Click the map to add waypoints. Click a numbered point to remove it, or use Undo for the latest point. The preview fits to mapped paths or rail lines when routing is available.</p>
+            <p class="hint">Click the map to add waypoints. Drag numbered points to adjust them, click a point or use its Remove button to delete it, or use Undo for the latest point. The preview fits to mapped paths or rail lines when routing is available.</p>
           </div>
           <label class="checkbox-line">
             <input id="backfillMode" type="checkbox" />
@@ -1161,7 +1182,8 @@
       draftSource: "",
       layers: new Map(),
       selectedId: null,
-      routingRequestId: 0
+      routingRequestId: 0,
+      draggedDraftPoint: false
     };
 
     const el = {
@@ -1936,6 +1958,19 @@
       setStatus(`Removed point ${index + 1}`);
     }
 
+    function moveDraftPoint(index, latlng) {
+      if (index < 0 || index >= state.draft.length) return;
+      if (!SWISS_BOUNDS.contains(latlng)) {
+        setStatus("Point is outside Switzerland");
+        renderDraft();
+        return;
+      }
+      state.draftSource = "";
+      state.draft[index] = [latlng.lat, latlng.lng];
+      updateDraftRoute();
+      setStatus(`Moved point ${index + 1}`);
+    }
+
     function renderDraftPointList() {
       if (!state.draft.length) {
         el.draftPointList.innerHTML = "";
@@ -1954,20 +1989,27 @@
       draftGroup.clearLayers();
       if (draftLine) draftLine.remove();
       state.draft.forEach((point, index) => {
-        const marker = L.circleMarker(point, {
-          radius: 7,
-          color: "#fff",
-          weight: 2,
-          fillColor: routeColor(state.activeType),
-          fillOpacity: 1,
-          bubblingMouseEvents: false
-        }).bindTooltip(String(index + 1), {
-          permanent: true,
-          direction: "top",
-          offset: [0, -8],
-          className: "draft-point-label"
+        const marker = L.marker(point, {
+          draggable: true,
+          title: `Point ${index + 1}: drag to adjust, click to remove`,
+          icon: L.divIcon({
+            className: "",
+            html: `<span class="draft-waypoint-icon">${index + 1}</span>`,
+            iconSize: [22, 22],
+            iconAnchor: [11, 11]
+          })
+        });
+        marker.on("dragstart", () => {
+          state.draggedDraftPoint = true;
+        });
+        marker.on("dragend", event => {
+          moveDraftPoint(index, event.target.getLatLng());
+          setTimeout(() => {
+            state.draggedDraftPoint = false;
+          }, 0);
         });
         marker.on("click", () => {
+          if (state.draggedDraftPoint) return;
           removeDraftPoint(index);
         });
         draftGroup.addLayer(marker);
