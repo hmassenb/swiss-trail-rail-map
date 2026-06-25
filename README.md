@@ -97,7 +97,9 @@ The overview page reads the same saved route data as the map page and displays:
 
 [Open the public viewer](https://hmassenb.github.io/swiss-trail-rail-map/public.html)
 
-Use this page for a read-only public or embedded view. It does not load your private browser archive. Preview it with `Load demo routes`, or export a cleaned subset with `Export public JSON` on the overview page and load that file into the viewer. If you host the cleaned JSON file next to the app, you can open it directly with a data URL:
+[Open the hosted public demo](https://hmassenb.github.io/swiss-trail-rail-map/public.html?data=public-routes.json)
+
+Use this page for a read-only public or embedded view. It does not load your private browser archive. Preview it with `Load demo routes`, open the hosted demo above, or export a cleaned subset with `Export public JSON` on the overview page and load that file into the viewer. If you host the cleaned JSON file next to the app, you can open it directly with a data URL:
 
 ```html
 <iframe
