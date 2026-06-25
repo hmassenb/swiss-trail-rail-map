@@ -59,6 +59,7 @@ The overview page reads the same saved route data as the map page and displays:
 - place-search marker also clears when focusing a saved route
 - main-map legend with saved hike/train counts, distances, and current draft distance
 - map-page `Done` control to fit the map to saved routes in the active hike/train view
+- map-page Hikes and Trains tabs with live saved-route counts
 - map-page latest-saved snapshot with one-click zoom to recent entries
 - map-page selected-route detail panel with key metrics, clickable photo thumbnails, and zoom/overview/edit/clear actions
 - map-page backfill mode that keeps date, type, and tags after saving a new route

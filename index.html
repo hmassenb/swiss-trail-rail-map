@@ -154,10 +154,29 @@
       font-weight: 680;
     }
 
+    .tab span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      min-height: 20px;
+      margin-left: 6px;
+      border-radius: 999px;
+      background: #eef2f1;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+    }
+
     .tab.active {
       background: #1f2b2f;
       color: #fff;
       border-color: #1f2b2f;
+    }
+
+    .tab.active span {
+      background: rgba(255, 255, 255, 0.16);
+      color: #fff;
     }
 
     .panel-scroll {
@@ -907,8 +926,8 @@
       </header>
 
       <div class="tabs">
-        <button class="tab active" id="tabHike" type="button">Hikes</button>
-        <button class="tab" id="tabTrain" type="button">Trains</button>
+        <button class="tab active" id="tabHike" type="button">Hikes <span id="hikeCountTab">0</span></button>
+        <button class="tab" id="tabTrain" type="button">Trains <span id="trainCountTab">0</span></button>
       </div>
 
       <div class="panel-scroll">
@@ -1132,6 +1151,8 @@
       resetRouteFiltersBtn: document.getElementById("resetRouteFiltersBtn"),
       routeListNote: document.getElementById("routeListNote"),
       routeList: document.getElementById("routeList"),
+      hikeCountTab: document.getElementById("hikeCountTab"),
+      trainCountTab: document.getElementById("trainCountTab"),
       hikeKm: document.getElementById("hikeKm"),
       trainKm: document.getElementById("trainKm"),
       completeRoutes: document.getElementById("completeRoutes"),
@@ -2165,12 +2186,15 @@
     function renderStats() {
       const totals = state.routes.reduce((acc, route) => {
         acc[route.type] += distanceKm(route.points || []);
+        acc[`${route.type}Count`] += 1;
         if (missingRouteFields(route).length) acc.incomplete += 1;
         else acc.complete += 1;
         return acc;
-      }, { hike: 0, train: 0, complete: 0, incomplete: 0 });
+      }, { hike: 0, train: 0, hikeCount: 0, trainCount: 0, complete: 0, incomplete: 0 });
       el.hikeKm.textContent = formatKm(totals.hike);
       el.trainKm.textContent = formatKm(totals.train);
+      el.hikeCountTab.textContent = totals.hikeCount;
+      el.trainCountTab.textContent = totals.trainCount;
       el.completeRoutes.textContent = totals.complete;
       el.incompleteRoutes.textContent = totals.incomplete;
     }
