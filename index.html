@@ -2039,6 +2039,7 @@
         ["Pace", pace || "Missing"]
       ];
       const tags = route.tags?.length ? `<div class="route-meta">${route.tags.map(tag => `<span>${escapeHtml(tag)}</span>`).join("")}</div>` : "";
+      const badges = routeCompletenessBadges(route);
       const photos = route.photos?.length
         ? `
           <div class="photo-strip">
@@ -2053,6 +2054,7 @@
         : "";
       el.selectedRouteDetail.innerHTML = `
         <div class="selected-summary-title">${escapeHtml(route.name)}</div>
+        <div class="route-badges">${badges}</div>
         <div class="selected-summary-grid">
           ${metrics.map(([label, value]) => `
             <div class="selected-summary-metric">
