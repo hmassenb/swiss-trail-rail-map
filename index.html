@@ -1639,6 +1639,30 @@
       return labels[el.routeStatus.value] || labels.all;
     }
 
+    function updateRouteStatusOptionCounts() {
+      const routes = state.routes.filter(route => route.type === state.activeType);
+      const counts = routes.reduce((acc, route) => {
+        const missing = missingRouteFields(route);
+        acc.all += 1;
+        if (missing.length) acc.needsInfo += 1;
+        else acc.complete += 1;
+        if (route.photos?.length) acc.withPhotos += 1;
+        else acc.missingPhotos += 1;
+        return acc;
+      }, { all: 0, needsInfo: 0, complete: 0, withPhotos: 0, missingPhotos: 0 });
+      const labels = {
+        all: `All (${counts.all})`,
+        "needs-info": `Needs info (${counts.needsInfo})`,
+        complete: `Complete (${counts.complete})`,
+        "with-photos": `With photos (${counts.withPhotos})`,
+        "missing-photos": `No photos (${counts.missingPhotos})`
+      };
+      Object.entries(labels).forEach(([value, label]) => {
+        const option = el.routeStatus.querySelector(`option[value="${value}"]`);
+        if (option) option.textContent = label;
+      });
+    }
+
     function latestSavedRoutes(limit = 3) {
       return [...state.routes]
         .filter(route => route.points?.length > 1)
@@ -2053,6 +2077,7 @@
     }
 
     function renderList() {
+      updateRouteStatusOptionCounts();
       const query = el.routeFilter.value.trim().toLowerCase();
       const typeRoutes = state.routes.filter(route => route.type === state.activeType);
       const statusRoutes = typeRoutes.filter(routeStatusMatches);
