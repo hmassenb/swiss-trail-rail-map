@@ -2479,19 +2479,20 @@ ${points}
     function tagRows(routes) {
       const grouped = routes.reduce((acc, route) => {
         (route.tags || []).forEach(tag => {
-          if (!acc[tag]) acc[tag] = { count: 0, km: 0 };
+          if (!acc[tag]) acc[tag] = { count: 0, km: 0, gain: 0 };
           acc[tag].count += 1;
           acc[tag].km += distanceKm(route.points);
+          acc[tag].gain += Number(route.elevationGainM) || 0;
         });
         return acc;
       }, {});
       const rows = Object.entries(grouped)
-        .sort(([, a], [, b]) => b.count - a.count || b.km - a.km)
+        .sort(([, a], [, b]) => b.count - a.count || b.km - a.km || b.gain - a.gain)
         .slice(0, 8);
       if (!rows.length) return `<div class="summary-row"><span>No tags yet.</span><strong></strong></div>`;
       return rows.map(([tag, data]) => `
         <div class="summary-row">
-          <span>${escapeHtml(tag)} - ${data.count} route${data.count === 1 ? "" : "s"}</span>
+          <span>${escapeHtml(tag)} - ${data.count} route${data.count === 1 ? "" : "s"}${data.gain ? ` - ${Math.round(data.gain)} m gain` : ""}</span>
           <strong>${formatKm(data.km)}</strong>
         </div>
       `).join("");

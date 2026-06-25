@@ -43,6 +43,7 @@ The overview page reads the same saved route data as the map page and displays:
 - selected-route elevation profiles when GPX imports or clicked hike elevation lookups provide elevation samples
 - route photo thumbnails and selected-route photo galleries with full-size photo links
 - yearly distance, yearly elevation gain, and monthly distance summaries
+- distance and elevation gain by tag in the overview summary
 - route cards with name, caption, tags, duration, pace/speed, elevation, completeness badges, notes, distance, photos, and clicked waypoint coordinates
 - map-page route selection that keeps the Hikes/Trains sidebar tab aligned with the selected saved route when no draft is active
 - map-page status feedback when a saved route is selected
@@ -170,7 +171,6 @@ To turn this into a more useful distance-tracking tool, the strongest remaining 
 3. Add richer progress views
    - Calendar heatmap by date completed.
    - Longest routes and most visited regions.
-   - Distance and elevation by tag.
 
 4. Improve route editing
    - Split or merge routes.
