@@ -2099,8 +2099,15 @@
       el.photoViewerImage.alt = "";
     }
 
+    function hasActiveRouteFilters() {
+      return Boolean(el.routeFilter.value.trim()) ||
+        el.routeStatus.value !== "all" ||
+        el.routeSort.value !== "date-desc";
+    }
+
     function renderList() {
       updateRouteStatusOptionCounts();
+      el.resetRouteFiltersBtn.disabled = !hasActiveRouteFilters();
       const query = el.routeFilter.value.trim().toLowerCase();
       const typeRoutes = state.routes.filter(route => route.type === state.activeType);
       const statusRoutes = typeRoutes.filter(routeStatusMatches);
