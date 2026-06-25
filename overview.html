@@ -1011,6 +1011,10 @@
           <div class="summary-list" id="monthSummary"></div>
         </div>
         <div class="summary-panel">
+          <h2>Hikes vs Trains</h2>
+          <div class="summary-list" id="typeComparisonSummary"></div>
+        </div>
+        <div class="summary-panel">
           <h2>Archive Health</h2>
           <div class="summary-list" id="archiveSummary"></div>
         </div>
@@ -1186,6 +1190,7 @@
       yearSummary: document.getElementById("yearSummary"),
       yearElevationSummary: document.getElementById("yearElevationSummary"),
       monthSummary: document.getElementById("monthSummary"),
+      typeComparisonSummary: document.getElementById("typeComparisonSummary"),
       archiveSummary: document.getElementById("archiveSummary"),
       tagSummary: document.getElementById("tagSummary"),
       cantonSummary: document.getElementById("cantonSummary"),
@@ -2352,6 +2357,7 @@ ${points}
       el.yearSummary.innerHTML = summaryRows(byYear, 8, "No dated entries yet.");
       el.yearElevationSummary.innerHTML = elevationRows(gainByYear, 8, "No dated hikes with elevation yet.");
       el.monthSummary.innerHTML = summaryRows(byMonth, 12, "No dated entries yet.");
+      el.typeComparisonSummary.innerHTML = typeComparisonRows(state.filtered);
       el.archiveSummary.innerHTML = archiveHealthRows(state.filtered);
       el.tagSummary.innerHTML = tagRows(state.filtered);
       el.cantonSummary.innerHTML = cantonRows(state.filtered);
@@ -2406,6 +2412,25 @@ ${points}
           <strong>${Math.round(totals.gain)} m</strong>
         </div>
       `).join("");
+    }
+
+    function typeComparisonRows(routes) {
+      if (!routes.length) return `<div class="summary-row"><span>No routes in this filter.</span><strong></strong></div>`;
+      const hikeRoutes = routes.filter(route => route.type === "hike");
+      const trainRoutes = routes.filter(route => route.type === "train");
+      const hikeKm = hikeRoutes.reduce((sum, route) => sum + distanceKm(route.points), 0);
+      const trainKm = trainRoutes.reduce((sum, route) => sum + distanceKm(route.points), 0);
+      const totalKm = hikeKm + trainKm;
+      const share = totalKm ? Math.round((hikeKm / totalKm) * 100) : 0;
+      const averageHike = hikeRoutes.length ? hikeKm / hikeRoutes.length : 0;
+      const averageTrain = trainRoutes.length ? trainKm / trainRoutes.length : 0;
+      return [
+        `<div class="summary-row"><span>Hiking distance share</span><strong>${share}%</strong></div>`,
+        `<div class="summary-row"><span>Hikes logged</span><strong>${hikeRoutes.length}</strong></div>`,
+        `<div class="summary-row"><span>Train rides logged</span><strong>${trainRoutes.length}</strong></div>`,
+        `<div class="summary-row"><span>Average hike</span><strong>${formatKm(averageHike)}</strong></div>`,
+        `<div class="summary-row"><span>Average train ride</span><strong>${formatKm(averageTrain)}</strong></div>`
+      ].join("");
     }
 
     function formatBytes(bytes) {
