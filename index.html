@@ -931,6 +931,70 @@
       max-width: min(430px, calc(100vw - 32px));
     }
 
+    .split-picker {
+      position: fixed;
+      right: 16px;
+      top: 92px;
+      z-index: 520;
+      width: min(360px, calc(100vw - 32px));
+      background: rgba(248, 249, 246, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 10px;
+    }
+
+    .split-picker[hidden] {
+      display: none;
+    }
+
+    .split-picker-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .split-picker-head strong {
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .split-picker label {
+      display: grid;
+      gap: 6px;
+      color: #344249;
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .split-picker input[type="range"] {
+      width: 100%;
+      padding: 0;
+    }
+
+    .split-picker-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    .split-picker-metrics div {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 8px;
+    }
+
+    .split-picker-metrics strong {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 3px;
+    }
+
     .draft-waypoint-icon {
       display: inline-flex;
       align-items: center;
@@ -1208,6 +1272,21 @@
   </div>
 
   <div class="map-status" id="mapStatus">Ready</div>
+  <div class="split-picker" id="splitPicker" hidden role="dialog" aria-label="Split saved route">
+    <div class="split-picker-head">
+      <strong id="splitPickerTitle">Split route</strong>
+      <button id="splitCancelBtn" type="button">Cancel</button>
+    </div>
+    <label>
+      Split after geometry point <output id="splitPointLabel">2</output>
+      <input id="splitSlider" type="range" min="2" max="2" step="1" value="2" />
+    </label>
+    <div class="split-picker-metrics" id="splitMetrics"></div>
+    <div class="button-row">
+      <button id="splitConfirmBtn" class="primary" type="button">Split route</button>
+      <button id="splitCancelBtnBottom" type="button">Cancel</button>
+    </div>
+  </div>
   <div class="photo-viewer" id="photoViewer" aria-hidden="true">
     <div class="photo-viewer-panel" role="dialog" aria-modal="true" aria-label="Route photo viewer">
       <div class="photo-viewer-head">
@@ -1237,7 +1316,8 @@
       layers: new Map(),
       selectedId: null,
       routingRequestId: 0,
-      draggedDraftPoint: false
+      draggedDraftPoint: false,
+      pendingSplit: null
     };
 
     const el = {
@@ -1296,6 +1376,14 @@
       photoViewerTitle: document.getElementById("photoViewerTitle"),
       photoViewerImage: document.getElementById("photoViewerImage"),
       photoViewerClose: document.getElementById("photoViewerClose"),
+      splitPicker: document.getElementById("splitPicker"),
+      splitPickerTitle: document.getElementById("splitPickerTitle"),
+      splitSlider: document.getElementById("splitSlider"),
+      splitPointLabel: document.getElementById("splitPointLabel"),
+      splitMetrics: document.getElementById("splitMetrics"),
+      splitConfirmBtn: document.getElementById("splitConfirmBtn"),
+      splitCancelBtn: document.getElementById("splitCancelBtn"),
+      splitCancelBtnBottom: document.getElementById("splitCancelBtnBottom"),
       mapStatus: document.getElementById("mapStatus")
     };
 
@@ -2252,6 +2340,63 @@
       }
     }
 
+    function splitPreviewParts(splitAfter) {
+      if (!state.pendingSplit) return null;
+      return {
+        firstPoints: state.pendingSplit.points.slice(0, splitAfter + 1).map(point => [...point]),
+        secondPoints: state.pendingSplit.points.slice(splitAfter).map(point => [...point])
+      };
+    }
+
+    function updateSplitPicker() {
+      if (!state.pendingSplit) return;
+      const min = Number(el.splitSlider.min);
+      const max = Number(el.splitSlider.max);
+      const splitAfter = Math.max(min, Math.min(max, Number(el.splitSlider.value)));
+      el.splitSlider.value = splitAfter;
+      el.splitPointLabel.value = splitAfter;
+      const parts = splitPreviewParts(splitAfter);
+      if (!parts) return;
+      renderSplitPreview(parts.firstPoints, parts.secondPoints);
+      el.splitMetrics.innerHTML = `
+        <div><strong>Part 1</strong>${formatKm(distanceKm(parts.firstPoints))}<br>${parts.firstPoints.length} geometry points</div>
+        <div><strong>Part 2</strong>${formatKm(distanceKm(parts.secondPoints))}<br>${parts.secondPoints.length} geometry points</div>
+      `;
+      setStatus("Previewing split route parts");
+    }
+
+    function cancelSplitPicker(statusText = "Split canceled") {
+      state.pendingSplit = null;
+      el.splitPicker.hidden = true;
+      clearSplitPreview();
+      setStatus(statusText);
+    }
+
+    function confirmSplitPicker() {
+      if (!state.pendingSplit) return;
+      const route = state.routes.find(item => item.id === state.pendingSplit.id);
+      if (!route) {
+        cancelSplitPicker("Route no longer exists");
+        return;
+      }
+      const splitAfter = Number(el.splitSlider.value);
+      const parts = splitPreviewParts(splitAfter);
+      if (!parts) return;
+      const first = routePart(route, parts.firstPoints, 1);
+      const second = routePart(route, parts.secondPoints, 2);
+      state.routes = state.routes.flatMap(item => item.id === route.id ? [first, second] : [item]);
+      state.activeType = route.type;
+      state.selectedId = first.id;
+      state.pendingSplit = null;
+      el.splitPicker.hidden = true;
+      clearSplitPreview();
+      saveRoutes();
+      renderTagSuggestions();
+      activateType(route.type);
+      selectRoute(first.id, true);
+      setStatus(`Split ${route.name} into two route parts`);
+    }
+
     function popupHtml(route) {
       const km = formatKm(distanceKm(route.points));
       const date = route.date ? `<br><strong>Date:</strong> ${escapeHtml(route.date)}` : "";
@@ -2796,7 +2941,7 @@
       };
     }
 
-    async function splitRoute(id) {
+    function splitRoute(id) {
       const route = state.routes.find(item => item.id === id);
       if (!route) return;
       const points = Array.isArray(route.points) ? route.points : [];
@@ -2804,42 +2949,19 @@
         setStatus("Route needs at least four geometry points to split");
         return;
       }
-      const input = prompt(`Split "${route.name}" after which geometry point? Enter a number from 2 to ${points.length - 2}.`);
-      if (!input) return;
-      const splitAfter = Number(input);
-      if (!Number.isInteger(splitAfter) || splitAfter < 2 || splitAfter > points.length - 2) {
-        setStatus("Split point is outside the allowed range");
-        return;
-      }
-      const firstPoints = points.slice(0, splitAfter + 1).map(point => [...point]);
-      const secondPoints = points.slice(splitAfter).map(point => [...point]);
-      renderSplitPreview(firstPoints, secondPoints);
-      setStatus("Previewing split route parts");
-      await new Promise(resolve => requestAnimationFrame(resolve));
-      const preview = [
-        `Split "${route.name}" after geometry point ${splitAfter}?`,
-        "",
-        `Part 1: ${formatKm(distanceKm(firstPoints))}, ${firstPoints.length} geometry points`,
-        `Part 2: ${formatKm(distanceKm(secondPoints))}, ${secondPoints.length} geometry points`,
-        "",
-        "This will replace the original route with two saved route parts."
-      ].join("\n");
-      if (!confirm(preview)) {
-        clearSplitPreview();
-        setStatus("Split canceled");
-        return;
-      }
-      clearSplitPreview();
-      const first = routePart(route, firstPoints, 1);
-      const second = routePart(route, secondPoints, 2);
-      state.routes = state.routes.flatMap(item => item.id === id ? [first, second] : [item]);
-      state.activeType = route.type;
-      state.selectedId = first.id;
-      saveRoutes();
-      renderTagSuggestions();
-      activateType(route.type);
-      selectRoute(first.id, true);
-      setStatus(`Split ${route.name} into two route parts`);
+      state.pendingSplit = {
+        id,
+        name: route.name,
+        points: points.map(point => [...point])
+      };
+      const min = 2;
+      const max = points.length - 2;
+      el.splitSlider.min = min;
+      el.splitSlider.max = max;
+      el.splitSlider.value = Math.round((min + max) / 2);
+      el.splitPickerTitle.textContent = `Split ${route.name}`;
+      el.splitPicker.hidden = false;
+      updateSplitPicker();
     }
 
     async function recalculateRouteElevation(id) {
@@ -3298,6 +3420,11 @@ ${points}
     });
     el.undoPointBtn.addEventListener("click", removeLastDraftPoint);
     document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && state.pendingSplit) {
+        event.preventDefault();
+        cancelSplitPicker();
+        return;
+      }
       const editingText = event.target instanceof Element && event.target.closest("input, textarea, select");
       if (editingText || event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key !== "Backspace" && event.key !== "Delete") return;
@@ -3315,6 +3442,10 @@ ${points}
       const removeButton = event.target.closest("[data-remove-draft-point]");
       if (removeButton) removeDraftPoint(Number(removeButton.dataset.removeDraftPoint));
     });
+    el.splitSlider.addEventListener("input", updateSplitPicker);
+    el.splitConfirmBtn.addEventListener("click", confirmSplitPicker);
+    el.splitCancelBtn.addEventListener("click", () => cancelSplitPicker());
+    el.splitCancelBtnBottom.addEventListener("click", () => cancelSplitPicker());
     el.clearDraftBtn.addEventListener("click", clearDraftWithConfirmation);
     el.routeType.addEventListener("change", event => activateType(event.target.value));
     el.tabHike.addEventListener("click", () => activateType("hike"));
