@@ -2772,9 +2772,17 @@
         setStatus("Split point is outside the allowed range");
         return;
       }
-      if (!confirm(`Split "${route.name}" into two routes after point ${splitAfter}?`)) return;
       const firstPoints = points.slice(0, splitAfter + 1).map(point => [...point]);
       const secondPoints = points.slice(splitAfter).map(point => [...point]);
+      const preview = [
+        `Split "${route.name}" after geometry point ${splitAfter}?`,
+        "",
+        `Part 1: ${formatKm(distanceKm(firstPoints))}, ${firstPoints.length} geometry points`,
+        `Part 2: ${formatKm(distanceKm(secondPoints))}, ${secondPoints.length} geometry points`,
+        "",
+        "This will replace the original route with two saved route parts."
+      ].join("\n");
+      if (!confirm(preview)) return;
       const first = routePart(route, firstPoints, 1);
       const second = routePart(route, secondPoints, 2);
       state.routes = state.routes.flatMap(item => item.id === id ? [first, second] : [item]);
