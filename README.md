@@ -67,7 +67,7 @@ The overview page reads the same saved route data as the map page and displays:
 - main-map legend with saved hike/train counts, distances, and current draft distance
 - map-page `Done` control to fit the map to saved routes in the active hike/train view
 - map-page Hikes and Trains tabs with live saved-route counts
-- map-page latest-saved snapshot with one-click zoom to recent entries
+- map-page latest-saved snapshot with edited/completed timestamps and one-click zoom to recent entries
 - map-page selected-route detail panel with completeness badges, key metrics, clickable photo thumbnails, and zoom/overview/edit/clear actions
 - map-page backfill mode that keeps date, type, and tags after saving a new route
 - scrollable logging sidebar with draggable, reversible, insertable, click-to-remove draft points, click-to-insert draft lines, and segment-level waypoint snapping to fitted route geometry while drawing routes

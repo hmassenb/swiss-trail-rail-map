@@ -277,6 +277,12 @@
       font-size: 11px;
     }
 
+    .recent-route .recent-route-activity {
+      display: block;
+      margin-top: 2px;
+      color: #6b7479;
+    }
+
     .recent-route.hike {
       border-left: 4px solid var(--green);
     }
@@ -2194,6 +2200,12 @@
         .slice(0, limit);
     }
 
+    function latestRouteActivityLabel(route) {
+      if (route.updatedAt) return `Edited ${formatDateTime(route.updatedAt)}`;
+      if (route.date) return `Completed ${route.date}`;
+      return "No date yet";
+    }
+
     function numericValue(value) {
       const number = Number(value);
       return Number.isFinite(number) && number > 0 ? number : "";
@@ -2801,6 +2813,7 @@
             <span>
               <strong>${escapeHtml(route.name)}</strong>
               <span>${escapeHtml(meta)}</span>
+              <span class="recent-route-activity">${escapeHtml(latestRouteActivityLabel(route))}</span>
             </span>
             <span>Zoom</span>
           </button>
