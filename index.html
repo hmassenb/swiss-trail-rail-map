@@ -1263,7 +1263,7 @@
         <form id="importForm">
           <label>
             GPX / JSON import
-            <input class="file-input" id="importFile" type="file" accept=".gpx,.json,application/gpx+xml,application/json" />
+            <input class="file-input" id="importFile" type="file" accept=".gpx,.json,application/gpx+xml,application/json" multiple />
           </label>
           <div class="button-row">
             <button id="exportJsonBtn" type="button">Export JSON</button>
@@ -3338,42 +3338,67 @@ ${points}
       return parts.length ? `; skipped ${parts.join(" and ")}` : "";
     }
 
+    function mergeImportedRoutes(routes) {
+      const existingIds = new Set(state.routes.map(route => route.id));
+      const existingSignatures = new Set(state.routes.map(routeImportSignature));
+      let duplicates = 0;
+      const unique = routes.filter(route => {
+        const signature = routeImportSignature(route);
+        if (existingSignatures.has(signature)) {
+          duplicates += 1;
+          return false;
+        }
+        existingSignatures.add(signature);
+        return true;
+      });
+      const merged = unique.map(route => {
+        const nextRoute = existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route;
+        existingIds.add(nextRoute.id);
+        return nextRoute;
+      });
+      state.routes = [...state.routes, ...merged];
+      return { added: merged.length, duplicates };
+    }
+
     async function importFile(file) {
       const text = await file.text();
-      let added = 0;
       let invalid = 0;
-      let duplicates = 0;
+      let mergeResult = { added: 0, duplicates: 0 };
       if (file.name.toLowerCase().endsWith(".json")) {
         const imported = JSON.parse(text);
         const routeArray = Array.isArray(imported) ? imported : imported.routes;
         if (!Array.isArray(routeArray)) throw new Error("JSON must contain a route array or backup package");
-        const existingIds = new Set(state.routes.map(route => route.id));
-        const existingSignatures = new Set(state.routes.map(routeImportSignature));
         const normalized = routeArray.map(normalizeRoute).filter(Boolean);
         invalid = routeArray.length - normalized.length;
-        const unique = normalized.filter(route => {
-          const signature = routeImportSignature(route);
-          if (existingSignatures.has(signature)) {
-            duplicates += 1;
-            return false;
-          }
-          existingSignatures.add(signature);
-          return true;
-        });
-        const merged = unique.map(route => existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route);
-        state.routes = [...state.routes, ...merged];
-        added = merged.length;
+        mergeResult = mergeImportedRoutes(normalized);
       } else {
         const parsed = parseGpx(text);
         const valid = parsed.filter(route => routeInSwissBounds(route.points) && routeInSwissBounds(route.waypoints));
         invalid = parsed.length - valid.length;
-        state.routes = [...state.routes, ...valid];
-        added = valid.length;
+        mergeResult = mergeImportedRoutes(valid);
+      }
+      return { added: mergeResult.added, invalid, duplicates: mergeResult.duplicates };
+    }
+
+    async function importFiles(files) {
+      const totals = { added: 0, invalid: 0, duplicates: 0, failed: 0 };
+      for (const file of files) {
+        try {
+          setStatus(`Importing ${file.name}`);
+          const result = await importFile(file);
+          totals.added += result.added;
+          totals.invalid += result.invalid;
+          totals.duplicates += result.duplicates;
+        } catch {
+          totals.failed += 1;
+        }
       }
       saveRoutes();
       renderTagSuggestions();
       renderRoutes();
-      setStatus(`${added} route${added === 1 ? "" : "s"} imported${importSkipText(invalid, duplicates)}`);
+      const fileText = `${files.length} file${files.length === 1 ? "" : "s"}`;
+      const failText = totals.failed ? `; ${totals.failed} file${totals.failed === 1 ? "" : "s"} failed` : "";
+      setStatus(`${totals.added} route${totals.added === 1 ? "" : "s"} imported from ${fileText}${importSkipText(totals.invalid, totals.duplicates)}${failText}`);
     }
 
     function normalizeSavedRoute(route) {
@@ -3617,10 +3642,10 @@ ${points}
       appendTag(button.dataset.tag);
     });
     el.importFile.addEventListener("change", async event => {
-      const file = event.target.files[0];
-      if (!file) return;
+      const files = [...event.target.files];
+      if (!files.length) return;
       try {
-        await importFile(file);
+        await importFiles(files);
       } catch (error) {
         setStatus(error.message || "Import failed");
       } finally {
