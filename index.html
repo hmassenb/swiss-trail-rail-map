@@ -3586,11 +3586,28 @@ ${points}
       return "";
     }
 
+    function routeNameFromFilename(filename) {
+      const stem = String(filename || "")
+        .replace(/\.[^.]+$/, "")
+        .replace(/(?:^|[^0-9])((?:20|19)\d{2})[-_. ]?([01]\d)[-_. ]?([0-3]\d)(?=$|[^0-9])/, " ")
+        .replace(/(?:^|[^0-9])([0-3]?\d)[-_. ]([01]?\d)[-_. ]((?:20|19)\d{2})(?=$|[^0-9])/, " ")
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .replace(/^(activity|gpx|route|track)\s+/i, "")
+        .trim();
+      if (!stem) return "";
+      return stem
+        .split(" ")
+        .map(part => part.length > 2 ? `${part[0].toUpperCase()}${part.slice(1)}` : part.toUpperCase())
+        .join(" ");
+    }
+
     function parseGpx(text, filename = "") {
       const fallbackDate = dateFromFilename(filename);
+      const fallbackName = routeNameFromFilename(filename);
       return parseGpxTracks(text, fallbackDate).map((track, index) => ({
         id: crypto.randomUUID(),
-        name: track.name || `Imported GPX ${index + 1}`,
+        name: track.name || fallbackName || `Imported GPX ${index + 1}`,
         type: track.type,
         date: track.date,
         notes: track.notes,
@@ -3620,7 +3637,7 @@ ${points}
         const elevation = elevationTotals(elevations);
         const typeText = (track.getElementsByTagName("type")[0]?.textContent || "").toLowerCase();
         parsedTracks.push({
-          name: track.getElementsByTagName("name")[0]?.textContent || `Imported GPX ${index + 1}`,
+          name: track.getElementsByTagName("name")[0]?.textContent || "",
           type: typeText.includes("train") || typeText.includes("rail") ? "train" : "hike",
           date: (track.getElementsByTagName("time")[0]?.textContent || "").slice(0, 10) || fallbackDate,
           notes: track.getElementsByTagName("desc")[0]?.textContent || "",
@@ -3647,13 +3664,14 @@ ${points}
       const tracks = parseGpxTracks(await file.text(), dateFromFilename(file.name));
       if (!tracks.length) throw new Error("No GPX track points found");
       const track = tracks[0];
+      const fallbackName = routeNameFromFilename(file.name);
       if (!routeInSwissBounds(track.points)) throw new Error("GPX draft is outside Switzerland");
       state.draft = sampleWaypoints(track.points);
       state.draftRoute = track.points.map(point => [...point]);
       state.draftSource = "gpx";
       state.activeType = track.type;
       el.routeType.value = track.type;
-      if (!el.routeName.value.trim()) el.routeName.value = track.name;
+      if (!el.routeName.value.trim()) el.routeName.value = track.name || fallbackName;
       if (!el.routeDate.value && track.date) el.routeDate.value = track.date;
       if (!el.routeNotes.value.trim() && track.notes) el.routeNotes.value = track.notes;
       if (!el.routeGain.value && track.elevationGainM) el.routeGain.value = track.elevationGainM;
