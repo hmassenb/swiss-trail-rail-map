@@ -574,6 +574,27 @@
       padding-top: 0;
     }
 
+    .backup-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      border: 1px dashed #b8c3bd;
+      border-radius: 8px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.58);
+      transition: background 0.16s ease, border-color 0.16s ease;
+    }
+
+    .backup-actions.drag-over {
+      background: #f7fbf7;
+      border-color: var(--green);
+      box-shadow: inset 0 0 0 2px rgba(47, 118, 84, 0.16);
+    }
+
+    .backup-actions .dashboard-note {
+      flex-basis: 100%;
+    }
+
     .summary-row.rich {
       grid-template-columns: 82px 1fr;
       align-items: start;
@@ -1038,15 +1059,16 @@
       </section>
       <div class="storage-note" id="storageNote">Loading saved entries...</div>
       <div class="dashboard-note" id="dashboardNote">Metrics reflect the current filters.</div>
-      <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
+      <div class="backup-actions" id="backupDropZone">
         <button class="button" id="exportJsonBtn" type="button">Export JSON backup</button>
         <button class="button" id="exportPublicJsonBtn" type="button">Export public JSON</button>
         <button class="button" id="exportHostedPublicJsonBtn" type="button">Export public-routes.json</button>
         <button class="button" id="exportCsvBtn" type="button">Export CSV log</button>
         <label class="button" for="importJsonFile">Import JSON</label>
-        <input id="importJsonFile" type="file" accept=".json,application/json" style="display: none;" />
+        <input id="importJsonFile" type="file" accept=".json,application/json" multiple style="display: none;" />
         <button class="button" id="seedDemoBtn" type="button">Load demo routes</button>
         <button class="button" id="clearDemoBtn" type="button">Remove demo routes</button>
+        <div class="dashboard-note">Drop one or more private JSON backups here to import them.</div>
       </div>
       <section class="publish-guide" aria-label="Public map publishing guide">
         <h2>Refresh Public Map</h2>
@@ -1313,6 +1335,7 @@
       exportPublicJsonBtn: document.getElementById("exportPublicJsonBtn"),
       exportHostedPublicJsonBtn: document.getElementById("exportHostedPublicJsonBtn"),
       exportCsvBtn: document.getElementById("exportCsvBtn"),
+      backupDropZone: document.getElementById("backupDropZone"),
       importJsonFile: document.getElementById("importJsonFile"),
       seedDemoBtn: document.getElementById("seedDemoBtn"),
       clearDemoBtn: document.getElementById("clearDemoBtn"),
@@ -2137,6 +2160,32 @@ ${points}
       applyFilters();
       el.storageNote.classList.toggle("warning", invalid > 0);
       el.storageNote.textContent = `${merged.length} route${merged.length === 1 ? "" : "s"} imported${importSkipText(invalid, duplicates)}`;
+      return { added: merged.length, invalid, duplicates };
+    }
+
+    async function importJsonFiles(fileList) {
+      const files = [...fileList].filter(file => file.name.toLowerCase().endsWith(".json") || file.type === "application/json");
+      if (!files.length) return;
+      const totals = { added: 0, invalid: 0, duplicates: 0, failedNames: [] };
+      for (const file of files) {
+        try {
+          el.storageNote.classList.remove("warning");
+          el.storageNote.textContent = `Importing ${file.name}`;
+          const result = await importJson(file);
+          totals.added += result.added;
+          totals.invalid += result.invalid;
+          totals.duplicates += result.duplicates;
+        } catch {
+          totals.failedNames.push(file.name);
+        }
+      }
+      const failedList = totals.failedNames.slice(0, 2).join(", ");
+      const failedMore = totals.failedNames.length > 2 ? `, +${totals.failedNames.length - 2} more` : "";
+      const failedText = totals.failedNames.length
+        ? `; ${totals.failedNames.length} file${totals.failedNames.length === 1 ? "" : "s"} failed${failedList ? ` (${failedList}${failedMore})` : ""}`
+        : "";
+      el.storageNote.classList.toggle("warning", totals.invalid > 0 || totals.failedNames.length > 0);
+      el.storageNote.textContent = `${totals.added} route${totals.added === 1 ? "" : "s"} imported from ${files.length} JSON file${files.length === 1 ? "" : "s"}${importSkipText(totals.invalid, totals.duplicates)}${failedText}`;
     }
 
     function updateStorageNote(ok) {
@@ -3320,16 +3369,24 @@ ${points}
     el.exportHostedPublicJsonBtn.addEventListener("click", exportHostedPublicJson);
     el.exportCsvBtn.addEventListener("click", exportCsv);
     el.importJsonFile.addEventListener("change", async event => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-      try {
-        await importJson(file);
-      } catch (error) {
-        el.storageNote.classList.add("warning");
-        el.storageNote.textContent = error.message || "Could not import JSON backup.";
-      } finally {
-        event.target.value = "";
-      }
+      await importJsonFiles(event.target.files || []);
+      event.target.value = "";
+    });
+    ["dragenter", "dragover"].forEach(type => {
+      el.backupDropZone.addEventListener(type, event => {
+        event.preventDefault();
+        el.backupDropZone.classList.add("drag-over");
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+      });
+    });
+    ["dragleave", "drop"].forEach(type => {
+      el.backupDropZone.addEventListener(type, event => {
+        event.preventDefault();
+        el.backupDropZone.classList.remove("drag-over");
+      });
+    });
+    el.backupDropZone.addEventListener("drop", async event => {
+      await importJsonFiles(event.dataTransfer?.files || []);
     });
     el.seedDemoBtn.addEventListener("click", seedDemoRoutes);
     el.clearDemoBtn.addEventListener("click", clearDemoRoutes);
