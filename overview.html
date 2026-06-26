@@ -574,6 +574,28 @@
       padding-top: 0;
     }
 
+    .summary-row.rich {
+      grid-template-columns: 82px 1fr;
+      align-items: start;
+    }
+
+    .summary-row.rich strong {
+      font-size: 15px;
+    }
+
+    .summary-metrics {
+      display: grid;
+      gap: 4px;
+      color: #344249;
+    }
+
+    .summary-metrics span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
     .entry {
       background: var(--paper);
       border: 1px solid var(--line);
@@ -1041,6 +1063,10 @@
           <div class="summary-list" id="yearSummary"></div>
         </div>
         <div class="summary-panel">
+          <h2>Yearly Progress</h2>
+          <div class="summary-list" id="yearlyProgressSummary"></div>
+        </div>
+        <div class="summary-panel">
           <h2>Yearly Elevation</h2>
           <div class="summary-list" id="yearElevationSummary"></div>
         </div>
@@ -1298,6 +1324,7 @@
       legendPrivate: document.getElementById("legendPrivate"),
       legendVisible: document.getElementById("legendVisible"),
       yearSummary: document.getElementById("yearSummary"),
+      yearlyProgressSummary: document.getElementById("yearlyProgressSummary"),
       yearElevationSummary: document.getElementById("yearElevationSummary"),
       monthSummary: document.getElementById("monthSummary"),
       typeComparisonSummary: document.getElementById("typeComparisonSummary"),
@@ -2674,6 +2701,7 @@ ${points}
       const gainByYear = groupElevation(datedRoutes, route => route.date.slice(0, 4));
       const byMonth = groupDistance(datedRoutes, route => route.date.slice(0, 7));
       el.yearSummary.innerHTML = summaryRows(byYear, 8, "No dated entries yet.");
+      el.yearlyProgressSummary.innerHTML = yearlyProgressRows(datedRoutes, 8);
       el.yearElevationSummary.innerHTML = elevationRows(gainByYear, 8, "No dated hikes with elevation yet.");
       el.monthSummary.innerHTML = summaryRows(byMonth, 12, "No dated entries yet.");
       el.typeComparisonSummary.innerHTML = typeComparisonRows(state.filtered);
@@ -2719,6 +2747,49 @@ ${points}
         <div class="summary-row">
           <span>${escapeHtml(label)} - ${totals.count} entr${totals.count === 1 ? "y" : "ies"}</span>
           <strong>${formatKm(totals.hike + totals.train)}</strong>
+        </div>
+      `).join("");
+    }
+
+    function yearlyProgressRows(routes, limit) {
+      const grouped = routes.reduce((acc, route) => {
+        const year = route.date.slice(0, 4);
+        if (!acc[year]) {
+          acc[year] = {
+            hikeKm: 0,
+            trainKm: 0,
+            hikeCount: 0,
+            trainCount: 0,
+            gain: 0,
+            days: new Set()
+          };
+        }
+        const distance = distanceKm(route.points || []);
+        if (route.type === "train") {
+          acc[year].trainKm += distance;
+          acc[year].trainCount += 1;
+        } else {
+          acc[year].hikeKm += distance;
+          acc[year].hikeCount += 1;
+          acc[year].gain += Number(route.elevationGainM) || 0;
+        }
+        acc[year].days.add(route.date);
+        return acc;
+      }, {});
+      const rows = Object.entries(grouped)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .slice(0, limit);
+      if (!rows.length) {
+        return `<div class="summary-row"><span>No dated entries yet.</span><strong></strong></div>`;
+      }
+      return rows.map(([year, totals]) => `
+        <div class="summary-row rich">
+          <strong>${escapeHtml(year)}</strong>
+          <div class="summary-metrics">
+            <span>Hikes: ${totals.hikeCount} / ${formatKm(totals.hikeKm)} / ${Math.round(totals.gain)} m gain</span>
+            <span>Trains: ${totals.trainCount} / ${formatKm(totals.trainKm)}</span>
+            <span>${totals.days.size} active day${totals.days.size === 1 ? "" : "s"}</span>
+          </div>
         </div>
       `).join("");
     }

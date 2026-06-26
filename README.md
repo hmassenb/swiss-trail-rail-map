@@ -42,7 +42,7 @@ The overview page reads the same saved route data as the map page and displays:
 - clickable daily activity calendars by year, with hike/train/mixed-day colors for the active filter/timeframe
 - selected-route elevation profiles when GPX imports or clicked hike elevation lookups provide elevation samples
 - route photo thumbnails and selected-route photo galleries with full-size photo links
-- yearly distance, yearly elevation gain, and monthly distance summaries
+- yearly distance, yearly hike/train progress, yearly elevation gain, and monthly distance summaries
 - distance and elevation gain by tag in the overview summary
 - route cards with name, caption, tags, duration, pace/speed, elevation, completeness badges, notes, distance, photos, and clicked waypoint coordinates
 - overview backfill action to batch-recalculate elevation for visible hikes missing elevation
