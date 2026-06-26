@@ -1133,6 +1133,14 @@
             Caption
             <textarea id="routeCaption" placeholder="Short memory or caption for this route"></textarea>
           </label>
+          <details class="manual-elevation">
+            <summary>Private hidden note</summary>
+            <label>
+              Hidden note
+              <textarea id="routePrivateNotes" placeholder="Private reminders, unpublished details, planning context"></textarea>
+            </label>
+            <p class="hint">Saved in your private browser archive and JSON backup, but not shown on route cards, GPX, CSV, or public exports.</p>
+          </details>
           <label>
             Photos
             <input class="file-input" id="routePhotos" type="file" accept="image/*" multiple />
@@ -1256,6 +1264,7 @@
       routeLoss: document.getElementById("routeLoss"),
       routeNotes: document.getElementById("routeNotes"),
       routeCaption: document.getElementById("routeCaption"),
+      routePrivateNotes: document.getElementById("routePrivateNotes"),
       routePhotos: document.getElementById("routePhotos"),
       photoPreview: document.getElementById("photoPreview"),
       coordPreview: document.getElementById("coordPreview"),
@@ -1413,6 +1422,7 @@
         elevationLossM: el.routeLoss.value,
         notes: el.routeNotes.value,
         caption: el.routeCaption.value,
+        privateNotes: el.routePrivateNotes.value,
         backfillMode: el.backfillMode.checked,
         draft: state.draft.map(point => [...point]),
         draftRoute: state.draftRoute.map(point => [...point]),
@@ -1467,6 +1477,7 @@
         el.routeLoss.value = saved.elevationLossM || "";
         el.routeNotes.value = saved.notes || "";
         el.routeCaption.value = saved.caption || "";
+        el.routePrivateNotes.value = saved.privateNotes || "";
         el.backfillMode.checked = Boolean(saved.backfillMode);
         activateType(saved.type === "train" ? "train" : "hike");
         setStatus("Restored unsaved draft");
@@ -2541,6 +2552,7 @@
         el.routeName.value.trim() ||
         el.routeNotes.value.trim() ||
         el.routeCaption.value.trim() ||
+        el.routePrivateNotes.value.trim() ||
         el.routeDuration.value ||
         el.routeGain.value ||
         el.routeLoss.value
@@ -2565,6 +2577,7 @@
       el.routeLoss.value = route.elevationLossM || "";
       el.routeNotes.value = route.notes || "";
       el.routeCaption.value = route.caption || "";
+      el.routePrivateNotes.value = route.privateNotes || "";
       state.pendingPhotos = Array.isArray(route.photos) ? route.photos.map(normalizePhoto).filter(Boolean) : [];
       el.routePhotos.value = "";
       renderPhotoPreview();
@@ -2726,6 +2739,7 @@
         elevationLossM: automaticLoss || manualLoss,
         notes: el.routeNotes.value.trim(),
         caption: el.routeCaption.value.trim(),
+        privateNotes: el.routePrivateNotes.value.trim(),
         photos: state.pendingPhotos.map(photo => ({ ...photo })),
         waypoints,
         points,
@@ -2947,6 +2961,7 @@ ${points}
         elevationLossM,
         notes: route.notes || "",
         caption: route.caption || "",
+        privateNotes: route.privateNotes || "",
         photos: Array.isArray(route.photos) ? route.photos.map(normalizePhoto).filter(Boolean) : [],
         waypoints,
         points,
@@ -3082,6 +3097,7 @@ ${points}
       el.routeLoss,
       el.routeNotes,
       el.routeCaption,
+      el.routePrivateNotes,
       el.backfillMode
     ].forEach(input => {
       input.addEventListener("input", persistDraftState);

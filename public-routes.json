@@ -4,7 +4,7 @@
   "exportedAt": "2026-06-25T00:00:00.000Z",
   "routeCount": 4,
   "scope": "demo public routes",
-  "privacy": "Personal notes, captions, photos, and private visibility are excluded.",
+  "privacy": "Personal notes, hidden private notes, captions, photos, and private visibility are excluded.",
   "routes": [
     {
       "id": "demo-public-uetliberg",

@@ -1633,6 +1633,7 @@
         elevationLossM,
         notes: route.notes || "",
         caption: route.caption || "",
+        privateNotes: route.privateNotes || "",
         photos: Array.isArray(route.photos) ? route.photos.map(normalizePhoto).filter(Boolean) : [],
         waypoints,
         points,
@@ -1799,7 +1800,7 @@
         exportedAt: new Date().toISOString(),
         routeCount: routes.length,
         scope: "current overview filters",
-        privacy: "Personal notes, captions, photos, and private visibility are excluded.",
+        privacy: "Personal notes, hidden private notes, captions, photos, and private visibility are excluded.",
         routes: routes.map(publicRoute)
       };
     }

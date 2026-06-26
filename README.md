@@ -77,6 +77,7 @@ The overview page reads the same saved route data as the map page and displays:
 - map-page storage note with estimated archive size, photo count, and photo payload size
 - local autosave and restore for unsaved map-page route drafts
 - unsaved-draft warnings before leaving the map page or clearing a route draft
+- hidden private route notes that stay in private JSON backups and are excluded from public exports
 - a backfill checklist for missing dates, duration, hike elevation, and photos
 - overview-page JSON export/import controls for backups and moving the private archive between browsers
 - overview-page public JSON export for the current filters, excluding notes, captions, photos, and private visibility
@@ -146,6 +147,7 @@ The app stores:
 - `elevationLossM`: optional elevation loss in meters
 - `notes`: optional free text
 - `caption`: optional route memory or caption
+- `privateNotes`: optional hidden notes for private context only
 - `photos`: optional compressed image attachments stored with the route
 - `waypoints`: the points clicked by the user
 - `points`: the routed geometry displayed on the map
@@ -157,9 +159,9 @@ Routes are saved in the browser's local storage. Data is therefore local to the 
 
 Unsaved route drafts are also saved in local browser storage while you work. They are cleared after you save or clear the route draft.
 
-Use `Export JSON` on the map page or `Export JSON backup` on the overview page for private backups or to move routes to another browser/device. New JSON exports are versioned backup packages with export time, route count, saved timestamp, and the full `routes` array, including notes and compressed photos; filenames include the export date to avoid overwriting older backups. Older raw route-array backups still import. Use `Import GPX / JSON` on the map page, or `Import JSON` on the overview page, to restore or add routes. Use `Export CSV log` on the overview page when you want the currently filtered log in a spreadsheet.
+Use `Export JSON` on the map page or `Export JSON backup` on the overview page for private backups or to move routes to another browser/device. New JSON exports are versioned backup packages with export time, route count, saved timestamp, and the full `routes` array, including notes, private hidden notes, and compressed photos; filenames include the export date to avoid overwriting older backups. Older raw route-array backups still import. Use `Import GPX / JSON` on the map page, or `Import JSON` on the overview page, to restore or add routes. Use `Export CSV log` on the overview page when you want the currently filtered log in a spreadsheet.
 
-Use `Export public JSON` on the overview page when you want a dated cleaned subset for a read-only embed or public map. Use `Export public-routes.json` when you want the fixed filename used by the hosted public viewer. Both public exports include only the currently visible routes and remove personal notes, captions, photos, and private visibility while keeping route geometry, dates, tags, distance metrics, and elevation fields. Load the file in `public.html`, or host it as a static JSON file and open `public.html?data=public-routes.json`.
+Use `Export public JSON` on the overview page when you want a dated cleaned subset for a read-only embed or public map. Use `Export public-routes.json` when you want the fixed filename used by the hosted public viewer. Both public exports include only the currently visible routes and remove personal notes, hidden private notes, captions, photos, and private visibility while keeping route geometry, dates, tags, distance metrics, and elevation fields. Load the file in `public.html`, or host it as a static JSON file and open `public.html?data=public-routes.json`.
 
 Photos are compressed before saving, then stored inside the route JSON as data URLs. This keeps the app static and GitHub Pages friendly, but browser storage is finite. Export JSON regularly if you attach many photos or backfill many years of hikes.
 
@@ -218,4 +220,3 @@ To turn this into a more useful distance-tracking tool, the strongest remaining 
 
 6. Add optional publishing modes
    - Keep browser storage as the private working copy.
-   - Add optional hidden notes that are not included in any published export.
