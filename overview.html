@@ -1449,6 +1449,23 @@
       };
     }
 
+    function routeImportSignature(route) {
+      const points = Array.isArray(route.points) ? route.points : [];
+      const first = points[0] || [];
+      const last = points[points.length - 1] || [];
+      return [
+        String(route.name || "").trim().toLowerCase(),
+        route.type || "",
+        route.date || "",
+        Number(distanceKm(points).toFixed(3)),
+        points.length,
+        Number(Number(first[0]).toFixed(5)),
+        Number(Number(first[1]).toFixed(5)),
+        Number(Number(last[0]).toFixed(5)),
+        Number(Number(last[1]).toFixed(5))
+      ].join("|");
+    }
+
     function elevationTotals(elevations) {
       let gain = 0;
       let loss = 0;
@@ -2066,9 +2083,11 @@ ${points}
       const routeArray = Array.isArray(imported) ? imported : imported.routes;
       if (!Array.isArray(routeArray)) throw new Error("JSON must contain a route array or backup package.");
       const existingIds = new Set(state.routes.map(route => route.id));
+      const existingSignatures = new Set(state.routes.map(routeImportSignature));
       const normalized = routeArray.map(normalizeRoute).filter(Boolean);
-      const skipped = routeArray.length - normalized.length;
-      const merged = normalized.map(route => existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route);
+      const unique = normalized.filter(route => !existingSignatures.has(routeImportSignature(route)));
+      const skipped = routeArray.length - unique.length;
+      const merged = unique.map(route => existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route);
       state.routes = [...state.routes, ...merged];
       saveRoutes();
       renderTagOptions();
