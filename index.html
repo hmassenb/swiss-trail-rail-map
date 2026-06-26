@@ -3488,7 +3488,7 @@ ${points}
     }
 
     async function importFiles(files) {
-      const totals = { added: 0, invalid: 0, duplicates: 0, failed: 0 };
+      const totals = { added: 0, invalid: 0, duplicates: 0, failed: 0, failedNames: [] };
       for (const file of files) {
         try {
           setStatus(`Importing ${file.name}`);
@@ -3498,13 +3498,16 @@ ${points}
           totals.duplicates += result.duplicates;
         } catch {
           totals.failed += 1;
+          totals.failedNames.push(file.name);
         }
       }
       saveRoutes();
       renderTagSuggestions();
       renderRoutes();
       const fileText = `${files.length} file${files.length === 1 ? "" : "s"}`;
-      const failText = totals.failed ? `; ${totals.failed} file${totals.failed === 1 ? "" : "s"} failed` : "";
+      const failedList = totals.failedNames.slice(0, 2).join(", ");
+      const failedMore = totals.failedNames.length > 2 ? `, +${totals.failedNames.length - 2} more` : "";
+      const failText = totals.failed ? `; ${totals.failed} file${totals.failed === 1 ? "" : "s"} failed${failedList ? ` (${failedList}${failedMore})` : ""}` : "";
       setStatus(`${totals.added} route${totals.added === 1 ? "" : "s"} imported from ${fileText}${importSkipText(totals.invalid, totals.duplicates)}${failText}`);
     }
 
