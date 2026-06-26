@@ -3602,10 +3602,17 @@ ${points}
         .join(" ");
     }
 
+    function routeTypeFromText(value) {
+      const text = String(value || "").toLowerCase().replace(/[_-]+/g, " ");
+      if (/\b(train|rail|railway|sbb|cff|ffs|bahn|zug|regio|intercity|ic|ir|re|rhb|mgb|bls|sob)\b/.test(text)) return "train";
+      return "hike";
+    }
+
     function parseGpx(text, filename = "") {
       const fallbackDate = dateFromFilename(filename);
       const fallbackName = routeNameFromFilename(filename);
-      return parseGpxTracks(text, fallbackDate).map((track, index) => ({
+      const fallbackType = routeTypeFromText(filename);
+      return parseGpxTracks(text, fallbackDate, fallbackType).map((track, index) => ({
         id: crypto.randomUUID(),
         name: track.name || fallbackName || `Imported GPX ${index + 1}`,
         type: track.type,
@@ -3619,7 +3626,7 @@ ${points}
       }));
     }
 
-    function parseGpxTracks(text, fallbackDate = "") {
+    function parseGpxTracks(text, fallbackDate = "", fallbackType = "hike") {
       const doc = new DOMParser().parseFromString(text, "application/xml");
       if (doc.querySelector("parsererror")) throw new Error("Invalid GPX");
       const tracks = [...doc.getElementsByTagName("trk")];
@@ -3636,9 +3643,10 @@ ${points}
         if (points.length < 2) return;
         const elevation = elevationTotals(elevations);
         const typeText = (track.getElementsByTagName("type")[0]?.textContent || "").toLowerCase();
+        const type = typeText ? routeTypeFromText(typeText) : fallbackType;
         parsedTracks.push({
           name: track.getElementsByTagName("name")[0]?.textContent || "",
-          type: typeText.includes("train") || typeText.includes("rail") ? "train" : "hike",
+          type,
           date: (track.getElementsByTagName("time")[0]?.textContent || "").slice(0, 10) || fallbackDate,
           notes: track.getElementsByTagName("desc")[0]?.textContent || "",
           elevationGainM: elevation.gain || "",
@@ -3661,7 +3669,7 @@ ${points}
     }
 
     async function loadDraftGpx(file) {
-      const tracks = parseGpxTracks(await file.text(), dateFromFilename(file.name));
+      const tracks = parseGpxTracks(await file.text(), dateFromFilename(file.name), routeTypeFromText(file.name));
       if (!tracks.length) throw new Error("No GPX track points found");
       const track = tracks[0];
       const fallbackName = routeNameFromFilename(file.name);
