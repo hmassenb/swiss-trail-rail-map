@@ -1988,6 +1988,24 @@
       return total;
     }
 
+    function nearestGeometryPoint(point, geometry) {
+      let nearest = null;
+      let nearestDistance = Infinity;
+      geometry.forEach(candidate => {
+        const distance = L.latLng(point[0], point[1]).distanceTo(L.latLng(candidate[0], candidate[1]));
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearest = candidate;
+        }
+      });
+      return nearest ? [nearest[0], nearest[1]] : [point[0], point[1]];
+    }
+
+    function snapWaypointsToGeometry(waypoints, geometry) {
+      if (!Array.isArray(geometry) || geometry.length < 2) return waypoints.map(point => [...point]);
+      return waypoints.map(point => nearestGeometryPoint(point, geometry));
+    }
+
     function parseTags(value) {
       return String(value || "")
         .split(",")
@@ -2302,9 +2320,10 @@
       try {
         const routed = await routedGeometry(state.draft, state.activeType);
         if (requestId !== state.routingRequestId) return;
+        state.draft = snapWaypointsToGeometry(state.draft, routed);
         state.draftRoute = routed;
         renderDraft();
-        setStatus("Route fitted to mapped network");
+        setStatus("Route fitted to mapped network; waypoints snapped to it");
       } catch {
         if (requestId !== state.routingRequestId) return;
         state.draftRoute = state.draft.map(point => [...point]);
