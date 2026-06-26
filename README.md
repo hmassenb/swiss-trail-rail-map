@@ -70,7 +70,7 @@ The overview page reads the same saved route data as the map page and displays:
 - map-page latest-saved snapshot with edited/completed timestamps plus quick zoom and edit actions for recent entries
 - map-page selected-route detail panel with completeness badges, key metrics, clickable photo thumbnails, and zoom/overview/edit/clear actions
 - map-page backfill mode that keeps date, type, and tags after saving a new route
-- scrollable logging sidebar with draggable, reversible, insertable, click-to-remove draft points, click-to-insert draft lines, and segment-level waypoint snapping to fitted route geometry while drawing routes
+- scrollable logging sidebar with a visible draft-point toolbar, draggable, reversible, insertable, click-to-remove draft points, click-to-insert draft lines, and segment-level waypoint snapping to fitted route geometry while drawing routes
 - live draft metrics for routed distance, direct waypoint distance, point counts, elevation status, and last clicked coordinate
 - saved-route action key and accessible per-route controls for zoom, overview, metadata/waypoint edit, sampled geometry point edit, copy, merge, live map split picker with clickable split markers, export, hike elevation recalculation, and delete
 - delete undo bar for restoring an accidentally deleted saved route immediately
@@ -126,6 +126,7 @@ Routes are entered directly in the browser:
 
 - Choose `Hike` or `Train`.
 - Click the map to add waypoints.
+- Use `Remove last point`, `Clear points`, the red marker `x`, Shift-click, Backspace/Delete, or the point list to correct clicked route points before saving.
 - Or load a GPX track as a draft, then review its geometry and add metadata before saving.
 - GPX imports use the GPX track type/name/time when present and can fall back to filename train cues, cleaned filenames, and common filename dates such as `2021-08-14`, `20210814`, or `14.08.2021`.
 - Searches, clicked points, GPX drafts, and imported routes are kept inside the Switzerland map bounds; imports outside Switzerland are skipped on both the map and overview pages.

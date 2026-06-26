@@ -54,9 +54,11 @@
       height: 100dvh;
       max-height: 100vh;
       max-height: 100dvh;
-      overflow: hidden;
+      overflow-y: auto;
       overflow-x: hidden;
       overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+      -webkit-overflow-scrolling: touch;
       z-index: 5;
     }
 
@@ -202,14 +204,10 @@
 
     .panel-scroll {
       padding: 14px 18px 18px;
-      flex: 1 1 auto;
+      flex: 0 0 auto;
       height: auto;
       min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      scrollbar-gutter: stable;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
+      overflow: visible;
     }
 
     .stats {
@@ -535,6 +533,24 @@
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 12px;
       line-height: 1.35;
+    }
+
+    .draft-point-toolbar {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      margin-top: 8px;
+    }
+
+    .draft-point-toolbar button {
+      min-height: 32px;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-weight: 720;
+    }
+
+    .draft-point-toolbar button:last-child {
+      color: var(--red);
     }
 
     .draft-point-list {
@@ -1400,8 +1416,12 @@
           </label>
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
+            <div class="draft-point-toolbar" id="draftPointTools">
+              <button type="button" data-remove-last-draft-point title="Remove the most recently added point. Shortcut: Backspace or Delete.">Remove last point</button>
+              <button type="button" data-clear-draft-points>Clear points</button>
+            </div>
             <div class="draft-point-list" id="draftPointList" aria-label="Selected route points"></div>
-            <p class="hint">Click the map to add waypoints. Remove mistakes with the marker x, Shift-click a marker, Backspace/Delete for the last point, or the point list below.</p>
+            <p class="hint">Click the map to add waypoints. Remove mistakes with the toolbar, marker x, Shift-click a marker, Backspace/Delete for the last point, or the point list below.</p>
           </div>
           <label class="checkbox-line">
             <input id="backfillMode" type="checkbox" />
@@ -1552,6 +1572,7 @@
       photoPreview: document.getElementById("photoPreview"),
       coordPreview: document.getElementById("coordPreview"),
       draftPointList: document.getElementById("draftPointList"),
+      draftPointTools: document.getElementById("draftPointTools"),
       draftGpxFile: document.getElementById("draftGpxFile"),
       backfillMode: document.getElementById("backfillMode"),
       saveRouteBtn: document.getElementById("saveRouteBtn"),
@@ -2436,6 +2457,17 @@
       setStatus(`Removed point ${removedIndex}`);
     }
 
+    function clearDraftPoints() {
+      if (!state.draft.length) return;
+      const count = state.draft.length;
+      if (state.draftSource !== "geometry-edit") state.draftSource = "";
+      state.draft = [];
+      state.draftRoute = [];
+      state.routingRequestId++;
+      renderDraft();
+      setStatus(`Cleared ${count} draft point${count === 1 ? "" : "s"}`);
+    }
+
     function insertDraftPointAfter(index) {
       if (index < 0 || index >= state.draft.length - 1) return;
       const current = state.draft[index];
@@ -2588,6 +2620,9 @@
       el.undoPointBtn.disabled = state.draft.length === 0;
       el.reverseDraftBtn.disabled = state.draft.length < 2;
       el.clearDraftBtn.disabled = state.draft.length === 0;
+      el.draftPointTools.querySelectorAll("button").forEach(button => {
+        button.disabled = state.draft.length === 0;
+      });
       updateQuickPost();
       persistDraftState();
       renderMapLegend();
@@ -3968,6 +4003,15 @@ ${points}
       input.addEventListener("change", persistDraftState);
     });
     el.undoPointBtn.addEventListener("click", removeLastDraftPoint);
+    el.draftPointTools.addEventListener("click", event => {
+      const removeLastButton = event.target.closest("[data-remove-last-draft-point]");
+      if (removeLastButton) {
+        removeLastDraftPoint();
+        return;
+      }
+      const clearButton = event.target.closest("[data-clear-draft-points]");
+      if (clearButton) clearDraftPoints();
+    });
     document.addEventListener("keydown", event => {
       if (event.key === "Escape" && state.pendingSplit) {
         event.preventDefault();
