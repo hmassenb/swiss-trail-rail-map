@@ -393,6 +393,35 @@
     .activity-day.level-2 { filter: saturate(1.08) brightness(0.92); }
     .activity-day.level-3 { filter: saturate(1.14) brightness(0.82); }
 
+    .activity-legend {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 12px;
+      align-items: center;
+    }
+
+    .activity-legend span {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    .activity-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      background: #fff;
+      border: 1px solid #e1e7e3;
+    }
+
+    .activity-swatch.hike { background: #6d9b7e; border-color: transparent; }
+    .activity-swatch.train { background: #6f95ad; border-color: transparent; }
+    .activity-swatch.mixed { background: #857b64; border-color: transparent; }
+    .activity-swatch.busy { background: #6d9b7e; border-color: transparent; filter: saturate(1.14) brightness(0.82); }
+
     .activity-day.blank {
       background: transparent;
       border-color: transparent;
@@ -1053,6 +1082,12 @@
             <span class="progress-pill" id="activityDayTotal">0 active days</span>
             <span class="progress-pill" id="activityBusiestDay">No busiest day</span>
           </div>
+        </div>
+        <div class="activity-legend" aria-label="Activity calendar legend">
+          <span><i class="activity-swatch hike" aria-hidden="true"></i>Hike day</span>
+          <span><i class="activity-swatch train" aria-hidden="true"></i>Train day</span>
+          <span><i class="activity-swatch mixed" aria-hidden="true"></i>Mixed day</span>
+          <span><i class="activity-swatch busy" aria-hidden="true"></i>Busier day</span>
         </div>
         <div class="activity-years" id="activityCalendar"></div>
         <div class="progress-empty" id="activityEmpty">Add dates to your saved routes to build the activity calendar.</div>
