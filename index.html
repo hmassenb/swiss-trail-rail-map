@@ -3320,7 +3320,12 @@ ${points}
         const existingIds = new Set(state.routes.map(route => route.id));
         const existingSignatures = new Set(state.routes.map(routeImportSignature));
         const normalized = routeArray.map(normalizeRoute).filter(Boolean);
-        const unique = normalized.filter(route => !existingSignatures.has(routeImportSignature(route)));
+        const unique = normalized.filter(route => {
+          const signature = routeImportSignature(route);
+          if (existingSignatures.has(signature)) return false;
+          existingSignatures.add(signature);
+          return true;
+        });
         skipped = routeArray.length - unique.length;
         const merged = unique.map(route => existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route);
         state.routes = [...state.routes, ...merged];
