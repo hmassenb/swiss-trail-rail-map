@@ -45,6 +45,7 @@ The overview page reads the same saved route data as the map page and displays:
 - yearly distance, yearly elevation gain, and monthly distance summaries
 - distance and elevation gain by tag in the overview summary
 - route cards with name, caption, tags, duration, pace/speed, elevation, completeness badges, notes, distance, photos, and clicked waypoint coordinates
+- overview backfill action to batch-recalculate elevation for visible hikes missing elevation
 - map-page route selection that keeps the Hikes/Trains sidebar tab aligned with the selected saved route when no draft is active
 - map-page status feedback when a saved route is selected
 - completeness filtering for all, needs-backfill, or complete entries across metrics, map, and route cards

@@ -1366,6 +1366,75 @@
       };
     }
 
+    function elevationTotals(elevations) {
+      let gain = 0;
+      let loss = 0;
+      const values = elevations.map(Number).filter(Number.isFinite);
+      for (let index = 1; index < values.length; index++) {
+        const delta = values[index] - values[index - 1];
+        if (delta > 0) gain += delta;
+        if (delta < 0) loss += Math.abs(delta);
+      }
+      return {
+        gain: Math.round(gain),
+        loss: Math.round(loss)
+      };
+    }
+
+    function pointElevationTotals(points) {
+      const elevations = points.map(point => Number(point[2])).filter(Number.isFinite);
+      return elevations.length >= 2 ? elevationTotals(elevations) : null;
+    }
+
+    function sampleElevationPoints(points, target = 90) {
+      if (points.length <= target) return points.map((point, index) => ({ index, lat: point[0], lng: point[1] }));
+      const sampled = [];
+      for (let index = 0; index < target; index++) {
+        const pointIndex = Math.round((index / (target - 1)) * (points.length - 1));
+        sampled.push({ index: pointIndex, lat: points[pointIndex][0], lng: points[pointIndex][1] });
+      }
+      return sampled;
+    }
+
+    function pointsWithElevationSamples(points, samples, elevations) {
+      const next = points.map(point => [...point]);
+      samples.forEach((sample, index) => {
+        const elevation = Number(elevations[index]);
+        if (Number.isFinite(elevation) && next[sample.index]) {
+          next[sample.index] = [
+            Number(next[sample.index][0]),
+            Number(next[sample.index][1]),
+            Number(elevation.toFixed(1))
+          ];
+        }
+      });
+      return next;
+    }
+
+    async function fetchElevationProfile(points) {
+      const sampled = sampleElevationPoints(points);
+      const locations = sampled.map(point => `${point.lat},${point.lng}`).join("|");
+      const url = `https://api.open-elevation.com/api/v1/lookup?locations=${encodeURIComponent(locations)}`;
+      const response = await fetch(url, { headers: { "Accept": "application/json" } });
+      if (!response.ok) throw new Error("Elevation lookup failed");
+      const data = await response.json();
+      const elevations = (Array.isArray(data.results) ? data.results : [])
+        .map(result => Number(result.elevation))
+        .filter(Number.isFinite);
+      if (elevations.length < 2) throw new Error("No elevation profile returned");
+      return {
+        ...elevationTotals(elevations),
+        points: pointsWithElevationSamples(points, sampled, elevations)
+      };
+    }
+
+    async function automaticElevation(points, type) {
+      if (type !== "hike" || points.length < 2) return null;
+      const localTotals = pointElevationTotals(points);
+      if (localTotals) return { ...localTotals, points };
+      return fetchElevationProfile(points);
+    }
+
     function elevationSamples(route) {
       const points = Array.isArray(route.points) ? route.points : [];
       const samples = [];
@@ -1812,6 +1881,43 @@
       download(`${safeFilename(route.name)}-${exportDateStamp()}.gpx`, routesToGpx([route]), "application/gpx+xml");
       el.storageNote.classList.remove("warning");
       el.storageNote.textContent = `${route.name} exported as GPX.`;
+    }
+
+    async function recalculateMissingElevation() {
+      const missing = state.filtered.filter(route => route.type === "hike" && !Number(route.elevationGainM) && Array.isArray(route.points) && route.points.length > 1);
+      if (!missing.length) {
+        el.storageNote.classList.remove("warning");
+        el.storageNote.textContent = "No visible hikes are missing elevation.";
+        return;
+      }
+      let updated = 0;
+      let failed = 0;
+      for (const route of missing) {
+        el.storageNote.classList.remove("warning");
+        el.storageNote.textContent = `Recalculating elevation ${updated + failed + 1} of ${missing.length}: ${route.name}`;
+        try {
+          const elevation = await automaticElevation(route.points, route.type);
+          if (!elevation) throw new Error("No elevation profile returned");
+          const points = Array.isArray(elevation.points) && elevation.points.length === route.points.length ? elevation.points : route.points;
+          const waypoints = route.waypoints || route.points;
+          const nextRoute = {
+            ...route,
+            points,
+            elevationGainM: elevation.gain,
+            elevationLossM: elevation.loss,
+            metrics: routeMetrics(points, waypoints),
+            updatedAt: new Date().toISOString()
+          };
+          state.routes = state.routes.map(item => item.id === route.id ? nextRoute : item);
+          updated += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+      if (updated) saveRoutes();
+      applyFilters();
+      el.storageNote.classList.toggle("warning", failed > 0);
+      el.storageNote.textContent = `Elevation recalculated for ${updated} hike${updated === 1 ? "" : "s"}${failed ? `; ${failed} failed.` : "."}`;
     }
 
     function routesToGpx(routes) {
@@ -2607,10 +2713,14 @@ ${points}
           <strong>${list.length}</strong>
         </a>
       `;
+      const elevationAction = groups.missingElevation.length
+        ? `<button class="summary-row action" type="button" data-recalculate-elevation><span>Recalculate visible missing hike elevation</span><strong>${groups.missingElevation.length}</strong></button>`
+        : "";
       return [
         row("Missing dates", groups.missingDate, "missingDate"),
         row("Missing duration", groups.missingDuration, "missingDuration"),
         row("Hikes missing elevation", groups.missingElevation, "missingElevation"),
+        elevationAction,
         row("Routes without photos", groups.noPhotos, "noPhotos"),
         `<div class="summary-row"><span>Complete with date, duration, elevation/photo context</span><strong>${completeEnough.length}</strong></div>`
       ].join("");
@@ -2972,6 +3082,12 @@ ${points}
       if (route) selectRoute(route);
     });
     el.backfillSummary.addEventListener("click", event => {
+      const recalculateButton = event.target.closest("[data-recalculate-elevation]");
+      if (recalculateButton) {
+        event.preventDefault();
+        recalculateMissingElevation();
+        return;
+      }
       const row = event.target.closest("[data-backfill]");
       if (!row) return;
       event.preventDefault();
