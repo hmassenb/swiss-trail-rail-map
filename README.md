@@ -69,7 +69,7 @@ The overview page reads the same saved route data as the map page and displays:
 - map-page latest-saved snapshot with one-click zoom to recent entries
 - map-page selected-route detail panel with completeness badges, key metrics, clickable photo thumbnails, and zoom/overview/edit/clear actions
 - map-page backfill mode that keeps date, type, and tags after saving a new route
-- scrollable logging sidebar with draggable, reversible, insertable, click-to-remove draft points, click-to-insert draft lines, and waypoint snapping to fitted route geometry while drawing routes
+- scrollable logging sidebar with draggable, reversible, insertable, click-to-remove draft points, click-to-insert draft lines, and segment-level waypoint snapping to fitted route geometry while drawing routes
 - live draft metrics for routed distance, direct waypoint distance, point counts, elevation status, and last clicked coordinate
 - saved-route action key and accessible per-route controls for zoom, overview, metadata/waypoint edit, sampled geometry point edit, copy, merge, live map split picker with clickable split markers, export, hike elevation recalculation, and delete
 - delete undo bar for restoring an accidentally deleted saved route immediately

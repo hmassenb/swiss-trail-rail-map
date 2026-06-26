@@ -1988,22 +1988,32 @@
       return total;
     }
 
-    function nearestGeometryPoint(point, geometry) {
-      let nearest = null;
+    function nearestPointOnGeometry(point, geometry) {
+      const source = map.latLngToLayerPoint(L.latLng(point[0], point[1]));
+      let nearestLayerPoint = null;
       let nearestDistance = Infinity;
-      geometry.forEach(candidate => {
-        const distance = L.latLng(point[0], point[1]).distanceTo(L.latLng(candidate[0], candidate[1]));
+      for (let index = 0; index < geometry.length - 1; index++) {
+        const start = map.latLngToLayerPoint(L.latLng(geometry[index][0], geometry[index][1]));
+        const end = map.latLngToLayerPoint(L.latLng(geometry[index + 1][0], geometry[index + 1][1]));
+        const dx = end.x - start.x;
+        const dy = end.y - start.y;
+        const ratio = dx || dy
+          ? Math.max(0, Math.min(1, ((source.x - start.x) * dx + (source.y - start.y) * dy) / (dx * dx + dy * dy)))
+          : 0;
+        const candidate = L.point(start.x + dx * ratio, start.y + dy * ratio);
+        const distance = source.distanceTo(candidate);
         if (distance < nearestDistance) {
           nearestDistance = distance;
-          nearest = candidate;
+          nearestLayerPoint = candidate;
         }
-      });
-      return nearest ? [nearest[0], nearest[1]] : [point[0], point[1]];
+      }
+      const nearest = nearestLayerPoint ? map.layerPointToLatLng(nearestLayerPoint) : L.latLng(point[0], point[1]);
+      return [nearest.lat, nearest.lng];
     }
 
     function snapWaypointsToGeometry(waypoints, geometry) {
       if (!Array.isArray(geometry) || geometry.length < 2) return waypoints.map(point => [...point]);
-      return waypoints.map(point => nearestGeometryPoint(point, geometry));
+      return waypoints.map(point => nearestPointOnGeometry(point, geometry));
     }
 
     function parseTags(value) {
