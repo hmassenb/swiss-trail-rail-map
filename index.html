@@ -1199,7 +1199,7 @@
             <button class="filter-reset" id="resetRouteFiltersBtn" type="button">Reset saved-route filters</button>
           </div>
           <div class="route-list-note" id="routeListNote">Showing saved routes.</div>
-          <div class="route-action-key">Actions: Z zoom, V overview, E edit, C copy, J JSON, G GPX, A altitude, X delete.</div>
+          <div class="route-action-key">Actions: Z zoom, V overview, E edit, C copy, M merge, J JSON, G GPX, A altitude, X delete.</div>
         </section>
 
         <div class="route-list" id="routeList"></div>
@@ -2402,6 +2402,7 @@
               <button type="button" title="Open in overview" aria-label="Open ${escapeHtml(route.name)} in overview" data-action="overview" data-id="${route.id}">V</button>
               <button type="button" title="Edit" aria-label="Edit ${escapeHtml(route.name)}" data-action="edit" data-id="${route.id}">E</button>
               <button type="button" title="Duplicate" aria-label="Duplicate ${escapeHtml(route.name)}" data-action="duplicate" data-id="${route.id}">C</button>
+              <button type="button" title="Merge into another same-type route" aria-label="Merge ${escapeHtml(route.name)} into another same-type route" data-action="merge" data-id="${route.id}">M</button>
               <button type="button" title="Export JSON" aria-label="Export ${escapeHtml(route.name)} as JSON" data-action="json" data-id="${route.id}">J</button>
               <button type="button" title="Export GPX" aria-label="Export ${escapeHtml(route.name)} as GPX" data-action="gpx" data-id="${route.id}">G</button>
               ${route.type === "hike" ? `<button type="button" title="Recalculate elevation" aria-label="Recalculate elevation for ${escapeHtml(route.name)}" data-action="elevation" data-id="${route.id}">A</button>` : ""}
@@ -2647,6 +2648,78 @@
       activateType(copy.type);
       editRoute(copy.id);
       setStatus("Duplicated route; adjust the copy and save");
+    }
+
+    function uniqueTags(...tagLists) {
+      return [...new Set(tagLists.flatMap(tags => Array.isArray(tags) ? tags : []))];
+    }
+
+    function combinedText(first, second) {
+      return [first, second].map(value => String(value || "").trim()).filter(Boolean).join("\n\n");
+    }
+
+    function combinedPoints(first, second) {
+      const a = Array.isArray(first) ? first.map(point => [...point]) : [];
+      const b = Array.isArray(second) ? second.map(point => [...point]) : [];
+      if (!a.length) return b;
+      if (!b.length) return a;
+      const last = a[a.length - 1];
+      const next = b[0];
+      if (Math.abs(last[0] - next[0]) < 0.00001 && Math.abs(last[1] - next[1]) < 0.00001) {
+        return [...a, ...b.slice(1)];
+      }
+      return [...a, ...b];
+    }
+
+    function mergeRoute(id) {
+      const source = state.routes.find(item => item.id === id);
+      if (!source) return;
+      const candidates = state.routes.filter(route => route.id !== id && route.type === source.type);
+      if (!candidates.length) {
+        setStatus("No same-type route available to merge into");
+        return;
+      }
+      const targetText = prompt(`Merge "${source.name}" into which ${source.type}? Enter exact route name or id.`);
+      if (!targetText) return;
+      const normalizedTargetText = targetText.trim().toLowerCase();
+      const target = candidates.find(route => route.id.toLowerCase() === normalizedTargetText || route.name.toLowerCase() === normalizedTargetText);
+      if (!target) {
+        setStatus("No matching same-type target route found");
+        return;
+      }
+      if (!confirm(`Merge "${source.name}" into "${target.name}" and remove "${source.name}"?`)) return;
+      const points = combinedPoints(target.points, source.points);
+      const waypoints = combinedPoints(target.waypoints || target.points, source.waypoints || source.points);
+      const merged = {
+        ...target,
+        name: target.name,
+        date: target.date || source.date || "",
+        tags: uniqueTags(target.tags, source.tags),
+        durationHours: numericValue((Number(target.durationHours) || 0) + (Number(source.durationHours) || 0)),
+        elevationGainM: source.type === "hike" ? numericValue((Number(target.elevationGainM) || 0) + (Number(source.elevationGainM) || 0)) : "",
+        elevationLossM: source.type === "hike" ? numericValue((Number(target.elevationLossM) || 0) + (Number(source.elevationLossM) || 0)) : "",
+        notes: combinedText(target.notes, source.notes),
+        caption: target.caption || source.caption || "",
+        privateNotes: combinedText(target.privateNotes, source.privateNotes),
+        photos: [
+          ...(Array.isArray(target.photos) ? target.photos.map(photo => ({ ...photo })) : []),
+          ...(Array.isArray(source.photos) ? source.photos.map(photo => ({ ...photo, id: photo.id || crypto.randomUUID() })) : [])
+        ],
+        waypoints,
+        points,
+        metrics: routeMetrics(points, waypoints),
+        updatedAt: new Date().toISOString()
+      };
+      state.routes = state.routes
+        .filter(route => route.id !== source.id)
+        .map(route => route.id === target.id ? merged : route);
+      state.activeType = merged.type;
+      state.selectedId = merged.id;
+      saveRoutes();
+      renderTagSuggestions();
+      activateType(merged.type);
+      selectRoute(merged.id, true);
+      setStatus(`Merged ${source.name} into ${merged.name}`);
     }
 
     async function recalculateRouteElevation(id) {
@@ -3183,6 +3256,7 @@ ${points}
         if (action === "overview") openRouteOverview(id);
         if (action === "edit") editRoute(id);
         if (action === "duplicate") duplicateRoute(id);
+        if (action === "merge") mergeRoute(id);
         if (action === "json") exportRouteJson(id);
         if (action === "gpx") exportRouteGpx(id);
         if (action === "elevation") recalculateRouteElevation(id);
