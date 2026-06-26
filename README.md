@@ -82,6 +82,7 @@ The overview page reads the same saved route data as the map page and displays:
 - overview-page JSON export/import controls for backups and moving the private archive between browsers
 - overview-page public JSON export for the current filters, excluding notes, captions, photos, and private visibility
 - fixed-name `public-routes.json` export for replacing the hosted public viewer dataset
+- overview-page public publishing checklist for refreshing the hosted public viewer dataset
 - read-only public viewer that loads cleaned public JSON exports without touching the private local browser archive
 - overview-page CSV export for the currently visible route log
 - quick timeframe presets for 30 days, 90 days, this year, and all time
@@ -181,6 +182,8 @@ Use the private map and overview pages as your working archive. When you want to
 
 This keeps the full private archive in browser storage while the hosted public viewer receives only the cleaned route geometry, dates, tags, distance metrics, and elevation fields.
 
+The overview page also shows these publishing steps next to the export controls so the update workflow is visible while exporting the fixed public dataset.
+
 ## Map Services
 
 The app uses public web services for:
@@ -210,6 +213,6 @@ To turn this into a more useful distance-tracking tool, the strongest remaining 
 3. Add exact geography summaries
    - Add map overlays or boundary data for more exact regional coverage.
 
-4. Streamline the public publishing workflow
-   - Add a simpler documented routine or small helper for replacing `public-routes.json`.
-   - Keep browser storage as the private working copy while publishing only cleaned public route geometry.
+4. Make optional sync safer
+   - If cross-device use becomes important, add a private sync target with explicit import/export conflict handling.
+   - Keep browser storage as the private working copy unless the sync target is intentionally enabled.
