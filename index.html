@@ -259,11 +259,18 @@
     .recent-route {
       width: 100%;
       min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      background: #fff;
+      border: 1px solid #d8dddc;
       border-color: #d8dddc;
       justify-content: space-between;
       padding: 8px;
       text-align: left;
       white-space: normal;
+      border-radius: 6px;
     }
 
     .recent-route strong {
@@ -281,6 +288,19 @@
       display: block;
       margin-top: 2px;
       color: #6b7479;
+    }
+
+    .recent-route-actions {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+    }
+
+    .recent-route-actions button {
+      min-height: 28px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 720;
     }
 
     .recent-route.hike {
@@ -2809,14 +2829,17 @@
           formatKm(distanceKm(route.points))
         ].filter(Boolean).join(" / ");
         return `
-          <button class="recent-route ${route.type}" type="button" data-latest-route="${escapeHtml(route.id)}">
+          <div class="recent-route ${route.type}">
             <span>
               <strong>${escapeHtml(route.name)}</strong>
               <span>${escapeHtml(meta)}</span>
               <span class="recent-route-activity">${escapeHtml(latestRouteActivityLabel(route))}</span>
             </span>
-            <span>Zoom</span>
-          </button>
+            <span class="recent-route-actions">
+              <button type="button" data-latest-route="${escapeHtml(route.id)}">Zoom</button>
+              <button type="button" data-latest-edit="${escapeHtml(route.id)}">Edit</button>
+            </span>
+          </div>
         `;
       }).join("");
     }
@@ -4128,9 +4151,15 @@ ${points}
       selectRoute(card.dataset.id, true);
     });
     el.latestRoutes.addEventListener("click", event => {
-      const button = event.target.closest("button[data-latest-route]");
-      if (!button) return;
-      selectRoute(button.dataset.latestRoute, true);
+      const zoomButton = event.target.closest("button[data-latest-route]");
+      if (zoomButton) {
+        selectRoute(zoomButton.dataset.latestRoute, true);
+        return;
+      }
+      const editButton = event.target.closest("button[data-latest-edit]");
+      if (!editButton) return;
+      editRoute(editButton.dataset.latestEdit);
+      el.routeForm.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     el.selectedRouteDetail.addEventListener("click", event => {
       const photoButton = event.target.closest("button[data-selected-photo]");
