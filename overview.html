@@ -1408,6 +1408,10 @@
       }).filter(place => place.distanceKm <= place.radiusKm);
     }
 
+    function routeTouchesPlace(route, placeName) {
+      return routePlaceTouches(route).some(place => place.name === placeName);
+    }
+
     function parseTags(value) {
       return String(value || "")
         .split(",")
@@ -2941,10 +2945,10 @@ ${points}
       const placeRows = places.slice(0, 6).map(place => {
         const distanceText = place.closestKm < 1 ? "&lt;1 km" : escapeHtml(formatKm(place.closestKm));
         return `
-          <div class="summary-row">
+          <button class="summary-row action" type="button" data-place-focus="${escapeHtml(place.name)}">
             <span>${escapeHtml(place.name)} - ${escapeHtml(place.type)} - ${place.count} route${place.count === 1 ? "" : "s"}</span>
             <strong>${distanceText}</strong>
-          </div>
+          </button>
         `;
       }).join("");
       return `<div class="summary-row"><span>Curated places touched</span><strong>${places.length}</strong></div><div class="summary-row"><span>${escapeHtml(typeRow)}</span><strong></strong></div>${placeRows}`;
@@ -3023,6 +3027,20 @@ ${points}
       if (!points.length) return;
       overviewMap.fitBounds(L.latLngBounds(points.map(point => L.latLng(point[0], point[1]))).pad(0.18));
       el.focusNote.textContent = `Focused ${regionName}: ${routes.length} visible route${routes.length === 1 ? "" : "s"}.`;
+      document.getElementById("overviewMap").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function focusPlace(placeName) {
+      const place = PLACES.find(item => item.name === placeName);
+      if (!place) return;
+      const routes = state.filtered.filter(route => routeTouchesPlace(route, placeName));
+      const points = [
+        place.point,
+        ...routes.flatMap(route => route.points || [])
+      ];
+      if (!points.length) return;
+      overviewMap.fitBounds(L.latLngBounds(points.map(point => L.latLng(point[0], point[1]))).pad(0.18));
+      el.focusNote.textContent = `Focused ${placeName}: ${routes.length} visible route${routes.length === 1 ? "" : "s"} within ${formatKm(place.radiusKm)}.`;
       document.getElementById("overviewMap").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
@@ -3229,6 +3247,11 @@ ${points}
       const regionRow = event.target.closest("[data-region-focus]");
       if (!regionRow) return;
       focusRegion(regionRow.dataset.regionFocus);
+    });
+    el.nearbyPlacesSummary.addEventListener("click", event => {
+      const placeRow = event.target.closest("[data-place-focus]");
+      if (!placeRow) return;
+      focusPlace(placeRow.dataset.placeFocus);
     });
     el.backfillSummary.addEventListener("click", event => {
       const recalculateButton = event.target.closest("[data-recalculate-elevation]");
