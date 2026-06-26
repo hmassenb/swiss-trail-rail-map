@@ -1312,11 +1312,13 @@
             </label>
           </div>
           <div class="duration-presets" id="durationPresets" aria-label="Duration presets">
+            <button class="duration-preset" type="button" data-duration-step="-0.25">-15 min</button>
             <button class="duration-preset" type="button" data-duration="1.5">1.5 h</button>
             <button class="duration-preset" type="button" data-duration="2">2 h</button>
             <button class="duration-preset" type="button" data-duration="3">3 h</button>
             <button class="duration-preset" type="button" data-duration="4">4 h</button>
             <button class="duration-preset" type="button" data-duration="6">6 h</button>
+            <button class="duration-preset" type="button" data-duration-step="0.25">+15 min</button>
           </div>
           <div class="auto-elevation">
             <strong>Elevation is calculated automatically for hikes</strong>
@@ -3958,9 +3960,15 @@ ${points}
       setStatus(`Date set to ${el.routeDate.value}`);
     });
     el.durationPresets.addEventListener("click", event => {
-      const button = event.target.closest("[data-duration]");
+      const button = event.target.closest("[data-duration], [data-duration-step]");
       if (!button) return;
-      el.routeDuration.value = button.dataset.duration;
+      if (button.dataset.duration) {
+        el.routeDuration.value = button.dataset.duration;
+      } else {
+        const current = Number(el.routeDuration.value) || 0;
+        const step = Number(button.dataset.durationStep) || 0;
+        el.routeDuration.value = Math.max(0, current + step).toFixed(2).replace(/\.?0+$/, "");
+      }
       persistDraftState();
       updateQuickPost();
       setStatus(`Duration set to ${button.textContent.trim()}`);
