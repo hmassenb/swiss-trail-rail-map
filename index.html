@@ -22,6 +22,11 @@
 
     * { box-sizing: border-box; }
 
+    html,
+    body {
+      height: 100%;
+    }
+
     body {
       margin: 0;
       color: var(--ink);
@@ -33,6 +38,7 @@
       display: grid;
       grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
       height: 100vh;
+      height: 100dvh;
       width: 100vw;
       min-height: 0;
     }
@@ -45,6 +51,9 @@
       min-width: 0;
       min-height: 0;
       height: 100vh;
+      height: 100dvh;
+      max-height: 100vh;
+      max-height: 100dvh;
       overflow: hidden;
       overflow-x: hidden;
       overscroll-behavior: contain;
@@ -194,10 +203,11 @@
     .panel-scroll {
       padding: 14px 18px 18px;
       flex: 1 1 auto;
-      height: 100%;
+      height: auto;
       min-height: 0;
       overflow-y: auto;
       overflow-x: hidden;
+      scrollbar-gutter: stable;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
     }
@@ -1114,14 +1124,14 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 20px;
-      height: 20px;
+      width: 26px;
+      height: 26px;
       border: 1px solid #fff;
       border-radius: 999px;
       background: var(--red);
       color: #fff;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 820;
       line-height: 1;
       box-shadow: 0 2px 7px rgba(28, 43, 47, 0.24);
@@ -1320,7 +1330,7 @@
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
             <div class="draft-point-list" id="draftPointList" aria-label="Selected route points"></div>
-            <p class="hint">Click the map to add waypoints. Use the red x on a marker to remove that point, drag markers to adjust them, use Backspace/Delete to remove the last point, or use the point list for exact edits.</p>
+            <p class="hint">Click the map to add waypoints. Remove mistakes with the marker x, Shift-click a marker, Backspace/Delete for the last point, or the point list below.</p>
           </div>
           <label class="checkbox-line">
             <input id="backfillMode" type="checkbox" />
@@ -2378,12 +2388,12 @@
       state.draft.forEach((point, index) => {
         const marker = L.marker(point, {
           draggable: true,
-          title: `Point ${index + 1}: drag to adjust, use the red x to remove`,
+          title: `Point ${index + 1}: drag to adjust, Shift-click or use x to remove`,
           icon: L.divIcon({
             className: "",
             html: `<span class="draft-waypoint-icon" aria-label="Point ${index + 1}">${index + 1}<span class="draft-waypoint-remove" title="Remove point ${index + 1}" aria-label="Remove point ${index + 1}">x</span></span>`,
-            iconSize: [38, 38],
-            iconAnchor: [19, 19]
+            iconSize: [44, 44],
+            iconAnchor: [22, 22]
           })
         });
         marker.on("dragstart", () => {
@@ -2398,11 +2408,11 @@
         marker.on("click", event => {
           if (state.draggedDraftPoint) return;
           const target = event.originalEvent?.target;
-          if (target?.closest?.(".draft-waypoint-remove")) {
+          if (event.originalEvent?.shiftKey || target?.closest?.(".draft-waypoint-remove")) {
             removeDraftPoint(index);
             return;
           }
-          setStatus(`Point ${index + 1}: drag to move or click the red x to remove`);
+          setStatus(`Point ${index + 1}: drag to move, Shift-click to remove, or use the x`);
         });
         draftGroup.addLayer(marker);
       });
