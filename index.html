@@ -861,14 +861,16 @@
       color: #8a5135;
     }
 
-    .tag-suggestions {
+    .tag-suggestions,
+    .duration-presets {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       margin-top: 7px;
     }
 
-    .tag-chip {
+    .tag-chip,
+    .duration-preset {
       border: 1px solid #d7dfda;
       background: #f7f8f6;
       color: #344249;
@@ -880,7 +882,8 @@
       cursor: pointer;
     }
 
-    .tag-chip:hover {
+    .tag-chip:hover,
+    .duration-preset:hover {
       background: #edf3ee;
       border-color: #bfd2c4;
     }
@@ -1300,6 +1303,13 @@
               <input id="routeDuration" type="number" min="0" step="0.25" placeholder="hours" />
             </label>
           </div>
+          <div class="duration-presets" id="durationPresets" aria-label="Duration presets">
+            <button class="duration-preset" type="button" data-duration="1.5">1.5 h</button>
+            <button class="duration-preset" type="button" data-duration="2">2 h</button>
+            <button class="duration-preset" type="button" data-duration="3">3 h</button>
+            <button class="duration-preset" type="button" data-duration="4">4 h</button>
+            <button class="duration-preset" type="button" data-duration="6">6 h</button>
+          </div>
           <div class="auto-elevation">
             <strong>Elevation is calculated automatically for hikes</strong>
             <p class="hint">GPX elevation is used locally when available. Clicked hike routes use an elevation lookup on save; train routes skip elevation by default.</p>
@@ -1483,6 +1493,7 @@
       routeTags: document.getElementById("routeTags"),
       tagSuggestions: document.getElementById("tagSuggestions"),
       routeDuration: document.getElementById("routeDuration"),
+      durationPresets: document.getElementById("durationPresets"),
       routeGain: document.getElementById("routeGain"),
       routeLoss: document.getElementById("routeLoss"),
       routeNotes: document.getElementById("routeNotes"),
@@ -3921,6 +3932,14 @@ ${points}
     el.routeStatus.addEventListener("change", renderList);
     el.routeSort.addEventListener("change", renderList);
     el.resetRouteFiltersBtn.addEventListener("click", resetRouteFilters);
+    el.durationPresets.addEventListener("click", event => {
+      const button = event.target.closest("[data-duration]");
+      if (!button) return;
+      el.routeDuration.value = button.dataset.duration;
+      persistDraftState();
+      updateQuickPost();
+      setStatus(`Duration set to ${button.textContent.trim()}`);
+    });
     el.tagSuggestions.addEventListener("click", event => {
       const button = event.target.closest("button[data-tag]");
       if (!button) return;

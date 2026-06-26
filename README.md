@@ -128,7 +128,7 @@ Routes are entered directly in the browser:
 - GPX imports use the GPX track type/name/time when present and can fall back to filename train cues, cleaned filenames, and common filename dates such as `2021-08-14`, `20210814`, or `14.08.2021`.
 - Searches, clicked points, GPX drafts, and imported routes are kept inside the Switzerland map bounds; imports outside Switzerland are skipped on both the map and overview pages.
 - Add a route name, optional date, and optional notes.
-- Add optional tags and duration. Elevation gain/loss is calculated automatically for hikes: GPX elevation is used locally when available, and clicked routes use an external elevation lookup.
+- Add optional tags and duration, with quick duration presets for common backfill entries. Elevation gain/loss is calculated automatically for hikes: GPX elevation is used locally when available, and clicked routes use an external elevation lookup.
 - Reuse saved tag chips while entering routes to keep route categories consistent.
 - Add an optional caption and route photos by selecting images or dropping photos onto the photo area.
 - Save the route.
