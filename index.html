@@ -45,7 +45,10 @@
       min-width: 0;
       min-height: 0;
       height: 100vh;
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       z-index: 5;
     }
 
@@ -191,14 +194,10 @@
 
     .panel-scroll {
       padding: 14px 18px 18px;
-      flex: 1 1 0;
+      flex: 0 0 auto;
       height: auto;
       min-height: 0;
-      overflow-y: auto;
-      overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      scrollbar-gutter: stable;
+      overflow: visible;
     }
 
     .stats {
@@ -1154,7 +1153,7 @@
           <div>
             <div class="coords" id="coordPreview">No route points selected</div>
             <div class="draft-point-list" id="draftPointList" aria-label="Selected route points"></div>
-            <p class="hint">Click the map to add waypoints. Click a numbered marker or its red x to remove that point, drag markers to adjust them, or use the point list to insert and remove exact points.</p>
+            <p class="hint">Click the map to add waypoints. Click any numbered marker or its red x to remove that point, drag markers to adjust them, use Backspace/Delete to remove the last point, or use the point list for exact edits.</p>
           </div>
           <label class="checkbox-line">
             <input id="backfillMode" type="checkbox" />
@@ -1162,7 +1161,7 @@
           </label>
           <div class="button-row">
             <button id="saveRouteBtn" class="primary" type="submit">Save route</button>
-            <button id="undoPointBtn" type="button">Remove last point</button>
+            <button id="undoPointBtn" type="button" title="Remove the most recently added point. Shortcut: Backspace or Delete.">Undo last point</button>
             <button id="reverseDraftBtn" type="button" title="Reverse route direction">Reverse</button>
             <button id="clearDraftBtn" type="button">Clear</button>
           </div>
@@ -2016,6 +2015,15 @@
       state.draft.splice(index, 1);
       updateDraftRoute();
       setStatus(`Removed point ${index + 1}`);
+    }
+
+    function removeLastDraftPoint() {
+      if (!state.draft.length) return;
+      const removedIndex = state.draft.length;
+      state.draftSource = "";
+      state.draft.pop();
+      updateDraftRoute();
+      setStatus(`Removed point ${removedIndex}`);
     }
 
     function insertDraftPointAfter(index) {
@@ -3233,10 +3241,14 @@ ${points}
       input.addEventListener("input", persistDraftState);
       input.addEventListener("change", persistDraftState);
     });
-    el.undoPointBtn.addEventListener("click", () => {
-      state.draftSource = "";
-      state.draft.pop();
-      updateDraftRoute();
+    el.undoPointBtn.addEventListener("click", removeLastDraftPoint);
+    document.addEventListener("keydown", event => {
+      const editingText = event.target instanceof Element && event.target.closest("input, textarea, select");
+      if (editingText || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key !== "Backspace" && event.key !== "Delete") return;
+      if (!state.draft.length) return;
+      event.preventDefault();
+      removeLastDraftPoint();
     });
     el.reverseDraftBtn.addEventListener("click", reverseDraftRoute);
     el.draftPointList.addEventListener("click", event => {
