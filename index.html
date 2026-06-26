@@ -711,6 +711,20 @@
       line-height: 1.35;
     }
 
+    .import-form {
+      border: 1px dashed #b8c3bd;
+      border-radius: 8px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.58);
+      transition: background 0.16s ease, border-color 0.16s ease;
+    }
+
+    .import-form.drag-over {
+      background: #f7fbf7;
+      border-color: var(--green);
+      box-shadow: inset 0 0 0 2px rgba(79, 121, 100, 0.16);
+    }
+
     .route-card {
       background: #fff;
       border: 1px solid var(--line);
@@ -1320,11 +1334,12 @@
           </div>
         </form>
 
-        <form id="importForm">
+        <form class="import-form" id="importForm">
           <label>
             GPX / JSON import
             <input class="file-input" id="importFile" type="file" accept=".gpx,.json,application/gpx+xml,application/json" multiple />
           </label>
+          <p class="hint">Drop GPX or JSON files here, or use the file picker.</p>
           <div class="button-row">
             <button id="exportJsonBtn" type="button">Export JSON</button>
             <button id="exportGpxBtn" type="button">Export GPX</button>
@@ -1427,6 +1442,7 @@
       checkShare: document.getElementById("checkShare"),
       quickPostNote: document.getElementById("quickPostNote"),
       routeForm: document.getElementById("routeForm"),
+      importForm: document.getElementById("importForm"),
       routeName: document.getElementById("routeName"),
       routeDate: document.getElementById("routeDate"),
       routeType: document.getElementById("routeType"),
@@ -3511,6 +3527,16 @@ ${points}
       setStatus(`${totals.added} route${totals.added === 1 ? "" : "s"} imported from ${fileText}${importSkipText(totals.invalid, totals.duplicates)}${failText}`);
     }
 
+    async function importSelectedFiles(fileList) {
+      const files = [...fileList];
+      if (!files.length) return;
+      try {
+        await importFiles(files);
+      } catch (error) {
+        setStatus(error.message || "Import failed");
+      }
+    }
+
     function normalizeSavedRoute(route) {
       const normalized = normalizeRoute(route);
       if (!normalized) return null;
@@ -3805,15 +3831,24 @@ ${points}
       appendTag(button.dataset.tag);
     });
     el.importFile.addEventListener("change", async event => {
-      const files = [...event.target.files];
-      if (!files.length) return;
-      try {
-        await importFiles(files);
-      } catch (error) {
-        setStatus(error.message || "Import failed");
-      } finally {
-        event.target.value = "";
-      }
+      await importSelectedFiles(event.target.files);
+      event.target.value = "";
+    });
+    ["dragenter", "dragover"].forEach(type => {
+      el.importForm.addEventListener(type, event => {
+        event.preventDefault();
+        el.importForm.classList.add("drag-over");
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+      });
+    });
+    ["dragleave", "drop"].forEach(type => {
+      el.importForm.addEventListener(type, event => {
+        event.preventDefault();
+        el.importForm.classList.remove("drag-over");
+      });
+    });
+    el.importForm.addEventListener("drop", async event => {
+      await importSelectedFiles(event.dataTransfer?.files || []);
     });
     el.routePhotos.addEventListener("change", async event => {
       if (event.target.files.length) await addPhotoFiles(event.target.files);
