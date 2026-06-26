@@ -973,6 +973,44 @@
       max-width: min(430px, calc(100vw - 32px));
     }
 
+    .undo-delete {
+      position: fixed;
+      right: 16px;
+      bottom: 58px;
+      z-index: 510;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: min(430px, calc(100vw - 32px));
+      background: rgba(248, 249, 246, 0.97);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--red);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 9px 10px;
+      color: #344249;
+      font-size: 12px;
+    }
+
+    .undo-delete[hidden] {
+      display: none;
+    }
+
+    .undo-delete span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .undo-delete button {
+      min-height: 30px;
+      padding: 4px 9px;
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
     .split-picker {
       position: fixed;
       right: 16px;
@@ -1323,6 +1361,10 @@
   </div>
 
   <div class="map-status" id="mapStatus">Ready</div>
+  <div class="undo-delete" id="undoDeleteBar" hidden>
+    <span id="undoDeleteText">Route deleted.</span>
+    <button id="undoDeleteBtn" type="button">Undo</button>
+  </div>
   <div class="split-picker" id="splitPicker" hidden role="dialog" aria-label="Split saved route">
     <div class="split-picker-head">
       <strong id="splitPickerTitle">Split route</strong>
@@ -1368,7 +1410,8 @@
       selectedId: null,
       routingRequestId: 0,
       draggedDraftPoint: false,
-      pendingSplit: null
+      pendingSplit: null,
+      deletedRoute: null
     };
 
     const el = {
@@ -1399,6 +1442,9 @@
       photoTools: document.getElementById("photoTools"),
       photoCountLabel: document.getElementById("photoCountLabel"),
       clearPhotosBtn: document.getElementById("clearPhotosBtn"),
+      undoDeleteBar: document.getElementById("undoDeleteBar"),
+      undoDeleteText: document.getElementById("undoDeleteText"),
+      undoDeleteBtn: document.getElementById("undoDeleteBtn"),
       photoPreview: document.getElementById("photoPreview"),
       coordPreview: document.getElementById("coordPreview"),
       draftPointList: document.getElementById("draftPointList"),
@@ -1496,6 +1542,38 @@
       setStatus.timer = window.setTimeout(() => {
         el.mapStatus.textContent = state.draft.length ? `${state.draft.length} draft points` : "Ready";
       }, 2800);
+    }
+
+    function hideDeleteUndo() {
+      state.deletedRoute = null;
+      window.clearTimeout(hideDeleteUndo.timer);
+      el.undoDeleteBar.hidden = true;
+    }
+
+    function showDeleteUndo(route, index) {
+      state.deletedRoute = { route: { ...route }, index };
+      el.undoDeleteText.textContent = `Deleted ${route.name}`;
+      el.undoDeleteBar.hidden = false;
+      window.clearTimeout(hideDeleteUndo.timer);
+      hideDeleteUndo.timer = window.setTimeout(hideDeleteUndo, 10000);
+    }
+
+    function restoreDeletedRoute() {
+      if (!state.deletedRoute) return;
+      const { route, index } = state.deletedRoute;
+      hideDeleteUndo();
+      if (state.routes.some(item => item.id === route.id)) {
+        setStatus("Route is already restored");
+        return;
+      }
+      const nextRoutes = [...state.routes];
+      nextRoutes.splice(Math.max(0, Math.min(index, nextRoutes.length)), 0, route);
+      state.routes = nextRoutes;
+      saveRoutes();
+      renderTagSuggestions();
+      renderRoutes();
+      selectRoute(route.id, true);
+      setStatus(`Restored ${route.name}`);
     }
 
     function canUseLocalStorage() {
@@ -2938,7 +3016,8 @@
     }
 
     function deleteRoute(id) {
-      const route = state.routes.find(item => item.id === id);
+      const routeIndex = state.routes.findIndex(item => item.id === id);
+      const route = state.routes[routeIndex];
       if (!route) return;
       if (!confirm(`Delete "${route.name}"?`)) return;
       state.routes = state.routes.filter(item => item.id !== id);
@@ -2949,6 +3028,7 @@
       saveRoutes();
       renderTagSuggestions();
       renderRoutes();
+      showDeleteUndo(route, routeIndex);
       setStatus("Route deleted from this browser");
     }
 
@@ -3760,6 +3840,7 @@ ${points}
     el.photoViewer.addEventListener("click", event => {
       if (event.target === el.photoViewer) closePhotoViewer();
     });
+    el.undoDeleteBtn.addEventListener("click", restoreDeletedRoute);
     window.addEventListener("keydown", event => {
       if (event.key === "Escape" && el.photoViewer.classList.contains("open")) closePhotoViewer();
     });
