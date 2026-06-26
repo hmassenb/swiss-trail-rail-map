@@ -926,6 +926,9 @@
           <option value="30">Last 30 days</option>
           <option value="custom">Custom range</option>
         </select>
+        <select id="yearFilter" aria-label="Filter by logged year">
+          <option value="all">Logged year</option>
+        </select>
         <select id="qualityFilter">
           <option value="all">All quality</option>
           <option value="incomplete">Needs backfill</option>
@@ -1311,6 +1314,7 @@
       typeFilter: document.getElementById("typeFilter"),
       tagFilter: document.getElementById("tagFilter"),
       timeFilter: document.getElementById("timeFilter"),
+      yearFilter: document.getElementById("yearFilter"),
       qualityFilter: document.getElementById("qualityFilter"),
       sortBy: document.getElementById("sortBy"),
       timePresets: document.getElementById("timePresets"),
@@ -1923,6 +1927,7 @@
       state.routes = [...state.routes, ...additions];
       saveRoutes();
       renderTagOptions();
+      renderYearOptions();
       applyFilters();
     }
 
@@ -1930,6 +1935,7 @@
       state.routes = state.routes.filter(route => !String(route.id).startsWith("demo-"));
       saveRoutes();
       renderTagOptions();
+      renderYearOptions();
       applyFilters();
     }
 
@@ -2194,6 +2200,7 @@ ${points}
       state.routes = [...state.routes, ...merged];
       saveRoutes();
       renderTagOptions();
+      renderYearOptions();
       applyFilters();
       el.storageNote.classList.toggle("warning", invalid > 0);
       el.storageNote.textContent = `${merged.length} route${merged.length === 1 ? "" : "s"} imported${importSkipText(invalid, duplicates)}`;
@@ -2258,6 +2265,36 @@ ${points}
         .sort((a, b) => a.localeCompare(b));
       el.tagFilter.innerHTML = `<option value="all">All tags</option>${tags.map(tag => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`).join("")}`;
       if (tags.includes(current)) el.tagFilter.value = current;
+    }
+
+    function routeYear(route) {
+      return /^\d{4}-\d{2}-\d{2}$/.test(route.date || "") ? route.date.slice(0, 4) : "";
+    }
+
+    function renderYearOptions() {
+      const current = el.yearFilter.value;
+      const years = [...new Set(state.routes.map(routeYear).filter(Boolean))]
+        .sort((a, b) => b.localeCompare(a));
+      el.yearFilter.innerHTML = `<option value="all">Logged year</option>${years.map(year => `<option value="${year}">${year}</option>`).join("")}`;
+      if (years.includes(current)) el.yearFilter.value = current;
+    }
+
+    function applyLoggedYear(year) {
+      if (year === "all") {
+        el.dateFrom.value = "";
+        el.dateTo.value = "";
+        el.timeFilter.value = "all";
+      } else {
+        el.dateFrom.value = `${year}-01-01`;
+        el.dateTo.value = `${year}-12-31`;
+        el.timeFilter.value = "custom";
+      }
+      state.activeBackfill = "";
+      clearRouteHash();
+      applyFilters();
+      el.focusNote.textContent = year === "all"
+        ? "Showing all logged years."
+        : `Showing entries logged in ${year}.`;
     }
 
     function routeSearchText(route) {
@@ -2476,6 +2513,7 @@ ${points}
       el.typeFilter.value = "all";
       el.tagFilter.value = "all";
       el.timeFilter.value = "all";
+      el.yearFilter.value = "all";
       el.qualityFilter.value = "all";
       el.dateFrom.value = "";
       el.dateTo.value = "";
@@ -3390,12 +3428,15 @@ ${points}
     el.typeFilter.addEventListener("change", applyFilters);
     el.tagFilter.addEventListener("change", applyFilters);
     el.qualityFilter.addEventListener("change", applyFilters);
+    el.yearFilter.addEventListener("change", () => applyLoggedYear(el.yearFilter.value));
     el.timeFilter.addEventListener("change", () => {
+      el.yearFilter.value = "all";
       syncDateInputsToPreset();
       applyFilters();
     });
     [el.dateFrom, el.dateTo].forEach(input => {
       input.addEventListener("change", () => {
+        el.yearFilter.value = "all";
         el.timeFilter.value = "custom";
         applyFilters();
       });
@@ -3404,6 +3445,7 @@ ${points}
       el.dateFrom.value = "";
       el.dateTo.value = "";
       el.timeFilter.value = "all";
+      el.yearFilter.value = "all";
       applyFilters();
     });
     el.sortBy.addEventListener("change", applyFilters);
@@ -3412,6 +3454,7 @@ ${points}
     el.timePresets.addEventListener("click", event => {
       const button = event.target.closest("button[data-time-preset]");
       if (!button) return;
+      el.yearFilter.value = "all";
       el.timeFilter.value = button.dataset.timePreset;
       syncDateInputsToPreset();
       applyFilters();
@@ -3491,6 +3534,7 @@ ${points}
       el.dateFrom.value = day.dataset.calendarDate;
       el.dateTo.value = day.dataset.calendarDate;
       el.timeFilter.value = "custom";
+      el.yearFilter.value = "all";
       state.activeBackfill = "";
       clearRouteHash();
       applyFilters();
@@ -3507,6 +3551,7 @@ ${points}
     loadGoals();
     syncDateInputsToPreset();
     renderTagOptions();
+    renderYearOptions();
     if (selectedHashBackfill()) state.activeBackfill = selectedHashBackfill();
     applyFilters();
     if (state.activeBackfill) {

@@ -26,9 +26,9 @@ The overview page reads the same saved route data as the map page and displays:
 
 - one Switzerland-bounded overview map that opens on all saved hikes and train routes
 - a searchable route log
-- filters for hikes, trains, tags, and timeframes
+- filters for hikes, trains, tags, logged years, and timeframes
 - exact custom date ranges with `From` and `To` controls
-- one-click overview filter reset for search, type, tag, time, sort, selected route, and backfill views
+- one-click overview filter reset for search, type, tag, year, time, sort, selected route, and backfill views
 - cumulative map controls for hikes, trains, and saved routes
 - live map legend with filtered hike, train, private, and currently drawn route counts
 - overview-map control to fit back to the currently visible filtered routes after focusing a route, region, or place
