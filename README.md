@@ -75,6 +75,7 @@ The overview page reads the same saved route data as the map page and displays:
 - map-page saved-route status filter with live counts for all, needs-info, complete, with-photos, and no-photo entries
 - map-page saved-route filter reset for text, status, and sorting controls, disabled when already reset
 - map-page storage note with estimated archive size, photo count, and photo payload size
+- route photo attachment previews with per-photo removal, a clear-all control, and a 12-photo count
 - local autosave and restore for unsaved map-page route drafts
 - unsaved-draft warnings before leaving the map page or clearing a route draft
 - hidden private route notes that stay in private JSON backups and are excluded from public exports

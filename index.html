@@ -867,6 +867,24 @@
       gap: 8px;
     }
 
+    .photo-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin: -2px 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .photo-tools button {
+      min-height: 30px;
+      padding: 4px 8px;
+      color: var(--red);
+      font-size: 12px;
+      font-weight: 720;
+    }
+
     .photo-tile {
       position: relative;
       min-height: 76px;
@@ -1237,6 +1255,10 @@
             Photos
             <input class="file-input" id="routePhotos" type="file" accept="image/*" multiple />
           </label>
+          <div class="photo-tools" id="photoTools" hidden>
+            <span id="photoCountLabel">0 / 12 photos attached</span>
+            <button id="clearPhotosBtn" type="button">Clear photos</button>
+          </div>
           <div class="photo-grid" id="photoPreview"></div>
           <p class="hint">Photos are compressed and saved in this browser with the route. Export JSON regularly if you use many photos.</p>
           <label>
@@ -1374,6 +1396,9 @@
       routeCaption: document.getElementById("routeCaption"),
       routePrivateNotes: document.getElementById("routePrivateNotes"),
       routePhotos: document.getElementById("routePhotos"),
+      photoTools: document.getElementById("photoTools"),
+      photoCountLabel: document.getElementById("photoCountLabel"),
+      clearPhotosBtn: document.getElementById("clearPhotosBtn"),
       photoPreview: document.getElementById("photoPreview"),
       coordPreview: document.getElementById("coordPreview"),
       draftPointList: document.getElementById("draftPointList"),
@@ -1696,6 +1721,8 @@
     }
 
     function renderPhotoPreview() {
+      el.photoTools.hidden = state.pendingPhotos.length === 0;
+      el.photoCountLabel.textContent = `${state.pendingPhotos.length} / 12 photo${state.pendingPhotos.length === 1 ? "" : "s"} attached`;
       if (!state.pendingPhotos.length) {
         el.photoPreview.innerHTML = `<div class="hint">No photos attached.</div>`;
         persistDraftState();
@@ -3659,8 +3686,17 @@ ${points}
     el.photoPreview.addEventListener("click", event => {
       const button = event.target.closest("button[data-photo-id]");
       if (!button) return;
+      const before = state.pendingPhotos.length;
       state.pendingPhotos = state.pendingPhotos.filter(photo => photo.id !== button.dataset.photoId);
       renderPhotoPreview();
+      if (state.pendingPhotos.length < before) setStatus("Photo removed");
+    });
+    el.clearPhotosBtn.addEventListener("click", () => {
+      if (!state.pendingPhotos.length) return;
+      state.pendingPhotos = [];
+      el.routePhotos.value = "";
+      renderPhotoPreview();
+      setStatus("Attached photos cleared");
     });
     el.draftGpxFile.addEventListener("change", async event => {
       const file = event.target.files[0];
