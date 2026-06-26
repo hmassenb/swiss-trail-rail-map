@@ -55,7 +55,7 @@ The overview page reads the same saved route data as the map page and displays:
 - estimated local archive size and photo payload size for the current filter/timeframe
 - estimated canton coverage and next uncovered cantons for the current filter/timeframe
 - route-envelope summary for north/south/east/west span and altitude sample range
-- nearby curated towns, lakes, peaks, passes, and stations touched by filtered routes
+- nearby curated towns, lakes, peaks, passes, huts, and stations touched by filtered routes
 - feed-card route focusing on the cumulative map
 - selected-route detail cards with metrics, tags, caption, coordinates, photo count, route-level JSON/GPX export, and name filtering
 - route-level share links using `overview.html#route=...`
@@ -216,7 +216,7 @@ To turn this into a more useful distance-tracking tool, the strongest remaining 
 
 5. Add geography summaries
    - Cantons visited.
-   - Expand the curated nearby-place list with more local peaks, lakes, huts, and stations.
+   - Add map overlays or boundary data for more exact regional coverage.
 
 6. Add optional publishing modes
    - Keep browser storage as the private working copy.
