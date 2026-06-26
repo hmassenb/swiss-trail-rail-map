@@ -76,6 +76,7 @@ The overview page reads the same saved route data as the map page and displays:
 - delete undo bar for restoring an accidentally deleted saved route immediately
 - map-page saved-route status filter with live counts for all, needs-info, missing date, missing duration, missing elevation, complete, with-photos, and no-photo entries
 - map-page `Edit first match` action to open the first currently filtered saved route directly in the edit form
+- map-page save feedback that points to the next matching route, or confirms no matches remain, when editing through active saved-route filters
 - map-page saved-route filter reset for text, status, and sorting controls, disabled when already reset
 - map-page storage note with estimated archive size, photo count, and photo payload size
 - route photo attachment previews with per-photo removal, a clear-all control, and a 12-photo count

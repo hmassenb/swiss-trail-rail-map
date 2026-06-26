@@ -2902,6 +2902,14 @@
       return { query, typeRoutes, statusRoutes, filtered };
     }
 
+    function nextFilteredEditMessage(defaultMessage) {
+      if (!hasActiveRouteFilters()) return defaultMessage;
+      const nextRoute = visibleRouteList().filtered[0];
+      return nextRoute
+        ? `${defaultMessage}; next match: ${nextRoute.name}`
+        : `${defaultMessage}; no more routes match the current saved-route filters`;
+    }
+
     function renderList() {
       updateRouteStatusOptionCounts();
       el.resetRouteFiltersBtn.disabled = !hasActiveRouteFilters();
@@ -3451,7 +3459,8 @@
       resetForm({ preserveBackfill });
       activateType(route.type);
       selectRoute(route.id, true);
-      setStatus(preserveBackfill ? "Route saved; date, type, and tags kept for backfilling" : "Route saved");
+      const savedMessage = preserveBackfill ? "Route saved; date, type, and tags kept for backfilling" : "Route saved";
+      setStatus(editId ? nextFilteredEditMessage(savedMessage) : savedMessage);
     }
 
     async function searchPlace() {
