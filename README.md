@@ -167,6 +167,18 @@ After a JSON export, the app records the backup time and route count in browser 
 
 For manually clicked hike routes, the app sends sampled route coordinates to Open-Elevation during save to estimate elevation gain/loss and store profile samples for the overview. GPX elevation is used locally when present. Manual elevation fields are kept as an advanced override for old backfilled hikes or failed lookups.
 
+## Publishing Public Routes
+
+Use the private map and overview pages as your working archive. When you want to refresh the public embedded map:
+
+1. Open the overview page and filter to the routes you want to publish.
+2. Click `Export public-routes.json`.
+3. Replace the repository file `public-routes.json` with the downloaded file.
+4. Commit and push the replacement to GitHub.
+5. Open `https://hmassenb.github.io/swiss-trail-rail-map/public.html?data=public-routes.json` after GitHub Pages redeploys.
+
+This keeps the full private archive in browser storage while the hosted public viewer receives only the cleaned route geometry, dates, tags, distance metrics, and elevation fields.
+
 ## Map Services
 
 The app uses public web services for:
@@ -206,5 +218,4 @@ To turn this into a more useful distance-tracking tool, the strongest remaining 
 
 6. Add optional publishing modes
    - Keep browser storage as the private working copy.
-   - Add written steps for replacing the hosted public JSON file from a cleaned export.
    - Add optional hidden notes that are not included in any published export.
