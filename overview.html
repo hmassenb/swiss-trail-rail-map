@@ -1132,6 +1132,10 @@
           <div class="summary-list" id="yearElevationSummary"></div>
         </div>
         <div class="summary-panel">
+          <h2>Activity Rhythm</h2>
+          <div class="summary-list" id="activityRhythmSummary"></div>
+        </div>
+        <div class="summary-panel">
           <h2>Monthly Distance</h2>
           <div class="summary-list" id="monthSummary"></div>
         </div>
@@ -1390,6 +1394,7 @@
       yearSummary: document.getElementById("yearSummary"),
       yearlyProgressSummary: document.getElementById("yearlyProgressSummary"),
       yearElevationSummary: document.getElementById("yearElevationSummary"),
+      activityRhythmSummary: document.getElementById("activityRhythmSummary"),
       monthSummary: document.getElementById("monthSummary"),
       typeComparisonSummary: document.getElementById("typeComparisonSummary"),
       archiveSummary: document.getElementById("archiveSummary"),
@@ -2836,6 +2841,7 @@ ${points}
       el.yearSummary.innerHTML = summaryRows(byYear, 8, "No dated entries yet.");
       el.yearlyProgressSummary.innerHTML = yearlyProgressRows(datedRoutes, 8);
       el.yearElevationSummary.innerHTML = elevationRows(gainByYear, 8, "No dated hikes with elevation yet.");
+      el.activityRhythmSummary.innerHTML = activityRhythmRows(activityRows());
       el.monthSummary.innerHTML = summaryRows(byMonth, 12, "No dated entries yet.");
       el.typeComparisonSummary.innerHTML = typeComparisonRows(state.filtered);
       el.archiveSummary.innerHTML = archiveHealthRows(state.filtered);
@@ -2925,6 +2931,70 @@ ${points}
           </div>
         </div>
       `).join("");
+    }
+
+    function activeDateStreak(rows) {
+      if (!rows.length) return null;
+      const dayMs = 24 * 60 * 60 * 1000;
+      let best = { count: 1, start: rows[0].date, end: rows[0].date };
+      let current = { count: 1, start: rows[0].date, end: rows[0].date };
+      for (let index = 1; index < rows.length; index++) {
+        const previous = parseRouteDate(rows[index - 1].date);
+        const next = parseRouteDate(rows[index].date);
+        const gap = Math.round((next - previous) / dayMs);
+        if (gap === 1) {
+          current.count += 1;
+          current.end = rows[index].date;
+        } else {
+          current = { count: 1, start: rows[index].date, end: rows[index].date };
+        }
+        if (current.count > best.count) best = { ...current };
+      }
+      return best;
+    }
+
+    function activityRhythmRows(rows) {
+      if (!rows.length) return `<div class="summary-row"><span>No dated entries yet.</span><strong></strong></div>`;
+      const dayMs = 24 * 60 * 60 * 1000;
+      const weekdayTotals = {};
+      const monthTotals = {};
+      let weekendDays = 0;
+      const gaps = [];
+      rows.forEach((row, index) => {
+        const date = parseRouteDate(row.date);
+        const weekday = date.toLocaleString(undefined, { weekday: "short" });
+        const month = row.date.slice(0, 7);
+        if (!weekdayTotals[weekday]) weekdayTotals[weekday] = { days: 0, entries: 0, distance: 0 };
+        if (!monthTotals[month]) monthTotals[month] = { days: 0, entries: 0, distance: 0 };
+        weekdayTotals[weekday].days += 1;
+        weekdayTotals[weekday].entries += row.count;
+        weekdayTotals[weekday].distance += row.distance;
+        monthTotals[month].days += 1;
+        monthTotals[month].entries += row.count;
+        monthTotals[month].distance += row.distance;
+        if (date.getDay() === 0 || date.getDay() === 6) weekendDays += 1;
+        if (index > 0) {
+          const previous = parseRouteDate(rows[index - 1].date);
+          gaps.push(Math.max(0, Math.round((date - previous) / dayMs)));
+        }
+      });
+      const streak = activeDateStreak(rows);
+      const busiestWeekday = Object.entries(weekdayTotals)
+        .sort(([, a], [, b]) => b.days - a.days || b.entries - a.entries || b.distance - a.distance)[0];
+      const busiestMonth = Object.entries(monthTotals)
+        .sort(([, a], [, b]) => b.days - a.days || b.entries - a.entries || b.distance - a.distance)[0];
+      const averageGap = gaps.length ? Math.round(gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length) : 0;
+      const weekendShare = Math.round((weekendDays / rows.length) * 100);
+      const streakText = streak.count > 1
+        ? `${streak.count} days (${streak.start} to ${streak.end})`
+        : `1 day (${streak.start})`;
+      return [
+        `<div class="summary-row"><span>Longest active streak</span><strong>${escapeHtml(streakText)}</strong></div>`,
+        `<div class="summary-row"><span>Busiest weekday</span><strong>${escapeHtml(busiestWeekday[0])} (${busiestWeekday[1].days})</strong></div>`,
+        `<div class="summary-row"><span>Most active month</span><strong>${escapeHtml(busiestMonth[0])} (${busiestMonth[1].days})</strong></div>`,
+        `<div class="summary-row"><span>Average gap between active days</span><strong>${averageGap ? `${averageGap} days` : "n/a"}</strong></div>`,
+        `<div class="summary-row"><span>Weekend activity share</span><strong>${weekendShare}%</strong></div>`
+      ].join("");
     }
 
     function elevationRows(grouped, limit, emptyText) {
