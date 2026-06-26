@@ -992,6 +992,7 @@
       <div class="button-row" style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button class="button" id="exportJsonBtn" type="button">Export JSON backup</button>
         <button class="button" id="exportPublicJsonBtn" type="button">Export public JSON</button>
+        <button class="button" id="exportHostedPublicJsonBtn" type="button">Export public-routes.json</button>
         <button class="button" id="exportCsvBtn" type="button">Export CSV log</button>
         <label class="button" for="importJsonFile">Import JSON</label>
         <input id="importJsonFile" type="file" accept=".json,application/json" style="display: none;" />
@@ -1208,6 +1209,7 @@
       feedScope: document.getElementById("feedScope"),
       exportJsonBtn: document.getElementById("exportJsonBtn"),
       exportPublicJsonBtn: document.getElementById("exportPublicJsonBtn"),
+      exportHostedPublicJsonBtn: document.getElementById("exportHostedPublicJsonBtn"),
       exportCsvBtn: document.getElementById("exportCsvBtn"),
       importJsonFile: document.getElementById("importJsonFile"),
       seedDemoBtn: document.getElementById("seedDemoBtn"),
@@ -1815,6 +1817,13 @@
       download(`swiss-trail-rail-public-${exportDateStamp()}.json`, JSON.stringify(publicJsonPackage(routes), null, 2), "application/json");
       el.storageNote.classList.remove("warning");
       el.storageNote.textContent = `${routes.length} visible route${routes.length === 1 ? "" : "s"} exported as public JSON without notes or photos.`;
+    }
+
+    function exportHostedPublicJson() {
+      const routes = state.filtered;
+      download("public-routes.json", JSON.stringify(publicJsonPackage(routes), null, 2), "application/json");
+      el.storageNote.classList.remove("warning");
+      el.storageNote.textContent = `${routes.length} visible route${routes.length === 1 ? "" : "s"} exported as public-routes.json for the public viewer.`;
     }
 
     function csvValue(value) {
@@ -3050,6 +3059,7 @@ ${points}
     el.showPrivate.addEventListener("change", renderMap);
     el.exportJsonBtn.addEventListener("click", exportJson);
     el.exportPublicJsonBtn.addEventListener("click", exportPublicJson);
+    el.exportHostedPublicJsonBtn.addEventListener("click", exportHostedPublicJson);
     el.exportCsvBtn.addEventListener("click", exportCsv);
     el.importJsonFile.addEventListener("change", async event => {
       const file = event.target.files?.[0];
