@@ -31,6 +31,7 @@ The overview page reads the same saved route data as the map page and displays:
 - one-click overview filter reset for search, type, tag, time, sort, selected route, and backfill views
 - cumulative map controls for hikes, trains, and saved routes
 - live map legend with filtered hike, train, private, and currently drawn route counts
+- overview-map control to fit back to the currently visible filtered routes after focusing a route, region, or place
 - total entries, hiking distance, train distance, and elevation gain
 - complete-route and archive-health counts for backfilling older entries
 - average route distance, best day distance, active days, and current metric window

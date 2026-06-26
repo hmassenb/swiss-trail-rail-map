@@ -966,6 +966,7 @@
         <label><input id="showHikes" type="checkbox" checked /> Hikes</label>
         <label><input id="showTrains" type="checkbox" checked /> Trains</label>
         <label><input id="showPrivate" type="checkbox" checked /> Saved routes</label>
+        <button class="button" id="fitVisibleBtn" type="button">Fit visible routes</button>
         <div class="map-legend">
           <div class="legend-row"><span class="legend-line"></span><span>Hikes</span><strong id="legendHikes">0</strong></div>
           <div class="legend-row"><span class="legend-line train"></span><span>Trains</span><strong id="legendTrains">0</strong></div>
@@ -1377,6 +1378,7 @@
       showHikes: document.getElementById("showHikes"),
       showTrains: document.getElementById("showTrains"),
       showPrivate: document.getElementById("showPrivate"),
+      fitVisibleBtn: document.getElementById("fitVisibleBtn"),
       legendHikes: document.getElementById("legendHikes"),
       legendTrains: document.getElementById("legendTrains"),
       legendPrivate: document.getElementById("legendPrivate"),
@@ -3302,11 +3304,20 @@ ${points}
         routeGroup.addLayer(casing);
         routeGroup.addLayer(line);
       });
-      if (mapRoutes.length) {
+      el.fitVisibleBtn.disabled = !mapRoutes.length;
+      fitVisibleRoutes(false, false);
+    }
+
+    function fitVisibleRoutes(scrollToMap = true, updateNote = true) {
+      const mapRoutes = routesForMap();
+      if (mapRoutes.length && routeGroup.getLayers().length) {
         overviewMap.fitBounds(routeGroup.getBounds().pad(0.18));
+        if (updateNote) el.focusNote.textContent = `Showing ${mapRoutes.length} visible route${mapRoutes.length === 1 ? "" : "s"} on the map.`;
       } else {
         overviewMap.fitBounds(SWISS_BOUNDS);
+        if (updateNote) el.focusNote.textContent = "No visible route geometry for the current map toggles.";
       }
+      if (scrollToMap) document.getElementById("overviewMap").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     function renderLog() {
@@ -3408,6 +3419,7 @@ ${points}
     el.showHikes.addEventListener("change", renderMap);
     el.showTrains.addEventListener("change", renderMap);
     el.showPrivate.addEventListener("change", renderMap);
+    el.fitVisibleBtn.addEventListener("click", () => fitVisibleRoutes());
     el.exportJsonBtn.addEventListener("click", exportJson);
     el.exportPublicJsonBtn.addEventListener("click", exportPublicJson);
     el.exportHostedPublicJsonBtn.addEventListener("click", exportHostedPublicJson);
