@@ -862,6 +862,7 @@
     }
 
     .tag-suggestions,
+    .date-presets,
     .duration-presets {
       display: flex;
       flex-wrap: wrap;
@@ -870,6 +871,7 @@
     }
 
     .tag-chip,
+    .date-preset,
     .duration-preset {
       border: 1px solid #d7dfda;
       background: #f7f8f6;
@@ -883,6 +885,7 @@
     }
 
     .tag-chip:hover,
+    .date-preset:hover,
     .duration-preset:hover {
       background: #edf3ee;
       border-color: #bfd2c4;
@@ -1292,6 +1295,11 @@
               </select>
             </label>
           </div>
+          <div class="date-presets" id="datePresets" aria-label="Date shortcuts">
+            <button class="date-preset" type="button" data-date-action="previous">-1 day</button>
+            <button class="date-preset" type="button" data-date-action="today">Today</button>
+            <button class="date-preset" type="button" data-date-action="next">+1 day</button>
+          </div>
           <label>
             Tags
             <input id="routeTags" placeholder="summer, lake, friends, Valais" />
@@ -1489,6 +1497,7 @@
       importForm: document.getElementById("importForm"),
       routeName: document.getElementById("routeName"),
       routeDate: document.getElementById("routeDate"),
+      datePresets: document.getElementById("datePresets"),
       routeType: document.getElementById("routeType"),
       routeTags: document.getElementById("routeTags"),
       tagSuggestions: document.getElementById("tagSuggestions"),
@@ -1776,6 +1785,10 @@
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return "unknown";
       return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    }
+
+    function dateInputValue(date = new Date()) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     }
 
     function formatBytes(bytes) {
@@ -3932,6 +3945,18 @@ ${points}
     el.routeStatus.addEventListener("change", renderList);
     el.routeSort.addEventListener("change", renderList);
     el.resetRouteFiltersBtn.addEventListener("click", resetRouteFilters);
+    el.datePresets.addEventListener("click", event => {
+      const button = event.target.closest("[data-date-action]");
+      if (!button) return;
+      const action = button.dataset.dateAction;
+      const base = el.routeDate.value ? new Date(`${el.routeDate.value}T00:00:00`) : new Date();
+      if (action === "previous") base.setDate(base.getDate() - 1);
+      if (action === "next") base.setDate(base.getDate() + 1);
+      el.routeDate.value = action === "today" ? dateInputValue() : dateInputValue(base);
+      persistDraftState();
+      updateQuickPost();
+      setStatus(`Date set to ${el.routeDate.value}`);
+    });
     el.durationPresets.addEventListener("click", event => {
       const button = event.target.closest("[data-duration]");
       if (!button) return;
