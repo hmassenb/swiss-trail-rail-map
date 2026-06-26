@@ -129,7 +129,7 @@ Routes are entered directly in the browser:
 - Add a route name, optional date, and optional notes.
 - Add optional tags and duration. Elevation gain/loss is calculated automatically for hikes: GPX elevation is used locally when available, and clicked routes use an external elevation lookup.
 - Reuse saved tag chips while entering routes to keep route categories consistent.
-- Add an optional caption and route photos.
+- Add an optional caption and route photos by selecting images or dropping photos onto the photo area.
 - Save the route.
 
 The map page includes a `Quick post` checklist that updates while you fill in the route name, date, and clicked map points. Saved route cards and the top stats show completeness for missing date, duration, elevation, and photos. The saved-route list can be filtered by route text and sorted by date, recent edits, name, distance, or elevation.

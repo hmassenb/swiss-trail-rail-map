@@ -891,6 +891,27 @@
       gap: 8px;
     }
 
+    .photo-dropzone {
+      border: 1px dashed #bdc9c2;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.58);
+      padding: 9px;
+      transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .photo-dropzone.drag-over {
+      border-color: var(--green);
+      background: #f5faf7;
+      box-shadow: inset 0 0 0 2px rgba(79, 121, 100, 0.13);
+    }
+
+    .photo-drop-hint {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
     .photo-tools {
       display: flex;
       justify-content: space-between;
@@ -1321,7 +1342,10 @@
             <span id="photoCountLabel">0 / 12 photos attached</span>
             <button id="clearPhotosBtn" type="button">Clear photos</button>
           </div>
-          <div class="photo-grid" id="photoPreview"></div>
+          <div class="photo-dropzone" id="photoDropzone">
+            <div class="photo-grid" id="photoPreview"></div>
+            <div class="photo-drop-hint">Select images above or drop photos here.</div>
+          </div>
           <p class="hint">Photos are compressed and saved in this browser with the route. Export JSON regularly if you use many photos.</p>
           <label>
             Load GPX track as draft
@@ -1471,6 +1495,7 @@
       undoDeleteBar: document.getElementById("undoDeleteBar"),
       undoDeleteText: document.getElementById("undoDeleteText"),
       undoDeleteBtn: document.getElementById("undoDeleteBtn"),
+      photoDropzone: document.getElementById("photoDropzone"),
       photoPreview: document.getElementById("photoPreview"),
       coordPreview: document.getElementById("coordPreview"),
       draftPointList: document.getElementById("draftPointList"),
@@ -1888,6 +1913,22 @@
         setStatus(`${photos.length} photo${photos.length === 1 ? "" : "s"} attached`);
       } catch (error) {
         setStatus(error.message || "Could not attach photos");
+      }
+    }
+
+    async function addDroppedPhotoFiles(files) {
+      const selected = [...files];
+      const images = selected.filter(file => file.type.startsWith("image/"));
+      const ignored = selected.length - images.length;
+      if (!images.length) {
+        setStatus(selected.length ? "No image files found in that drop" : "No photos dropped");
+        return;
+      }
+      const before = state.pendingPhotos.length;
+      await addPhotoFiles(images);
+      const attached = state.pendingPhotos.length - before;
+      if (ignored) {
+        setStatus(`${attached} photo${attached === 1 ? "" : "s"} attached; ${ignored} non-image file${ignored === 1 ? "" : "s"} ignored`);
       }
     }
 
@@ -3879,6 +3920,21 @@ ${points}
     el.routePhotos.addEventListener("change", async event => {
       if (event.target.files.length) await addPhotoFiles(event.target.files);
       event.target.value = "";
+    });
+    ["dragenter", "dragover"].forEach(type => {
+      el.photoDropzone.addEventListener(type, event => {
+        event.preventDefault();
+        el.photoDropzone.classList.add("drag-over");
+      });
+    });
+    ["dragleave", "drop"].forEach(type => {
+      el.photoDropzone.addEventListener(type, event => {
+        event.preventDefault();
+        el.photoDropzone.classList.remove("drag-over");
+      });
+    });
+    el.photoDropzone.addEventListener("drop", async event => {
+      await addDroppedPhotoFiles(event.dataTransfer.files);
     });
     el.photoPreview.addEventListener("click", event => {
       const button = event.target.closest("button[data-photo-id]");
