@@ -75,6 +75,7 @@ The overview page reads the same saved route data as the map page and displays:
 - saved-route action key and accessible per-route controls for zoom, overview, metadata/waypoint edit, sampled geometry point edit, copy, merge, live map split picker with clickable split markers, export, hike elevation recalculation, and delete
 - delete undo bar for restoring an accidentally deleted saved route immediately
 - map-page saved-route status filter with live counts for all, needs-info, missing date, missing duration, missing elevation, complete, with-photos, and no-photo entries
+- map-page `Edit first match` action to open the first currently filtered saved route directly in the edit form
 - map-page saved-route filter reset for text, status, and sorting controls, disabled when already reset
 - map-page storage note with estimated archive size, photo count, and photo payload size
 - route photo attachment previews with per-photo removal, a clear-all control, and a 12-photo count

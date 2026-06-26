@@ -701,7 +701,8 @@
       grid-column: 1 / -1;
     }
 
-    .route-tools-row .filter-reset {
+    .route-tools-row .filter-reset,
+    .route-tools-row .edit-first-match {
       grid-column: 1 / -1;
       min-height: 32px;
       padding: 6px 9px;
@@ -1420,6 +1421,7 @@
               <option value="distance-desc">Longest</option>
               <option value="gain-desc">Most elevation</option>
             </select>
+            <button class="edit-first-match" id="editFirstMatchBtn" type="button">Edit first match</button>
             <button class="filter-reset" id="resetRouteFiltersBtn" type="button">Reset saved-route filters</button>
           </div>
           <div class="route-list-note" id="routeListNote">Showing saved routes.</div>
@@ -1536,6 +1538,7 @@
       routeFilter: document.getElementById("routeFilter"),
       routeStatus: document.getElementById("routeStatus"),
       routeSort: document.getElementById("routeSort"),
+      editFirstMatchBtn: document.getElementById("editFirstMatchBtn"),
       resetRouteFiltersBtn: document.getElementById("resetRouteFiltersBtn"),
       routeListNote: document.getElementById("routeListNote"),
       routeList: document.getElementById("routeList"),
@@ -2891,13 +2894,19 @@
         el.routeSort.value !== "date-desc";
     }
 
-    function renderList() {
-      updateRouteStatusOptionCounts();
-      el.resetRouteFiltersBtn.disabled = !hasActiveRouteFilters();
+    function visibleRouteList() {
       const query = el.routeFilter.value.trim().toLowerCase();
       const typeRoutes = state.routes.filter(route => route.type === state.activeType);
       const statusRoutes = typeRoutes.filter(routeStatusMatches);
       const filtered = sortRoutes(statusRoutes.filter(route => !query || routeSearchText(route).includes(query)));
+      return { query, typeRoutes, statusRoutes, filtered };
+    }
+
+    function renderList() {
+      updateRouteStatusOptionCounts();
+      el.resetRouteFiltersBtn.disabled = !hasActiveRouteFilters();
+      const { query, statusRoutes, filtered } = visibleRouteList();
+      el.editFirstMatchBtn.disabled = !filtered.length;
       const routeNoun = state.activeType === "train" ? "train rides" : "hikes";
       const scope = routeStatusLabel();
       el.routeListNote.textContent = query
@@ -3962,6 +3971,16 @@ ${points}
     el.routeFilter.addEventListener("input", renderList);
     el.routeStatus.addEventListener("change", renderList);
     el.routeSort.addEventListener("change", renderList);
+    el.editFirstMatchBtn.addEventListener("click", () => {
+      const route = visibleRouteList().filtered[0];
+      if (!route) {
+        setStatus("No matching route to edit");
+        return;
+      }
+      editRoute(route.id);
+      el.routeForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      setStatus(`Editing first match: ${route.name}`);
+    });
     el.resetRouteFiltersBtn.addEventListener("click", resetRouteFilters);
     el.datePresets.addEventListener("click", event => {
       const button = event.target.closest("[data-date-action]");
