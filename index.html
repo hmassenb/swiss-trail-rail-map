@@ -1422,6 +1422,7 @@
     const routeGroup = L.featureGroup().addTo(map);
     const draftGroup = L.featureGroup().addTo(map);
     const splitPreviewGroup = L.featureGroup().addTo(map);
+    const splitMarkerGroup = L.featureGroup().addTo(map);
     const legendControl = L.control({ position: "bottomleft" });
     let legendElement = null;
     let draftLine = null;
@@ -2306,6 +2307,10 @@
       splitPreviewGroup.clearLayers();
     }
 
+    function clearSplitMarkers() {
+      splitMarkerGroup.clearLayers();
+    }
+
     function renderSplitPreview(firstPoints, secondPoints) {
       clearSplitPreview();
       [
@@ -2340,6 +2345,37 @@
       }
     }
 
+    function splitMarkerIndexes(pointCount, min, max) {
+      const markerCount = Math.min(9, max - min + 1);
+      if (markerCount <= 1) return [min];
+      const indexes = new Set();
+      for (let step = 0; step < markerCount; step++) {
+        indexes.add(Math.round(min + ((max - min) * step) / (markerCount - 1)));
+      }
+      indexes.add(Math.round(pointCount / 2));
+      return [...indexes]
+        .filter(index => index >= min && index <= max)
+        .sort((a, b) => a - b);
+    }
+
+    function renderSplitMarkers(points, min, max) {
+      clearSplitMarkers();
+      splitMarkerIndexes(points.length, min, max).forEach(index => {
+        const marker = L.circleMarker(points[index], {
+          radius: 7,
+          color: "#fffdf7",
+          weight: 3,
+          fillColor: "#455960",
+          fillOpacity: 0.94
+        }).bindTooltip(`Split after point ${index}`, { sticky: true });
+        marker.on("click", () => {
+          el.splitSlider.value = index;
+          updateSplitPicker();
+        });
+        splitMarkerGroup.addLayer(marker);
+      });
+    }
+
     function splitPreviewParts(splitAfter) {
       if (!state.pendingSplit) return null;
       return {
@@ -2369,6 +2405,7 @@
       state.pendingSplit = null;
       el.splitPicker.hidden = true;
       clearSplitPreview();
+      clearSplitMarkers();
       setStatus(statusText);
     }
 
@@ -2390,6 +2427,7 @@
       state.pendingSplit = null;
       el.splitPicker.hidden = true;
       clearSplitPreview();
+      clearSplitMarkers();
       saveRoutes();
       renderTagSuggestions();
       activateType(route.type);
@@ -2956,11 +2994,13 @@
       };
       const min = 2;
       const max = points.length - 2;
+      clearSplitMarkers();
       el.splitSlider.min = min;
       el.splitSlider.max = max;
       el.splitSlider.value = Math.round((min + max) / 2);
       el.splitPickerTitle.textContent = `Split ${route.name}`;
       el.splitPicker.hidden = false;
+      renderSplitMarkers(points, min, max);
       updateSplitPicker();
     }
 

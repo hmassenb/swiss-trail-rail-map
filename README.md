@@ -71,7 +71,7 @@ The overview page reads the same saved route data as the map page and displays:
 - map-page backfill mode that keeps date, type, and tags after saving a new route
 - scrollable logging sidebar with draggable, reversible, insertable, click-to-remove draft points and click-to-insert draft lines while drawing routes
 - live draft metrics for routed distance, direct waypoint distance, point counts, elevation status, and last clicked coordinate
-- saved-route action key and accessible per-route controls for zoom, overview, edit, copy, merge, live map split picker, export, hike elevation recalculation, and delete
+- saved-route action key and accessible per-route controls for zoom, overview, edit, copy, merge, live map split picker with clickable split markers, export, hike elevation recalculation, and delete
 - map-page saved-route status filter with live counts for all, needs-info, complete, with-photos, and no-photo entries
 - map-page saved-route filter reset for text, status, and sorting controls, disabled when already reset
 - map-page storage note with estimated archive size, photo count, and photo payload size
@@ -131,7 +131,7 @@ Routes are entered directly in the browser:
 
 The map page includes a `Quick post` checklist that updates while you fill in the route name, date, and clicked map points. Saved route cards and the top stats show completeness for missing date, duration, elevation, and photos. The saved-route list can be filtered by route text and sorted by date, recent edits, name, distance, or elevation.
 
-Saved route cards can be clicked or focused with the keyboard to zoom the route on the map. Existing route cards can also be opened in the overview detail view, duplicated, merged into another same-type route, split into two route parts with a live map slider that previews distance and geometry points before the edit is committed, exported as individual JSON or GPX files, or edited, which is useful when backfilling similar hikes or train rides from older years.
+Saved route cards can be clicked or focused with the keyboard to zoom the route on the map. Existing route cards can also be opened in the overview detail view, duplicated, merged into another same-type route, split into two route parts with a live map slider and clickable sample split markers that preview distance and geometry points before the edit is committed, exported as individual JSON or GPX files, or edited, which is useful when backfilling similar hikes or train rides from older years.
 
 While a route is being drawn or loaded from GPX, the draft preview shows estimated distance, waypoint count, geometry point count, the latest clicked point, and GPX elevation gain when available. Unsaved route drafts are autosaved locally and restored when you reopen the map page, unless you are opening a specific route link or edit link.
 
@@ -208,7 +208,7 @@ To turn this into a more useful distance-tracking tool, the strongest remaining 
 
 2. Improve route editing
    - Snap new waypoints to nearby hiking paths or rail stations.
-   - Add direct click-to-split markers on long route geometry for finer saved-route edits.
+   - Add denser route geometry editing tools for moving or deleting saved-route geometry points.
 
 3. Add exact geography summaries
    - Add map overlays or boundary data for more exact regional coverage.
