@@ -2849,6 +2849,12 @@ ${points}
       return SWISS_REGIONS.find(region => region.codes.includes(code)) || null;
     }
 
+    function routeTouchesRegion(route, regionName) {
+      const region = SWISS_REGIONS.find(item => item.name === regionName);
+      if (!region) return false;
+      return routeCantons(route).some(canton => region.codes.includes(canton.code));
+    }
+
     function regionRows(routes) {
       const grouped = routes.reduce((acc, route) => {
         const km = distanceKm(route.points);
@@ -2873,10 +2879,10 @@ ${points}
       if (!rows.length) return `<div class="summary-row"><span>No regional coverage yet.</span><strong></strong></div>`;
       const coverage = `<div class="summary-row"><span>Swiss regions touched</span><strong>${rows.length} / ${SWISS_REGIONS.length}</strong></div>`;
       const regionList = rows.map(([name, data]) => `
-        <div class="summary-row">
+        <button class="summary-row action" type="button" data-region-focus="${escapeHtml(name)}">
           <span>${escapeHtml(name)} - ${data.count} route${data.count === 1 ? "" : "s"} / ${data.cantonCodes.size} canton${data.cantonCodes.size === 1 ? "" : "s"}</span>
           <strong>${formatKm(data.km)}</strong>
-        </div>
+        </button>
       `).join("");
       const missing = SWISS_REGIONS.filter(region => !grouped[region.name]).map(region => region.name);
       const missingRows = missing.length
@@ -3009,6 +3015,15 @@ ${points}
       el.focusNote.textContent = `Focused ${route.name} on the map.`;
       renderDetail();
       renderLog();
+    }
+
+    function focusRegion(regionName) {
+      const routes = state.filtered.filter(route => routeTouchesRegion(route, regionName));
+      const points = routes.flatMap(route => route.points || []);
+      if (!points.length) return;
+      overviewMap.fitBounds(L.latLngBounds(points.map(point => L.latLng(point[0], point[1]))).pad(0.18));
+      el.focusNote.textContent = `Focused ${regionName}: ${routes.length} visible route${routes.length === 1 ? "" : "s"}.`;
+      document.getElementById("overviewMap").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     function focusBackfill(key) {
@@ -3209,6 +3224,11 @@ ${points}
       if (!routeRow) return;
       const route = state.routes.find(item => item.id === routeRow.dataset.routeHighlight);
       if (route) selectRoute(route);
+    });
+    el.regionSummary.addEventListener("click", event => {
+      const regionRow = event.target.closest("[data-region-focus]");
+      if (!regionRow) return;
+      focusRegion(regionRow.dataset.regionFocus);
     });
     el.backfillSummary.addEventListener("click", event => {
       const recalculateButton = event.target.closest("[data-recalculate-elevation]");
