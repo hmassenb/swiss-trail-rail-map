@@ -53,7 +53,7 @@ The overview page reads the same saved route data as the map page and displays:
 - filter-aware highlights for longest route, biggest climb, and most photos
 - archive-health and trending-tag summaries for the current filter/timeframe
 - estimated local archive size and photo payload size for the current filter/timeframe
-- estimated canton coverage and next uncovered cantons for the current filter/timeframe
+- estimated canton coverage, Swiss region coverage, and next uncovered cantons for the current filter/timeframe
 - route-envelope summary for north/south/east/west span and altitude sample range
 - nearby curated towns, lakes, peaks, passes, huts, and stations touched by filtered routes
 - feed-card route focusing on the cumulative map

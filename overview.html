@@ -1065,6 +1065,10 @@
           <div class="summary-list" id="cantonSummary"></div>
         </div>
         <div class="summary-panel">
+          <h2>Swiss Regions</h2>
+          <div class="summary-list" id="regionSummary"></div>
+        </div>
+        <div class="summary-panel">
           <h2>Route Envelope</h2>
           <div class="summary-list" id="routeEnvelopeSummary"></div>
         </div>
@@ -1158,6 +1162,15 @@
       { code: "VS", name: "Valais", point: [46.23, 7.36] },
       { code: "ZG", name: "Zug", point: [47.17, 8.52] },
       { code: "ZH", name: "Zurich", point: [47.38, 8.54] }
+    ];
+    const SWISS_REGIONS = [
+      { name: "Zurich Region", codes: ["ZH"] },
+      { name: "Lake Geneva Region", codes: ["GE", "VD", "VS"] },
+      { name: "Espace Mittelland", codes: ["BE", "FR", "JU", "NE", "SO"] },
+      { name: "Northwestern Switzerland", codes: ["AG", "BL", "BS"] },
+      { name: "Central Switzerland", codes: ["LU", "NW", "OW", "SZ", "UR", "ZG"] },
+      { name: "Eastern Switzerland", codes: ["AI", "AR", "GL", "GR", "SG", "SH", "TG"] },
+      { name: "Ticino", codes: ["TI"] }
     ];
     const PLACES = [
       { name: "Zurich", type: "town", point: [47.3769, 8.5417], radiusKm: 5 },
@@ -1291,6 +1304,7 @@
       archiveSummary: document.getElementById("archiveSummary"),
       tagSummary: document.getElementById("tagSummary"),
       cantonSummary: document.getElementById("cantonSummary"),
+      regionSummary: document.getElementById("regionSummary"),
       routeEnvelopeSummary: document.getElementById("routeEnvelopeSummary"),
       nearbyPlacesSummary: document.getElementById("nearbyPlacesSummary"),
       highlightSummary: document.getElementById("highlightSummary"),
@@ -2627,6 +2641,7 @@ ${points}
       el.archiveSummary.innerHTML = archiveHealthRows(state.filtered);
       el.tagSummary.innerHTML = tagRows(state.filtered);
       el.cantonSummary.innerHTML = cantonRows(state.filtered);
+      el.regionSummary.innerHTML = regionRows(state.filtered);
       el.routeEnvelopeSummary.innerHTML = routeEnvelopeRows(state.filtered);
       el.nearbyPlacesSummary.innerHTML = nearbyPlaceRows(state.filtered);
       el.highlightSummary.innerHTML = highlightRows(state.filtered);
@@ -2828,6 +2843,46 @@ ${points}
         ? `<div class="summary-row"><span>Next uncovered cantons</span><strong>${missing.slice(0, 6).map(canton => escapeHtml(canton.code)).join(", ")}${missing.length > 6 ? "..." : ""}</strong></div>`
         : `<div class="summary-row"><span>All cantons have at least one estimated route touch.</span><strong></strong></div>`;
       return `${coverage}${topRows}${missingRows}<div class="summary-row"><span>Estimated from nearest canton centers.</span><strong></strong></div>`;
+    }
+
+    function cantonRegion(code) {
+      return SWISS_REGIONS.find(region => region.codes.includes(code)) || null;
+    }
+
+    function regionRows(routes) {
+      const grouped = routes.reduce((acc, route) => {
+        const km = distanceKm(route.points);
+        const cantons = routeCantons(route);
+        const regions = new Map();
+        cantons.forEach(canton => {
+          const region = cantonRegion(canton.code);
+          if (region) regions.set(region.name, region);
+        });
+        regions.forEach(region => {
+          if (!acc[region.name]) acc[region.name] = { count: 0, km: 0, cantonCodes: new Set() };
+          acc[region.name].count += 1;
+          acc[region.name].km += km;
+          cantons
+            .filter(canton => region.codes.includes(canton.code))
+            .forEach(canton => acc[region.name].cantonCodes.add(canton.code));
+        });
+        return acc;
+      }, {});
+      const rows = Object.entries(grouped)
+        .sort(([, a], [, b]) => b.count - a.count || b.km - a.km);
+      if (!rows.length) return `<div class="summary-row"><span>No regional coverage yet.</span><strong></strong></div>`;
+      const coverage = `<div class="summary-row"><span>Swiss regions touched</span><strong>${rows.length} / ${SWISS_REGIONS.length}</strong></div>`;
+      const regionList = rows.map(([name, data]) => `
+        <div class="summary-row">
+          <span>${escapeHtml(name)} - ${data.count} route${data.count === 1 ? "" : "s"} / ${data.cantonCodes.size} canton${data.cantonCodes.size === 1 ? "" : "s"}</span>
+          <strong>${formatKm(data.km)}</strong>
+        </div>
+      `).join("");
+      const missing = SWISS_REGIONS.filter(region => !grouped[region.name]).map(region => region.name);
+      const missingRows = missing.length
+        ? `<div class="summary-row"><span>Regions not yet touched</span><strong>${missing.map(escapeHtml).join(", ")}</strong></div>`
+        : `<div class="summary-row"><span>All Swiss regions have at least one estimated route touch.</span><strong></strong></div>`;
+      return `${coverage}${regionList}${missingRows}<div class="summary-row"><span>Estimated from nearest canton centers.</span><strong></strong></div>`;
     }
 
     function routeEnvelopeRows(routes) {
