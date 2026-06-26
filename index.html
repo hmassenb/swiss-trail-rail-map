@@ -3461,6 +3461,14 @@ ${points}
       return parts.length ? `; skipped ${parts.join(" and ")}` : "";
     }
 
+    function isImportableRouteFile(file) {
+      const name = file.name.toLowerCase();
+      return name.endsWith(".gpx") ||
+        name.endsWith(".json") ||
+        file.type === "application/gpx+xml" ||
+        file.type === "application/json";
+    }
+
     function mergeImportedRoutes(routes) {
       const existingIds = new Set(state.routes.map(route => route.id));
       const existingSignatures = new Set(state.routes.map(routeImportSignature));
@@ -3504,8 +3512,15 @@ ${points}
     }
 
     async function importFiles(files) {
+      const selectedFiles = [...files];
+      const routeFiles = selectedFiles.filter(isImportableRouteFile);
+      const ignored = selectedFiles.length - routeFiles.length;
+      if (!routeFiles.length) {
+        setStatus(selectedFiles.length ? "No GPX or JSON route files found in that drop" : "No route files selected");
+        return;
+      }
       const totals = { added: 0, invalid: 0, duplicates: 0, failed: 0, failedNames: [] };
-      for (const file of files) {
+      for (const file of routeFiles) {
         try {
           setStatus(`Importing ${file.name}`);
           const result = await importFile(file);
@@ -3520,11 +3535,12 @@ ${points}
       saveRoutes();
       renderTagSuggestions();
       renderRoutes();
-      const fileText = `${files.length} file${files.length === 1 ? "" : "s"}`;
+      const fileText = `${routeFiles.length} file${routeFiles.length === 1 ? "" : "s"}`;
       const failedList = totals.failedNames.slice(0, 2).join(", ");
       const failedMore = totals.failedNames.length > 2 ? `, +${totals.failedNames.length - 2} more` : "";
       const failText = totals.failed ? `; ${totals.failed} file${totals.failed === 1 ? "" : "s"} failed${failedList ? ` (${failedList}${failedMore})` : ""}` : "";
-      setStatus(`${totals.added} route${totals.added === 1 ? "" : "s"} imported from ${fileText}${importSkipText(totals.invalid, totals.duplicates)}${failText}`);
+      const ignoredText = ignored ? `; ${ignored} unsupported file${ignored === 1 ? "" : "s"} ignored` : "";
+      setStatus(`${totals.added} route${totals.added === 1 ? "" : "s"} imported from ${fileText}${importSkipText(totals.invalid, totals.duplicates)}${failText}${ignoredText}`);
     }
 
     async function importSelectedFiles(fileList) {
