@@ -2077,6 +2077,13 @@ ${points}
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     }
 
+    function importSkipText(invalidCount, duplicateCount) {
+      const parts = [];
+      if (invalidCount) parts.push(`${invalidCount} invalid/outside-Switzerland entr${invalidCount === 1 ? "y" : "ies"}`);
+      if (duplicateCount) parts.push(`${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"}`);
+      return parts.length ? `; skipped ${parts.join(" and ")}` : ".";
+    }
+
     async function importJson(file) {
       const text = await file.text();
       const imported = JSON.parse(text);
@@ -2085,20 +2092,24 @@ ${points}
       const existingIds = new Set(state.routes.map(route => route.id));
       const existingSignatures = new Set(state.routes.map(routeImportSignature));
       const normalized = routeArray.map(normalizeRoute).filter(Boolean);
+      const invalid = routeArray.length - normalized.length;
+      let duplicates = 0;
       const unique = normalized.filter(route => {
         const signature = routeImportSignature(route);
-        if (existingSignatures.has(signature)) return false;
+        if (existingSignatures.has(signature)) {
+          duplicates += 1;
+          return false;
+        }
         existingSignatures.add(signature);
         return true;
       });
-      const skipped = routeArray.length - unique.length;
       const merged = unique.map(route => existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route);
       state.routes = [...state.routes, ...merged];
       saveRoutes();
       renderTagOptions();
       applyFilters();
-      el.storageNote.classList.toggle("warning", skipped > 0);
-      el.storageNote.textContent = `${merged.length} route${merged.length === 1 ? "" : "s"} imported${skipped ? `; ${skipped} invalid or outside-Switzerland entr${skipped === 1 ? "y" : "ies"} skipped.` : "."}`;
+      el.storageNote.classList.toggle("warning", invalid > 0);
+      el.storageNote.textContent = `${merged.length} route${merged.length === 1 ? "" : "s"} imported${importSkipText(invalid, duplicates)}`;
     }
 
     function updateStorageNote(ok) {

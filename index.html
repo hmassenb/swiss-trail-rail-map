@@ -3331,10 +3331,18 @@ ${points}
       URL.revokeObjectURL(link.href);
     }
 
+    function importSkipText(invalidCount, duplicateCount, invalidLabel = "outside-Switzerland") {
+      const parts = [];
+      if (invalidCount) parts.push(`${invalidCount} ${invalidLabel} entr${invalidCount === 1 ? "y" : "ies"}`);
+      if (duplicateCount) parts.push(`${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"}`);
+      return parts.length ? `; skipped ${parts.join(" and ")}` : "";
+    }
+
     async function importFile(file) {
       const text = await file.text();
       let added = 0;
-      let skipped = 0;
+      let invalid = 0;
+      let duplicates = 0;
       if (file.name.toLowerCase().endsWith(".json")) {
         const imported = JSON.parse(text);
         const routeArray = Array.isArray(imported) ? imported : imported.routes;
@@ -3342,27 +3350,30 @@ ${points}
         const existingIds = new Set(state.routes.map(route => route.id));
         const existingSignatures = new Set(state.routes.map(routeImportSignature));
         const normalized = routeArray.map(normalizeRoute).filter(Boolean);
+        invalid = routeArray.length - normalized.length;
         const unique = normalized.filter(route => {
           const signature = routeImportSignature(route);
-          if (existingSignatures.has(signature)) return false;
+          if (existingSignatures.has(signature)) {
+            duplicates += 1;
+            return false;
+          }
           existingSignatures.add(signature);
           return true;
         });
-        skipped = routeArray.length - unique.length;
         const merged = unique.map(route => existingIds.has(route.id) ? { ...route, id: crypto.randomUUID() } : route);
         state.routes = [...state.routes, ...merged];
         added = merged.length;
       } else {
         const parsed = parseGpx(text);
         const valid = parsed.filter(route => routeInSwissBounds(route.points) && routeInSwissBounds(route.waypoints));
-        skipped = parsed.length - valid.length;
+        invalid = parsed.length - valid.length;
         state.routes = [...state.routes, ...valid];
         added = valid.length;
       }
       saveRoutes();
       renderTagSuggestions();
       renderRoutes();
-      setStatus(`${added} route${added === 1 ? "" : "s"} imported${skipped ? `; ${skipped} skipped outside Switzerland` : ""}`);
+      setStatus(`${added} route${added === 1 ? "" : "s"} imported${importSkipText(invalid, duplicates)}`);
     }
 
     function normalizeSavedRoute(route) {
