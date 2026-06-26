@@ -1406,6 +1406,9 @@
             <select id="routeStatus" aria-label="Filter by route status">
               <option value="all">All</option>
               <option value="needs-info">Needs info</option>
+              <option value="missing-date">Missing date</option>
+              <option value="missing-duration">Missing duration</option>
+              <option value="missing-elevation">Missing elevation</option>
               <option value="complete">Complete</option>
               <option value="with-photos">With photos</option>
               <option value="missing-photos">No photos</option>
@@ -2122,8 +2125,12 @@
 
     function routeStatusMatches(route) {
       const mode = el.routeStatus.value;
-      if (mode === "needs-info") return missingRouteFields(route).length > 0;
-      if (mode === "complete") return missingRouteFields(route).length === 0;
+      const missing = missingRouteFields(route);
+      if (mode === "needs-info") return missing.length > 0;
+      if (mode === "missing-date") return missing.includes("date");
+      if (mode === "missing-duration") return missing.includes("duration");
+      if (mode === "missing-elevation") return missing.includes("elevation");
+      if (mode === "complete") return missing.length === 0;
       if (mode === "with-photos") return Boolean(route.photos?.length);
       if (mode === "missing-photos") return !route.photos?.length;
       return true;
@@ -2133,6 +2140,9 @@
       const labels = {
         all: "all saved",
         "needs-info": "routes needing info",
+        "missing-date": "routes missing dates",
+        "missing-duration": "routes missing duration",
+        "missing-elevation": "hikes missing elevation",
         complete: "complete routes",
         "with-photos": "routes with photos",
         "missing-photos": "routes without photos"
@@ -2147,13 +2157,19 @@
         acc.all += 1;
         if (missing.length) acc.needsInfo += 1;
         else acc.complete += 1;
+        if (missing.includes("date")) acc.missingDate += 1;
+        if (missing.includes("duration")) acc.missingDuration += 1;
+        if (missing.includes("elevation")) acc.missingElevation += 1;
         if (route.photos?.length) acc.withPhotos += 1;
         else acc.missingPhotos += 1;
         return acc;
-      }, { all: 0, needsInfo: 0, complete: 0, withPhotos: 0, missingPhotos: 0 });
+      }, { all: 0, needsInfo: 0, missingDate: 0, missingDuration: 0, missingElevation: 0, complete: 0, withPhotos: 0, missingPhotos: 0 });
       const labels = {
         all: `All (${counts.all})`,
         "needs-info": `Needs info (${counts.needsInfo})`,
+        "missing-date": `Missing date (${counts.missingDate})`,
+        "missing-duration": `Missing duration (${counts.missingDuration})`,
+        "missing-elevation": `Missing elevation (${counts.missingElevation})`,
         complete: `Complete (${counts.complete})`,
         "with-photos": `With photos (${counts.withPhotos})`,
         "missing-photos": `No photos (${counts.missingPhotos})`
