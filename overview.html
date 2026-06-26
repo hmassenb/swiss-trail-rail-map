@@ -2164,8 +2164,16 @@ ${points}
     }
 
     async function importJsonFiles(fileList) {
-      const files = [...fileList].filter(file => file.name.toLowerCase().endsWith(".json") || file.type === "application/json");
-      if (!files.length) return;
+      const selectedFiles = [...fileList];
+      const files = selectedFiles.filter(file => file.name.toLowerCase().endsWith(".json") || file.type === "application/json");
+      const ignored = selectedFiles.length - files.length;
+      if (!files.length) {
+        el.storageNote.classList.add("warning");
+        el.storageNote.textContent = selectedFiles.length
+          ? "No JSON backup files found in that drop."
+          : "No JSON backup files selected.";
+        return;
+      }
       const totals = { added: 0, invalid: 0, duplicates: 0, failedNames: [] };
       for (const file of files) {
         try {
@@ -2184,8 +2192,9 @@ ${points}
       const failedText = totals.failedNames.length
         ? `; ${totals.failedNames.length} file${totals.failedNames.length === 1 ? "" : "s"} failed${failedList ? ` (${failedList}${failedMore})` : ""}`
         : "";
+      const ignoredText = ignored ? `; ${ignored} non-JSON file${ignored === 1 ? "" : "s"} ignored` : "";
       el.storageNote.classList.toggle("warning", totals.invalid > 0 || totals.failedNames.length > 0);
-      el.storageNote.textContent = `${totals.added} route${totals.added === 1 ? "" : "s"} imported from ${files.length} JSON file${files.length === 1 ? "" : "s"}${importSkipText(totals.invalid, totals.duplicates)}${failedText}`;
+      el.storageNote.textContent = `${totals.added} route${totals.added === 1 ? "" : "s"} imported from ${files.length} JSON file${files.length === 1 ? "" : "s"}${importSkipText(totals.invalid, totals.duplicates)}${failedText}${ignoredText}`;
     }
 
     function updateStorageNote(ok) {
