@@ -70,7 +70,7 @@ The overview page reads the same saved route data as the map page and displays:
 - map-page backfill mode that keeps date, type, and tags after saving a new route
 - scrollable logging sidebar with draggable, reversible, insertable, click-to-remove draft points and click-to-insert draft lines while drawing routes
 - live draft metrics for routed distance, direct waypoint distance, point counts, elevation status, and last clicked coordinate
-- saved-route action key and accessible per-route controls for zoom, overview, edit, copy, export, and delete
+- saved-route action key and accessible per-route controls for zoom, overview, edit, copy, export, hike elevation recalculation, and delete
 - map-page saved-route status filter with live counts for all, needs-info, complete, with-photos, and no-photo entries
 - map-page saved-route filter reset for text, status, and sorting controls, disabled when already reset
 - map-page storage note with estimated archive size, photo count, and photo payload size

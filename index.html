@@ -1191,7 +1191,7 @@
             <button class="filter-reset" id="resetRouteFiltersBtn" type="button">Reset saved-route filters</button>
           </div>
           <div class="route-list-note" id="routeListNote">Showing saved routes.</div>
-          <div class="route-action-key">Actions: Z zoom, V overview, E edit, C copy, J JSON, G GPX, X delete.</div>
+          <div class="route-action-key">Actions: Z zoom, V overview, E edit, C copy, J JSON, G GPX, A altitude, X delete.</div>
         </section>
 
         <div class="route-list" id="routeList"></div>
@@ -2393,6 +2393,7 @@
               <button type="button" title="Duplicate" aria-label="Duplicate ${escapeHtml(route.name)}" data-action="duplicate" data-id="${route.id}">C</button>
               <button type="button" title="Export JSON" aria-label="Export ${escapeHtml(route.name)} as JSON" data-action="json" data-id="${route.id}">J</button>
               <button type="button" title="Export GPX" aria-label="Export ${escapeHtml(route.name)} as GPX" data-action="gpx" data-id="${route.id}">G</button>
+              ${route.type === "hike" ? `<button type="button" title="Recalculate elevation" aria-label="Recalculate elevation for ${escapeHtml(route.name)}" data-action="elevation" data-id="${route.id}">A</button>` : ""}
               <button type="button" title="Delete" aria-label="Delete ${escapeHtml(route.name)}" data-action="delete" data-id="${route.id}">X</button>
             </div>
           </div>
@@ -2633,6 +2634,39 @@
       activateType(copy.type);
       editRoute(copy.id);
       setStatus("Duplicated route; adjust the copy and save");
+    }
+
+    async function recalculateRouteElevation(id) {
+      const route = state.routes.find(item => item.id === id);
+      if (!route) return;
+      if (route.type !== "hike") {
+        setStatus("Elevation recalculation is only used for hikes");
+        return;
+      }
+      if (!Array.isArray(route.points) || route.points.length < 2) {
+        setStatus("This hike has no route geometry for elevation");
+        return;
+      }
+      setStatus(`Recalculating elevation for ${route.name}`);
+      try {
+        const elevation = await automaticElevation(route.points, route.type);
+        if (!elevation) throw new Error("No elevation profile returned");
+        const nextRoute = {
+          ...route,
+          points: Array.isArray(elevation.points) && elevation.points.length === route.points.length ? elevation.points : route.points,
+          elevationGainM: elevation.gain,
+          elevationLossM: elevation.loss,
+          metrics: routeMetrics(Array.isArray(elevation.points) && elevation.points.length === route.points.length ? elevation.points : route.points, route.waypoints || route.points),
+          updatedAt: new Date().toISOString()
+        };
+        state.routes = state.routes.map(item => item.id === id ? nextRoute : item);
+        saveRoutes();
+        renderRoutes();
+        selectRoute(id, false);
+        setStatus(`Updated elevation: +${elevation.gain} m / -${elevation.loss} m`);
+      } catch (error) {
+        setStatus(error.message || "Could not recalculate elevation");
+      }
     }
 
     async function saveRoute(event) {
@@ -3135,6 +3169,7 @@ ${points}
         if (action === "duplicate") duplicateRoute(id);
         if (action === "json") exportRouteJson(id);
         if (action === "gpx") exportRouteGpx(id);
+        if (action === "elevation") recalculateRouteElevation(id);
         if (action === "delete") deleteRoute(id);
         return;
       }
