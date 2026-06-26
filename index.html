@@ -1333,6 +1333,7 @@
 
     const routeGroup = L.featureGroup().addTo(map);
     const draftGroup = L.featureGroup().addTo(map);
+    const splitPreviewGroup = L.featureGroup().addTo(map);
     const legendControl = L.control({ position: "bottomleft" });
     let legendElement = null;
     let draftLine = null;
@@ -2213,6 +2214,44 @@
       `;
     }
 
+    function clearSplitPreview() {
+      splitPreviewGroup.clearLayers();
+    }
+
+    function renderSplitPreview(firstPoints, secondPoints) {
+      clearSplitPreview();
+      [
+        { points: firstPoints, color: "#6d8f78", label: "Split preview part 1" },
+        { points: secondPoints, color: "#8d7864", label: "Split preview part 2" }
+      ].forEach(part => {
+        L.polyline(part.points, {
+          color: "#fffdf7",
+          weight: 11,
+          opacity: 0.82,
+          interactive: false
+        }).addTo(splitPreviewGroup);
+        L.polyline(part.points, {
+          color: part.color,
+          weight: 6,
+          opacity: 0.96,
+          dashArray: "10 7",
+          interactive: false
+        }).bindTooltip(part.label, { sticky: true }).addTo(splitPreviewGroup);
+      });
+      const markerOptions = {
+        radius: 6,
+        color: "#fffdf7",
+        weight: 3,
+        fillColor: "#2c3438",
+        fillOpacity: 1,
+        interactive: false
+      };
+      L.circleMarker(firstPoints[firstPoints.length - 1], markerOptions).addTo(splitPreviewGroup);
+      if (splitPreviewGroup.getLayers().length) {
+        map.fitBounds(splitPreviewGroup.getBounds().pad(0.18));
+      }
+    }
+
     function popupHtml(route) {
       const km = formatKm(distanceKm(route.points));
       const date = route.date ? `<br><strong>Date:</strong> ${escapeHtml(route.date)}` : "";
@@ -2757,7 +2796,7 @@
       };
     }
 
-    function splitRoute(id) {
+    async function splitRoute(id) {
       const route = state.routes.find(item => item.id === id);
       if (!route) return;
       const points = Array.isArray(route.points) ? route.points : [];
@@ -2774,6 +2813,9 @@
       }
       const firstPoints = points.slice(0, splitAfter + 1).map(point => [...point]);
       const secondPoints = points.slice(splitAfter).map(point => [...point]);
+      renderSplitPreview(firstPoints, secondPoints);
+      setStatus("Previewing split route parts");
+      await new Promise(resolve => requestAnimationFrame(resolve));
       const preview = [
         `Split "${route.name}" after geometry point ${splitAfter}?`,
         "",
@@ -2782,7 +2824,12 @@
         "",
         "This will replace the original route with two saved route parts."
       ].join("\n");
-      if (!confirm(preview)) return;
+      if (!confirm(preview)) {
+        clearSplitPreview();
+        setStatus("Split canceled");
+        return;
+      }
+      clearSplitPreview();
       const first = routePart(route, firstPoints, 1);
       const second = routePart(route, secondPoints, 2);
       state.routes = state.routes.flatMap(item => item.id === id ? [first, second] : [item]);
