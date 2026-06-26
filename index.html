@@ -3479,7 +3479,7 @@ ${points}
         invalid = routeArray.length - normalized.length;
         mergeResult = mergeImportedRoutes(normalized);
       } else {
-        const parsed = parseGpx(text);
+        const parsed = parseGpx(text, file.name);
         const valid = parsed.filter(route => routeInSwissBounds(route.points) && routeInSwissBounds(route.waypoints));
         invalid = parsed.length - valid.length;
         mergeResult = mergeImportedRoutes(valid);
@@ -3560,8 +3560,35 @@ ${points}
       };
     }
 
-    function parseGpx(text) {
-      return parseGpxTracks(text).map((track, index) => ({
+    function dateFromFilename(filename) {
+      const text = String(filename || "");
+      const validDate = (year, month, day) => {
+        const date = `${year}-${month}-${day}`;
+        const parsed = new Date(`${date}T00:00:00`);
+        const isValid = !Number.isNaN(parsed.getTime()) &&
+          parsed.getFullYear() === Number(year) &&
+          parsed.getMonth() + 1 === Number(month) &&
+          parsed.getDate() === Number(day);
+        return isValid ? date : "";
+      };
+      const iso = text.match(/(?:^|[^0-9])((?:20|19)\d{2})[-_. ]?([01]\d)[-_. ]?([0-3]\d)(?=$|[^0-9])/);
+      if (iso) {
+        const [, year, month, day] = iso;
+        const date = validDate(year, month, day);
+        if (date) return date;
+      }
+      const european = text.match(/(?:^|[^0-9])([0-3]?\d)[-_. ]([01]?\d)[-_. ]((?:20|19)\d{2})(?=$|[^0-9])/);
+      if (european) {
+        const [, day, month, year] = european;
+        const date = validDate(year, String(month).padStart(2, "0"), String(day).padStart(2, "0"));
+        if (date) return date;
+      }
+      return "";
+    }
+
+    function parseGpx(text, filename = "") {
+      const fallbackDate = dateFromFilename(filename);
+      return parseGpxTracks(text, fallbackDate).map((track, index) => ({
         id: crypto.randomUUID(),
         name: track.name || `Imported GPX ${index + 1}`,
         type: track.type,
@@ -3575,7 +3602,7 @@ ${points}
       }));
     }
 
-    function parseGpxTracks(text) {
+    function parseGpxTracks(text, fallbackDate = "") {
       const doc = new DOMParser().parseFromString(text, "application/xml");
       if (doc.querySelector("parsererror")) throw new Error("Invalid GPX");
       const tracks = [...doc.getElementsByTagName("trk")];
@@ -3595,7 +3622,7 @@ ${points}
         parsedTracks.push({
           name: track.getElementsByTagName("name")[0]?.textContent || `Imported GPX ${index + 1}`,
           type: typeText.includes("train") || typeText.includes("rail") ? "train" : "hike",
-          date: (track.getElementsByTagName("time")[0]?.textContent || "").slice(0, 10),
+          date: (track.getElementsByTagName("time")[0]?.textContent || "").slice(0, 10) || fallbackDate,
           notes: track.getElementsByTagName("desc")[0]?.textContent || "",
           elevationGainM: elevation.gain || "",
           elevationLossM: elevation.loss || "",
@@ -3617,7 +3644,7 @@ ${points}
     }
 
     async function loadDraftGpx(file) {
-      const tracks = parseGpxTracks(await file.text());
+      const tracks = parseGpxTracks(await file.text(), dateFromFilename(file.name));
       if (!tracks.length) throw new Error("No GPX track points found");
       const track = tracks[0];
       if (!routeInSwissBounds(track.points)) throw new Error("GPX draft is outside Switzerland");
