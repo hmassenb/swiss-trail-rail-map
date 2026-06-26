@@ -131,7 +131,7 @@ Routes are entered directly in the browser:
 
 The map page includes a `Quick post` checklist that updates while you fill in the route name, date, and clicked map points. Saved route cards and the top stats show completeness for missing date, duration, elevation, and photos. The saved-route list can be filtered by route text and sorted by date, recent edits, name, distance, or elevation.
 
-Saved route cards can be clicked or focused with the keyboard to zoom the route on the map. Existing route cards can also be opened in the overview detail view, duplicated, merged into another same-type route, split into two route parts with a live map slider and clickable sample split markers that preview distance and geometry points before the edit is committed, exported as individual JSON or GPX files, edited as metadata/waypoints, or loaded into sampled point-edit mode for direct geometry cleanup.
+Saved route cards can be clicked or focused with the keyboard to zoom the route on the map. Existing route cards can also be opened in the overview detail view, duplicated, merged into another same-type route, split into two route parts with a live map slider and clickable sample split markers that preview distance and geometry points before the edit is committed, exported as individual JSON or GPX files, edited as metadata/waypoints, or loaded into sampled point-edit mode for direct geometry cleanup without rerouting.
 
 While a route is being drawn or loaded from GPX, the draft preview shows estimated distance, waypoint count, geometry point count, the latest clicked point, and GPX elevation gain when available. Unsaved route drafts are autosaved locally and restored when you reopen the map page, unless you are opening a specific route link or edit link.
 

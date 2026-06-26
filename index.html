@@ -487,6 +487,18 @@
       grid-column: 1 / -1;
     }
 
+    .draft-edit-note {
+      grid-column: 1 / -1;
+      border: 1px solid #d7c8a9;
+      border-radius: 6px;
+      background: #fff8e9;
+      color: #5b4a2e;
+      padding: 7px 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
     .draft-point-list {
       display: grid;
       gap: 6px;
@@ -1937,7 +1949,11 @@
     function draftSummary() {
       if (!state.draft.length) return "No route points selected";
       const geometry = state.draftRoute.length > 1 ? state.draftRoute : state.draft;
-      const source = state.draftSource === "gpx" ? "GPX draft" : "Map draft";
+      const source = state.draftSource === "gpx"
+        ? "GPX draft"
+        : state.draftSource === "geometry-edit"
+          ? "Saved geometry edit"
+          : "Map draft";
       const routedKm = formatKm(distanceKm(geometry));
       const directKm = state.draft.length > 1 ? formatKm(distanceKm(state.draft)) : "0 km";
       const elevation = pointElevationTotals(geometry);
@@ -1955,12 +1971,15 @@
         ["Elevation", elevationText],
         ["Last point", `${last[0].toFixed(5)}, ${last[1].toFixed(5)}`]
       ];
+      const geometryNote = state.draftSource === "geometry-edit"
+        ? `<div class="draft-edit-note">Point edit mode saves these sampled geometry points directly and does not reroute along BRouter.</div>`
+        : "";
       return `<div class="draft-metrics">${rows.map(([label, value], index) => `
         <div class="draft-metric${index >= 4 ? " wide" : ""}">
           <span>${escapeHtml(label)}</span>
           <strong>${escapeHtml(value)}</strong>
         </div>
-      `).join("")}</div>`;
+      `).join("")}${geometryNote}</div>`;
     }
 
     function elevationTotals(elevations) {
@@ -2265,6 +2284,7 @@
       el.coordPreview.innerHTML = draftSummary();
       renderDraftPointList();
       el.saveRouteBtn.disabled = state.draft.length < 2;
+      el.saveRouteBtn.textContent = state.draftSource === "geometry-edit" ? "Save geometry edit" : "Save route";
       el.undoPointBtn.disabled = state.draft.length === 0;
       el.reverseDraftBtn.disabled = state.draft.length < 2;
       el.clearDraftBtn.disabled = state.draft.length === 0;
