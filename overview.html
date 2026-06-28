@@ -1175,6 +1175,10 @@
           <h2>Backfill Checklist</h2>
           <div class="summary-list" id="backfillSummary"></div>
         </div>
+        <div class="summary-panel">
+          <h2>Backfill By Year</h2>
+          <div class="summary-list" id="backfillYearSummary"></div>
+        </div>
       </section>
       <div class="feed-title">
         <h2>Route Log</h2>
@@ -1405,6 +1409,7 @@
       nearbyPlacesSummary: document.getElementById("nearbyPlacesSummary"),
       highlightSummary: document.getElementById("highlightSummary"),
       backfillSummary: document.getElementById("backfillSummary"),
+      backfillYearSummary: document.getElementById("backfillYearSummary"),
       focusNote: document.getElementById("focusNote"),
       routeDetail: document.getElementById("routeDetail"),
       detailName: document.getElementById("detailName"),
@@ -2852,6 +2857,7 @@ ${points}
       el.nearbyPlacesSummary.innerHTML = nearbyPlaceRows(state.filtered);
       el.highlightSummary.innerHTML = highlightRows(state.filtered);
       el.backfillSummary.innerHTML = backfillRows(state.filtered);
+      el.backfillYearSummary.innerHTML = backfillYearRows(state.filtered);
     }
 
     function groupDistance(routes, keyFn) {
@@ -3127,6 +3133,46 @@ ${points}
       ].join("");
     }
 
+    function backfillYearRows(routes) {
+      const datedRoutes = routes.filter(route => route.date && route.date.length >= 4);
+      if (!datedRoutes.length) return `<div class="summary-row"><span>No dated routes in this filter.</span><strong></strong></div>`;
+      const grouped = datedRoutes.reduce((acc, route) => {
+        const year = route.date.slice(0, 4);
+        const missing = missingRouteFields(route);
+        if (!acc[year]) {
+          acc[year] = { total: 0, incomplete: 0, missing: { date: 0, duration: 0, elevation: 0, photos: 0 } };
+        }
+        acc[year].total += 1;
+        if (missing.length) acc[year].incomplete += 1;
+        missing.forEach(field => {
+          acc[year].missing[field] += 1;
+        });
+        return acc;
+      }, {});
+      const rows = Object.entries(grouped)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .slice(0, 10);
+      if (!rows.some(([, data]) => data.incomplete)) {
+        return `<div class="summary-row"><span>All dated years are complete for the current filter.</span><strong></strong></div>`;
+      }
+      return rows.map(([year, data]) => {
+        const missingText = Object.entries(data.missing)
+          .filter(([, count]) => count)
+          .map(([field, count]) => `${count} ${field}`)
+          .join(", ");
+        const rowTag = data.incomplete
+          ? "button"
+          : "div";
+        const attributes = data.incomplete
+          ? `class="summary-row action" type="button" data-backfill-year="${escapeHtml(year)}"`
+          : `class="summary-row"`;
+        return `<${rowTag} ${attributes}>
+          <span>${escapeHtml(year)} - ${data.incomplete} of ${data.total} need backfill${missingText ? ` (${escapeHtml(missingText)})` : ""}</span>
+          <strong>${data.incomplete}</strong>
+        </${rowTag}>`;
+      }).join("");
+    }
+
     function cantonRows(routes) {
       const grouped = routes.reduce((acc, route) => {
         const km = distanceKm(route.points);
@@ -3359,6 +3405,21 @@ ${points}
       state.selectedRouteId = "";
       applyFilters();
       el.focusNote.textContent = "Backfill view: edit matching routes from the map page, then return here to check progress.";
+      document.getElementById("entryLog").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function focusBackfillYear(year) {
+      if (!/^\d{4}$/.test(year)) return;
+      el.yearFilter.value = year;
+      el.dateFrom.value = `${year}-01-01`;
+      el.dateTo.value = `${year}-12-31`;
+      el.timeFilter.value = "custom";
+      el.qualityFilter.value = "incomplete";
+      state.activeBackfill = "";
+      state.selectedRouteId = "";
+      clearRouteHash();
+      applyFilters();
+      el.focusNote.textContent = `Backfill view: incomplete entries from ${year}. Edit matching routes from the map page, then return here to check progress.`;
       document.getElementById("entryLog").scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
@@ -3597,6 +3658,12 @@ ${points}
       event.preventDefault();
       window.history.replaceState(null, "", `overview.html?backfill=${encodeURIComponent(row.dataset.backfill)}`);
       focusBackfill(row.dataset.backfill);
+    });
+    el.backfillYearSummary.addEventListener("click", event => {
+      const row = event.target.closest("[data-backfill-year]");
+      if (!row) return;
+      event.preventDefault();
+      focusBackfillYear(row.dataset.backfillYear);
     });
     el.activityCalendar.addEventListener("click", event => {
       const day = event.target.closest("[data-calendar-date]");
