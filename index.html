@@ -450,6 +450,28 @@
       border-bottom: 1px solid var(--line);
     }
 
+    .edit-backfill-note {
+      display: none;
+      border: 1px solid #d7c8a9;
+      border-left: 5px solid var(--gold);
+      border-radius: 8px;
+      background: #fff8e9;
+      color: #4e4330;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .edit-backfill-note.visible {
+      display: grid;
+      gap: 4px;
+    }
+
+    .edit-backfill-note strong {
+      color: #2f2a22;
+      font-size: 13px;
+    }
+
     label {
       display: grid;
       gap: 5px;
@@ -1321,6 +1343,7 @@
 
         <form id="routeForm">
           <p class="hint" style="margin: 0;">Save a completed hike or train route for your own Switzerland log. New routes are private by default.</p>
+          <div class="edit-backfill-note" id="editBackfillNote" aria-live="polite"></div>
           <label>
             Name
             <input id="routeName" required placeholder="Zurich to Uetliberg" />
@@ -1547,6 +1570,7 @@
       checkShare: document.getElementById("checkShare"),
       quickPostNote: document.getElementById("quickPostNote"),
       routeForm: document.getElementById("routeForm"),
+      editBackfillNote: document.getElementById("editBackfillNote"),
       importForm: document.getElementById("importForm"),
       routeName: document.getElementById("routeName"),
       routeDate: document.getElementById("routeDate"),
@@ -3070,6 +3094,32 @@
       return missing;
     }
 
+    function currentEditMissingFields() {
+      const editId = el.routeForm.dataset.editId;
+      if (!editId) return [];
+      const type = el.routeType.value;
+      const missing = [];
+      if (!el.routeDate.value) missing.push("date");
+      if (!Number(el.routeDuration.value)) missing.push("duration");
+      if (type === "hike" && !Number(el.routeGain.value)) missing.push("elevation");
+      if (!state.pendingPhotos.length) missing.push("photos");
+      return missing;
+    }
+
+    function renderEditBackfillNote() {
+      const editId = el.routeForm.dataset.editId;
+      if (!editId) {
+        el.editBackfillNote.classList.remove("visible");
+        el.editBackfillNote.innerHTML = "";
+        return;
+      }
+      const missing = currentEditMissingFields();
+      el.editBackfillNote.classList.add("visible");
+      el.editBackfillNote.innerHTML = missing.length
+        ? `<strong>Backfill needed</strong><span>Still missing: ${missing.map(escapeHtml).join(", ")}.</span>`
+        : `<strong>Backfill complete</strong><span>This route has date, duration, elevation context, and photos for the current entry type.</span>`;
+    }
+
     function renderStats() {
       const totals = state.routes.reduce((acc, route) => {
         acc[route.type] += distanceKm(route.points || []);
@@ -3168,6 +3218,7 @@
       window.clearTimeout(setStatus.timer);
       el.mapStatus.textContent = options.statusText || "Ready";
       delete el.routeForm.dataset.editId;
+      renderEditBackfillNote();
       renderDraft();
       renderPhotoPreview();
       renderRoutes();
@@ -3213,6 +3264,7 @@
       el.routeForm.dataset.editId = route.id;
       state.draft = (route.waypoints || route.points).map(p => [p[0], p[1]]);
       state.draftRoute = route.points.map(p => [p[0], p[1]]);
+      renderEditBackfillNote();
       renderDraft();
       map.fitBounds(boundsFor(route.points).pad(0.18));
       setStatus("Editing saved route");
@@ -4001,6 +4053,8 @@ ${points}
     ].forEach(input => {
       input.addEventListener("input", persistDraftState);
       input.addEventListener("change", persistDraftState);
+      input.addEventListener("input", renderEditBackfillNote);
+      input.addEventListener("change", renderEditBackfillNote);
     });
     el.undoPointBtn.addEventListener("click", removeLastDraftPoint);
     el.draftPointTools.addEventListener("click", event => {
@@ -4081,6 +4135,7 @@ ${points}
       el.routeDate.value = action === "today" ? dateInputValue() : dateInputValue(base);
       persistDraftState();
       updateQuickPost();
+      renderEditBackfillNote();
       setStatus(`Date set to ${el.routeDate.value}`);
     });
     el.durationPresets.addEventListener("click", event => {
@@ -4095,6 +4150,7 @@ ${points}
       }
       persistDraftState();
       updateQuickPost();
+      renderEditBackfillNote();
       setStatus(`Duration set to ${button.textContent.trim()}`);
     });
     el.tagSuggestions.addEventListener("click", event => {
@@ -4125,6 +4181,7 @@ ${points}
     el.routePhotos.addEventListener("change", async event => {
       if (event.target.files.length) await addPhotoFiles(event.target.files);
       event.target.value = "";
+      renderEditBackfillNote();
     });
     ["dragenter", "dragover"].forEach(type => {
       el.photoDropzone.addEventListener(type, event => {
@@ -4140,6 +4197,7 @@ ${points}
     });
     el.photoDropzone.addEventListener("drop", async event => {
       await addDroppedPhotoFiles(event.dataTransfer.files);
+      renderEditBackfillNote();
     });
     el.photoPreview.addEventListener("click", event => {
       const button = event.target.closest("button[data-photo-id]");
@@ -4147,6 +4205,7 @@ ${points}
       const before = state.pendingPhotos.length;
       state.pendingPhotos = state.pendingPhotos.filter(photo => photo.id !== button.dataset.photoId);
       renderPhotoPreview();
+      renderEditBackfillNote();
       if (state.pendingPhotos.length < before) setStatus("Photo removed");
     });
     el.clearPhotosBtn.addEventListener("click", () => {
@@ -4154,6 +4213,7 @@ ${points}
       state.pendingPhotos = [];
       el.routePhotos.value = "";
       renderPhotoPreview();
+      renderEditBackfillNote();
       setStatus("Attached photos cleared");
     });
     el.draftGpxFile.addEventListener("change", async event => {
