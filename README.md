@@ -4,7 +4,7 @@ A personal GitHub-hosted route diary for tracking completed hikes and train ride
 
 The app lets you add route waypoints on a topographic map, fit them to mapped paths or rail lines when routing is available, attach route photos, and save completed routes in the browser. New entries are private by default so you can backfill hikes and train routes from past years as your own log.
 
-The app is fully static and works from GitHub Pages. Your route data and compressed photos live in your browser storage, so use JSON export/import as your backup and transfer workflow.
+The app is fully static and works from GitHub Pages. Your route data and compressed photos live in your browser storage while you work. For cross-computer use, export `private-data.json` from the overview page and store that file in a separate private GitHub repository.
 
 ## Live Map
 
@@ -88,7 +88,8 @@ The overview page reads the same saved route data as the map page and displays:
 - unsaved-draft warnings before leaving the map page or clearing a route draft
 - hidden private route notes that stay in private JSON backups and are excluded from public exports
 - a backfill checklist for missing dates, duration, hike elevation, photos, dated years with incomplete entries, and the oldest incomplete route queue
-- overview-page JSON export/import controls for backups and moving the private archive between browsers
+- overview-page private JSON export/import controls for backups and moving the private archive between browsers
+- fixed-name `private-data.json` export for storing the full personal archive in a separate private GitHub data repository
 - overview-page public JSON export for the current filters, excluding notes, captions, photos, and private visibility
 - fixed-name `public-routes.json` export for replacing the hosted public viewer dataset
 - overview-page public publishing checklist for refreshing the hosted public viewer dataset
@@ -167,17 +168,41 @@ The app stores:
 
 ## Data Storage
 
-Routes are saved in the browser's local storage. Data is therefore local to the browser and URL where the app is opened.
+Routes are saved in the browser's local storage. Data is therefore local to the browser and URL where the app is opened until you export a private JSON backup.
 
 Unsaved route drafts are also saved in local browser storage while you work. They are cleared after you save or clear the route draft.
 
-Use `Export JSON` on the map page or `Export JSON backup` on the overview page for private backups or to move routes to another browser/device. New JSON exports are versioned backup packages with export time, route count, saved timestamp, and the full `routes` array, including notes, private hidden notes, and compressed photos; filenames include the export date to avoid overwriting older backups. Older raw route-array backups still import. Use `Import GPX / JSON` on the map page to select or drop one or many GPX/JSON files at once, or use the overview page to select or drop one or many JSON backups to restore or add routes. Imports skip routes that already match an existing name, type, date, distance, point count, and endpoints, including repeats inside the same backup file or duplicate GPX files, so re-importing the same data does not duplicate the archive. GPX files without internal track type, names, or times can still receive train classification, cleaned names, and dates from common filename patterns. Import feedback reports duplicate skips separately from invalid or outside-Switzerland entries, names failed files in batch imports, and warns about unsupported dropped files. Use `Export CSV log` on the overview page when you want the currently filtered log in a spreadsheet.
+Use `Export private JSON` on the map page or `Export dated private backup` on the overview page for dated private backups. Use `Export GitHub private-data.json` on the overview page when you want one stable file to upload to a private GitHub data repository. Private JSON exports are versioned backup packages with export time, route count, saved timestamp, and the full `routes` array, including notes, private hidden notes, and compressed photos. Older raw route-array backups still import. Use `Import GPX / JSON` on the map page to select or drop one or many GPX/JSON files at once, or use the overview page to select or drop one or many JSON backups to restore or add routes. Imports skip routes that already match an existing name, type, date, distance, point count, and endpoints, including repeats inside the same backup file or duplicate GPX files, so re-importing the same data does not duplicate the archive. GPX files without internal track type, names, or times can still receive train classification, cleaned names, and dates from common filename patterns. Import feedback reports duplicate skips separately from invalid or outside-Switzerland entries, names failed files in batch imports, and warns about unsupported dropped files. Use `Export CSV log` on the overview page when you want the currently filtered log in a spreadsheet.
 
 Use `Export public JSON` on the overview page when you want a dated cleaned subset for a read-only embed or public map. Use `Export public-routes.json` when you want the fixed filename used by the hosted public viewer. Both public exports include only the currently visible routes and remove personal notes, hidden private notes, captions, photos, and private visibility while keeping route geometry, dates, tags, distance metrics, and elevation fields. Load the file in `public.html`, or host it as a static JSON file and open `public.html?data=public-routes.json`.
 
 Photos are compressed before saving, then stored inside the route JSON as data URLs. This keeps the app static and GitHub Pages friendly, but browser storage is finite. Export JSON regularly if you attach many photos or backfill many years of hikes.
 
 After a JSON export, the app records the backup time and route count in browser storage. The map and overview pages warn you when the current browser data has changed since the last export.
+
+## Saving Private Data On GitHub
+
+Use two repositories:
+
+1. `swiss-trail-rail-map`: the public GitHub Pages app.
+2. `swiss-trail-rail-map-data`: a private repository for your personal data file.
+
+To update the private GitHub backup:
+
+1. Open the overview page.
+2. Click `Export GitHub private-data.json`.
+3. Upload or replace `private-data.json` in the private data repository.
+4. Commit the change in GitHub.
+
+To move to another computer:
+
+1. Download `private-data.json` from the private data repository.
+2. Open the app on the new computer.
+3. Go to the overview page.
+4. Import `private-data.json`.
+5. Check that routes and photos appear.
+
+Do not put `private-data.json` into the public app repository unless you intentionally want the full archive to be public. The app repository ignores `private-data.json` and dated private backups to reduce accidental commits.
 
 For manually clicked hike routes, the app sends sampled route coordinates to Open-Elevation during save to estimate elevation gain/loss and store profile samples for the overview. GPX elevation is used locally when present. Manual elevation fields are kept as an advanced override for old backfilled hikes or failed lookups.
 
