@@ -46,6 +46,7 @@ The overview page reads the same saved route data as the map page and displays:
 - route photo thumbnails and selected-route photo galleries with full-size photo links
 - yearly distance, yearly hike/train progress, yearly elevation gain, and monthly distance summaries
 - yearly backfill summary with quick focus for incomplete past-year entries
+- oldest-backfill queue with direct edit links for the next incomplete routes to clean up
 - distance and elevation gain by tag in the overview summary
 - route cards with name, caption, tags, duration, pace/speed, elevation, completeness badges, notes, distance, photos, and clicked waypoint coordinates
 - overview backfill action to batch-recalculate elevation for visible hikes missing elevation
@@ -85,7 +86,7 @@ The overview page reads the same saved route data as the map page and displays:
 - local autosave and restore for unsaved map-page route drafts
 - unsaved-draft warnings before leaving the map page or clearing a route draft
 - hidden private route notes that stay in private JSON backups and are excluded from public exports
-- a backfill checklist for missing dates, duration, hike elevation, photos, and dated years with incomplete entries
+- a backfill checklist for missing dates, duration, hike elevation, photos, dated years with incomplete entries, and the oldest incomplete route queue
 - overview-page JSON export/import controls for backups and moving the private archive between browsers
 - overview-page public JSON export for the current filters, excluding notes, captions, photos, and private visibility
 - fixed-name `public-routes.json` export for replacing the hosted public viewer dataset

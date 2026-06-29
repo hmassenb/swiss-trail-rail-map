@@ -1179,6 +1179,10 @@
           <h2>Backfill By Year</h2>
           <div class="summary-list" id="backfillYearSummary"></div>
         </div>
+        <div class="summary-panel">
+          <h2>Oldest Backfill Queue</h2>
+          <div class="summary-list" id="backfillQueueSummary"></div>
+        </div>
       </section>
       <div class="feed-title">
         <h2>Route Log</h2>
@@ -1410,6 +1414,7 @@
       highlightSummary: document.getElementById("highlightSummary"),
       backfillSummary: document.getElementById("backfillSummary"),
       backfillYearSummary: document.getElementById("backfillYearSummary"),
+      backfillQueueSummary: document.getElementById("backfillQueueSummary"),
       focusNote: document.getElementById("focusNote"),
       routeDetail: document.getElementById("routeDetail"),
       detailName: document.getElementById("detailName"),
@@ -2858,6 +2863,7 @@ ${points}
       el.highlightSummary.innerHTML = highlightRows(state.filtered);
       el.backfillSummary.innerHTML = backfillRows(state.filtered);
       el.backfillYearSummary.innerHTML = backfillYearRows(state.filtered);
+      el.backfillQueueSummary.innerHTML = backfillQueueRows(state.filtered, 5);
     }
 
     function groupDistance(routes, keyFn) {
@@ -3170,6 +3176,30 @@ ${points}
           <span>${escapeHtml(year)} - ${data.incomplete} of ${data.total} need backfill${missingText ? ` (${escapeHtml(missingText)})` : ""}</span>
           <strong>${data.incomplete}</strong>
         </${rowTag}>`;
+      }).join("");
+    }
+
+    function backfillQueueRows(routes, limit = 5) {
+      const rows = routes
+        .map(route => ({ route, missing: missingRouteFields(route) }))
+        .filter(item => item.missing.length)
+        .sort((a, b) => {
+          const aDate = a.route.date || "0000-00-00";
+          const bDate = b.route.date || "0000-00-00";
+          if (aDate !== bDate) return aDate.localeCompare(bDate);
+          return activityStamp(a.route).localeCompare(activityStamp(b.route));
+        })
+        .slice(0, limit);
+      if (!rows.length) return `<div class="summary-row"><span>No incomplete entries in this filter.</span><strong></strong></div>`;
+      return rows.map(({ route, missing }) => {
+        const dateText = route.date || "No date";
+        const missingText = missing.join(", ");
+        return `
+          <a class="summary-row action" href="${escapeHtml(routeEditUrl(route))}">
+            <span>${escapeHtml(dateText)} - ${escapeHtml(route.name)} needs ${escapeHtml(missingText)}</span>
+            <strong>Edit</strong>
+          </a>
+        `;
       }).join("");
     }
 
